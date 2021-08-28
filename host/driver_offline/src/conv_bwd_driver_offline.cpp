@@ -41,7 +41,7 @@ int main(int argc, char* argv[])
     // dynamic mode
     if(argc != 22)
     {
-        printf("arg1 to 5: layout, algo, do_verification, init_method, do_log, nrepeat\n");
+        printf("arg1 to 6: layout, algo, do_verification, init_method, do_log, nrepeat\n");
         printf("rest: N, K, C, Y, X, Hi, Wi, Sy, Sx, Dy, Dx, LeftPy, LeftPx, RightPy, RightPx\n");
         exit(1);
     }
@@ -79,7 +79,7 @@ int main(int argc, char* argv[])
     // static mode
     if(argc < 7)
     {
-        printf("arg1 to 5: layout, algo, do_verification, init_method, do_log, nrepeat\n");
+        printf("arg1 to 6: layout, algo, do_verification, init_method, do_log, nrepeat\n");
         exit(1);
     }
 
