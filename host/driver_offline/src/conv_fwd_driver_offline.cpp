@@ -18,6 +18,7 @@
 #include "device_convolution_forward_implicit_gemm_v5r1_dlops_nchw_kcyx_nkhw.hpp"
 #include "device_convolution_forward_implicit_gemm_v4r4r2_xdlops_nchw_kcyx_nkhw.hpp"
 #include "device_convolution_forward_implicit_gemm_v4r4r4_xdlops_nhwc_kyxc_nhwk.hpp"
+#include "device_convolution_forward_implicit_gemm_v4r4r4_xdlops_nhwgc_gkyxc_nhwgk.hpp"
 
 #define USE_DYNAMIC_MODE 1
 #define USE_CONV_FWD_V4R4_NCHW 0
@@ -26,6 +27,7 @@
 #define USE_CONV_FWD_V5R1_NCHW 0
 #define USE_CONV_FWD_V4R4R2_XDL_NCHW 1
 #define USE_CONV_FWD_V4R4R4_XDL_NHWC 1
+#define USE_CONV_FWD_V4R4R4_XDL_NHWGC 1
 
 enum ConvForwardAlgo
 {
@@ -34,7 +36,8 @@ enum ConvForwardAlgo
     V6R1NCHW,      // 2
     V5R1NCHW,      // 3
     V4R4R2XDLNCHW, // 4
-    V4R4R4XDLNHWC  // 5
+    V4R4R4XDLNHWC,  // 5
+    V4R4R4XDLNHWGC  // 6
 };
 
 int main(int argc, char* argv[])
@@ -51,7 +54,7 @@ int main(int argc, char* argv[])
 
 #if USE_DYNAMIC_MODE
     // dynamic mode
-    if(argc != 22)
+    if(!(argc == 22 || argc == 23))
     {
         printf("arg1 to 6: layout, algo, do_verification, init_method, do_log, nrepeat\n");
         printf("rest: N, K, C, Y, X, Hi, Wi, Sy, Sx, Dy, Dx, LeftPy, LeftPx, RightPy, RightPx\n");
@@ -65,9 +68,10 @@ int main(int argc, char* argv[])
     const bool do_log             = std::stoi(argv[5]);
     const int nrepeat             = std::stoi(argv[6]);
 
+    index_t G  = 1;
     const index_t N  = std::stoi(argv[7]);
-    const index_t K  = std::stoi(argv[8]);
-    const index_t C  = std::stoi(argv[9]);
+    index_t K  = std::stoi(argv[8]);
+    index_t C  = std::stoi(argv[9]);
     const index_t Y  = std::stoi(argv[10]);
     const index_t X  = std::stoi(argv[11]);
     const index_t Hi = std::stoi(argv[12]);
@@ -81,6 +85,12 @@ int main(int argc, char* argv[])
     const index_t in_left_pad_w   = std::stoi(argv[19]);
     const index_t in_right_pad_h  = std::stoi(argv[20]);
     const index_t in_right_pad_w  = std::stoi(argv[21]);
+    if (argc == 23){
+       G  = std::stoi(argv[22]);
+       K = K / G;
+       C = C / G;
+    }
+    
 
     const index_t YEff = (Y - 1) * conv_dilation_h + 1;
     const index_t XEff = (X - 1) * conv_dilation_w + 1;
@@ -102,6 +112,7 @@ int main(int argc, char* argv[])
     const bool do_log             = std::stoi(argv[5]);
     const int nrepeat             = std::stoi(argv[6]);
 
+    constexpr auto G  = Number<1>{};
     constexpr auto N  = Number<128>{};
     constexpr auto C  = Number<192>{};
     constexpr auto Hi = Number<71>{};
@@ -171,6 +182,24 @@ int main(int argc, char* argv[])
         out_lengths_host[1] = static_cast<std::size_t>(Ho);
         out_lengths_host[2] = static_cast<std::size_t>(Wo);
         out_lengths_host[3] = static_cast<std::size_t>(K);
+    }
+    else if(layout == ConvTensorLayout::NHWGC)
+    {
+        in_lengths_host[0]  = static_cast<std::size_t>(N);
+        in_lengths_host[1]  = static_cast<std::size_t>(Hi);
+        in_lengths_host[2]  = static_cast<std::size_t>(Wi);
+        in_lengths_host[3]  = static_cast<std::size_t>(G);
+        in_lengths_host[4]  = static_cast<std::size_t>(C);
+        wei_lengths_host[0] = static_cast<std::size_t>(G);
+        wei_lengths_host[1] = static_cast<std::size_t>(K);
+        wei_lengths_host[2] = static_cast<std::size_t>(Y);
+        wei_lengths_host[3] = static_cast<std::size_t>(X);
+        wei_lengths_host[4] = static_cast<std::size_t>(C);
+        out_lengths_host[0] = static_cast<std::size_t>(N);
+        out_lengths_host[1] = static_cast<std::size_t>(Ho);
+        out_lengths_host[2] = static_cast<std::size_t>(Wo);
+        out_lengths_host[3] = static_cast<std::size_t>(G);
+        out_lengths_host[4] = static_cast<std::size_t>(K);
     }
     else
     {
@@ -249,6 +278,24 @@ int main(int argc, char* argv[])
         const auto in_lengths_dev     = make_tuple(N, Hi, Wi, C);
         const auto wei_lengths_dev    = make_tuple(K, Y, X, C);
         const auto out_lengths_dev    = make_tuple(N, Ho, Wo, K);
+        const auto conv_strides_dev   = make_tuple(conv_stride_h, conv_stride_w);
+        const auto conv_dilations_dev = make_tuple(conv_dilation_h, conv_dilation_w);
+        const auto in_left_pads_dev   = make_tuple(in_left_pad_h, in_left_pad_w);
+        const auto in_right_pads_dev  = make_tuple(in_right_pad_h, in_right_pad_w);
+
+        return make_tuple(in_lengths_dev,
+                          wei_lengths_dev,
+                          out_lengths_dev,
+                          conv_strides_dev,
+                          conv_dilations_dev,
+                          in_left_pads_dev,
+                          in_right_pads_dev);
+    };
+
+    auto f_make_for_device_nhwgc = [&]() {
+        const auto in_lengths_dev     = make_tuple(N, Hi, Wi, G, C);
+        const auto wei_lengths_dev    = make_tuple(G, K, Y, X, C);
+        const auto out_lengths_dev    = make_tuple(N, Ho, Wo, G, K);
         const auto conv_strides_dev   = make_tuple(conv_stride_h, conv_stride_w);
         const auto conv_dilations_dev = make_tuple(conv_dilation_h, conv_dilation_w);
         const auto in_left_pads_dev   = make_tuple(in_left_pad_h, in_left_pad_w);
@@ -406,6 +453,33 @@ int main(int argc, char* argv[])
         const auto tmp = f_make_for_device_nhwc();
 
         device_convolution_forward_implicit_gemm_v4r4r4_xdlops_nhwc_kyxc_nhwk<in_data_t,
+                                                                              acc_data_t,
+                                                                              out_data_t>(
+            tmp[I0],
+            tmp[I1],
+            tmp[I2],
+            tmp[I3],
+            tmp[I4],
+            tmp[I5],
+            tmp[I6],
+            in,
+            wei,
+            out_device,
+            nrepeat);
+    }
+#endif
+
+#if USE_CONV_FWD_V4R4R4_XDL_NHWGC
+    if(algo == ConvForwardAlgo::V4R4R4XDLNHWGC)
+    {
+        if(layout != ConvTensorLayout::NHWC)
+        {
+            throw std::runtime_error("wrong! layout");
+        }
+
+        const auto tmp = f_make_for_device_nhwgc();
+
+        device_convolution_forward_implicit_gemm_v4r4r4_xdlops_nhwgc_gkyxc_nhwgk<in_data_t,
                                                                               acc_data_t,
                                                                               out_data_t>(
             tmp[I0],
