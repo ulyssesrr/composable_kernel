@@ -15,16 +15,16 @@ template <typename TInWei,
           typename InLeftPads,
           typename InRightPads>
 void device_convolution_forward_implicit_gemm_v4r4r4_xdlops_nhwgc_gkyxc_nhwgk(
-    const InLengths& in_n_hi_wi_c_lengths,
-    const WeiLengths& wei_k_y_x_c_lengths,
-    const OutLengths& out_n_ho_wo_k_lengths,
+    const InLengths& in_n_hi_wi_g_c_lengths,
+    const WeiLengths& wei_g_k_y_x_c_lengths,
+    const OutLengths& out_n_ho_wo_g_k_lengths,
     const ConvStrides& conv_strides,
     const ConvDilations& conv_dilations,
     const InLeftPads& in_left_pads,
     const InRightPads& in_right_pads,
-    const Tensor<TInWei>& in_n_hi_wi_c,
-    const Tensor<TInWei>& wei_k_y_x_c,
-    Tensor<TOut>& out_n_ho_wo_k,
+    const Tensor<TInWei>& in_n_hi_wi_g_c,
+    const Tensor<TInWei>& wei_g_k_y_x_c,
+    Tensor<TOut>& out_n_ho_wo_g_k,
     ck::index_t nrepeat)
 {
     using namespace ck;
@@ -35,19 +35,19 @@ void device_convolution_forward_implicit_gemm_v4r4r4_xdlops_nhwgc_gkyxc_nhwgk(
     constexpr auto I1 = Number<1>{};
     constexpr auto I2 = Number<2>{};
     constexpr auto I3 = Number<3>{};
-    //constexpr auto I4 = Number<4>{};
+    constexpr auto I4 = Number<4>{};
 
-    DeviceMem in_n_hi_wi_c_device_buf(sizeof(TInWei) * in_n_hi_wi_c.mDesc.GetElementSpace());
-    DeviceMem wei_k_y_x_c_device_buf(sizeof(TInWei) * wei_k_y_x_c.mDesc.GetElementSpace());
-    DeviceMem out_n_ho_wo_k_device_buf(sizeof(TOut) * out_n_ho_wo_k.mDesc.GetElementSpace());
+    DeviceMem in_n_hi_wi_g_c_device_buf(sizeof(TInWei) * in_n_hi_wi_g_c.mDesc.GetElementSpace());
+    DeviceMem wei_g_k_y_x_c_device_buf(sizeof(TInWei) * wei_g_k_y_x_c.mDesc.GetElementSpace());
+    DeviceMem out_n_ho_wo_g_k_device_buf(sizeof(TOut) * out_n_ho_wo_g_k.mDesc.GetElementSpace());
 
-    in_n_hi_wi_c_device_buf.ToDevice(in_n_hi_wi_c.mData.data());
-    wei_k_y_x_c_device_buf.ToDevice(wei_k_y_x_c.mData.data());
-    out_n_ho_wo_k_device_buf.ToDevice(out_n_ho_wo_k.mData.data());
+    in_n_hi_wi_g_c_device_buf.ToDevice(in_n_hi_wi_g_c.mData.data());
+    wei_g_k_y_x_c_device_buf.ToDevice(wei_g_k_y_x_c.mData.data());
+    out_n_ho_wo_g_k_device_buf.ToDevice(out_n_ho_wo_g_k.mData.data());
 
-    const auto in_n_hi_wi_c_desc  = make_naive_tensor_descriptor_packed(in_n_hi_wi_c_lengths);
-    const auto wei_k_y_x_c_desc   = make_naive_tensor_descriptor_packed(wei_k_y_x_c_lengths);
-    const auto out_n_ho_wo_k_desc = make_naive_tensor_descriptor_packed(out_n_ho_wo_k_lengths);
+    const auto in_n_hi_wi_g_c_desc  = make_naive_tensor_descriptor_packed(in_n_hi_wi_g_c_lengths);
+    const auto wei_g_k_y_x_c_desc   = make_naive_tensor_descriptor_packed(wei_g_k_y_x_c_lengths);
+    const auto out_n_ho_wo_g_k_desc = make_naive_tensor_descriptor_packed(out_n_ho_wo_g_k_lengths);
 
 #if 0
     // [M, N, K0, K1] = [256, 128, 4, 4] for fp32
@@ -176,14 +176,14 @@ void device_convolution_forward_implicit_gemm_v4r4r4_xdlops_nhwgc_gkyxc_nhwgk(
     constexpr index_t MRepeat = 2;
     constexpr index_t NRepeat = 4;
 
-    using GemmABlockTransferThreadSliceLengths_GemmK0_GemmM_GemmK1   = Sequence<1, 2, 8>;
-    using GemmABlockTransferThreadClusterLengths_GemmK0_GemmM_GemmK1 = Sequence<4, 64, 1>;
+    using GemmABlockTransferThreadSliceLengths_GemmK0_GemmM_GemmK1   = Sequence<1, 1, 2, 8>;
+    using GemmABlockTransferThreadClusterLengths_GemmK0_GemmM_GemmK1 = Sequence<1, 4, 64, 1>;
 
     constexpr index_t GemmABlockTransferSrcScalarPerVector_GemmK1 = 8;
     constexpr index_t GemmABlockTransferDstScalarPerVector_GemmK1 = 8;
 
-    using GemmBBlockTransferThreadSliceLengths_GemmK0_GemmN_GemmK1   = Sequence<1, 4, 8>;
-    using GemmBBlockTransferThreadClusterLengths_GemmK0_GemmN_GemmK1 = Sequence<4, 64, 1>;
+    using GemmBBlockTransferThreadSliceLengths_GemmK0_GemmN_GemmK1   = Sequence<1, 1, 4, 8>;
+    using GemmBBlockTransferThreadClusterLengths_GemmK0_GemmN_GemmK1 = Sequence<1, 4, 64, 1>;
 
     constexpr index_t GemmBBlockTransferSrcScalarPerVector_GemmK1 = 8;
     constexpr index_t GemmBBlockTransferDstScalarPerVector_GemmK1 = 8;
@@ -220,9 +220,9 @@ void device_convolution_forward_implicit_gemm_v4r4r4_xdlops_nhwgc_gkyxc_nhwgk(
 #endif
 
     const auto descs =
-        transform_forward_convolution_into_gemm_v4r4r4_nhwgc_gkyxc_nhwgk_pad(in_n_hi_wi_c_desc,
-                                                                          wei_k_y_x_c_desc,
-                                                                          out_n_ho_wo_k_desc,
+        transform_forward_convolution_into_gemm_v4r4r4_nhwgc_gkyxc_nhwgk_pad(in_n_hi_wi_g_c_desc,
+                                                                          wei_g_k_y_x_c_desc,
+                                                                          out_n_ho_wo_g_k_desc,
                                                                           conv_strides,
                                                                           conv_dilations,
                                                                           in_left_pads,
@@ -351,5 +351,5 @@ void device_convolution_forward_implicit_gemm_v4r4r4_xdlops_nhwgc_gkyxc_nhwgk(
     }
 */
     // copy result back to host
-    out_n_ho_wo_k_device_buf.FromDevice(out_n_ho_wo_k.mData.data());
+    out_n_ho_wo_g_k_device_buf.FromDevice(out_n_ho_wo_g_k.mData.data());
 }
