@@ -36,8 +36,8 @@ enum ConvForwardAlgo
     V6R1NCHW,      // 2
     V5R1NCHW,      // 3
     V4R4R2XDLNCHW, // 4
-    V4R4R4XDLNHWC,  // 5
-    V4R4R4XDLNHWGC  // 6
+    V4R4R4XDLNHWC, // 5
+    V4R4R4XDLNHWGC // 6
 };
 
 int main(int argc, char* argv[])
@@ -68,10 +68,10 @@ int main(int argc, char* argv[])
     const bool do_log             = std::stoi(argv[5]);
     const int nrepeat             = std::stoi(argv[6]);
 
-    index_t G  = 1;
+    index_t G        = 1;
     const index_t N  = std::stoi(argv[7]);
-    index_t K  = std::stoi(argv[8]);
-    index_t C  = std::stoi(argv[9]);
+    index_t K        = std::stoi(argv[8]);
+    index_t C        = std::stoi(argv[9]);
     const index_t Y  = std::stoi(argv[10]);
     const index_t X  = std::stoi(argv[11]);
     const index_t Hi = std::stoi(argv[12]);
@@ -85,12 +85,12 @@ int main(int argc, char* argv[])
     const index_t in_left_pad_w   = std::stoi(argv[19]);
     const index_t in_right_pad_h  = std::stoi(argv[20]);
     const index_t in_right_pad_w  = std::stoi(argv[21]);
-    if (argc == 23){
-       G  = std::stoi(argv[22]);
-       K = K / G;
-       C = C / G;
+    if(argc == 23)
+    {
+        G = std::stoi(argv[22]);
+        K = K / G;
+        C = C / G;
     }
-    
 
     const index_t YEff = (Y - 1) * conv_dilation_h + 1;
     const index_t XEff = (X - 1) * conv_dilation_w + 1;
@@ -480,8 +480,8 @@ int main(int argc, char* argv[])
         const auto tmp = f_make_for_device_nhwgc();
 
         device_convolution_forward_implicit_gemm_v4r4r4_xdlops_nhwgc_gkyxc_nhwgk<in_data_t,
-                                                                              acc_data_t,
-                                                                              out_data_t>(
+                                                                                 acc_data_t,
+                                                                                 out_data_t>(
             tmp[I0],
             tmp[I1],
             tmp[I2],

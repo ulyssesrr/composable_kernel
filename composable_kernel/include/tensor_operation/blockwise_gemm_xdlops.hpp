@@ -158,6 +158,22 @@ struct BlockwiseGemmXdlops_k0mk1_k0nk1_m0n0m1n1m2m3m4n2_v1
         return xdlops_gemm.MakeCM0N0M1N1M2M3M4N2Descriptor(c_m0_n0_m1_n1_m2_n2_grid_desc);
     }
 
+    template <typename CGMNGridDesc>
+    __host__ __device__ static constexpr auto
+    MakeCGM0N0M1N1M2M3M4N2GridDescriptor(const CGMNGridDesc& c_g_m_n_grid_desc)
+    {
+        const auto G                               = c_g_m_n_grid_desc.GetLength(I0);
+        const auto c_g_m0_n0_m1_n1_m2_n2_grid_desc = transform_tensor_descriptor(
+            c_g_m_n_grid_desc,
+            make_tuple(make_pass_through_transform(G),
+                       make_unmerge_transform(make_tuple(MRepeat, MWaves, MPerXDL)),
+                       make_unmerge_transform(make_tuple(NRepeat, NWaves, NPerXDL))),
+            make_tuple(Sequence<0>{}, Sequence<1>{}),
+            make_tuple(Sequence<0, 2, 4>{}, Sequence<1, 3, 5>{}));
+
+        return xdlops_gemm.MakeCGM0N0M1N1M2M3M4N2Descriptor(c_g_m0_n0_m1_n1_m2_n2_grid_desc);
+    }
+
     __host__ __device__ static constexpr auto MakeAK0M0M1M2K1BlockDescriptor()
     {
         return transform_tensor_descriptor(

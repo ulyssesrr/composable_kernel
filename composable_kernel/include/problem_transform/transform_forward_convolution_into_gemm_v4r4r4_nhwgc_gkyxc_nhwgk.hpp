@@ -90,15 +90,16 @@ transform_forward_convolution_into_gemm_v4r4r4_nhwgc_gkyxc_nhwgk_pad(
                    make_embed_transform(make_tuple(X, Wo), make_tuple(ConvDilationW, ConvStrideW)),
                    make_pass_through_transform(C)),
         make_tuple(Sequence<0>{}, Sequence<1>{}, Sequence<2>{}, Sequence<3>{}, Sequence<4>{}),
-        make_tuple(Sequence<0>{}, Sequence<1>{}, Sequence<2, 3>{}, Sequence<4, 5>{}, Sequence<6>{}));
+        make_tuple(
+            Sequence<0>{}, Sequence<1>{}, Sequence<2, 3>{}, Sequence<4, 5>{}, Sequence<6>{}));
 
-    const auto in_gemmg_gemmk_gemmm_grid_desc =
-        transform_tensor_descriptor(in_g_n_y_ho_x_wo_c_grid_desc,
-                                    make_tuple(make_pass_through_transform(G),
-                                               make_merge_transform(make_tuple(Y, X, C)),
-                                               make_merge_transform(make_tuple(N, Ho, Wo))),
-                                    make_tuple(Sequence<0>{}, Sequence<2, 4, 6>{}, Sequence<1, 3, 5>{}),
-                                    make_tuple(Sequence<0>{}, Sequence<1>{}, Sequence<2>{}));
+    const auto in_gemmg_gemmk_gemmm_grid_desc = transform_tensor_descriptor(
+        in_g_n_y_ho_x_wo_c_grid_desc,
+        make_tuple(make_pass_through_transform(G),
+                   make_merge_transform(make_tuple(Y, X, C)),
+                   make_merge_transform(make_tuple(N, Ho, Wo))),
+        make_tuple(Sequence<0>{}, Sequence<2, 4, 6>{}, Sequence<1, 3, 5>{}),
+        make_tuple(Sequence<0>{}, Sequence<1>{}, Sequence<2>{}));
 
     const auto in_gemmg_gemmk0_gemmm_gemmk1_grid_desc =
         transform_tensor_descriptor(in_gemmg_gemmk_gemmm_grid_desc,
@@ -112,7 +113,7 @@ transform_forward_convolution_into_gemm_v4r4r4_nhwgc_gkyxc_nhwgk_pad(
     const auto wei_gemmg_gemmk_gemmn_grid_desc = transform_tensor_descriptor(
         make_naive_tensor_descriptor_packed(make_tuple(G, K, Y * X * C)),
         make_tuple(make_pass_through_transform(G),
-                   make_pass_through_transform(K), 
+                   make_pass_through_transform(K),
                    make_pass_through_transform(Y * X * C)),
         make_tuple(Sequence<0>{}, Sequence<1>{}, Sequence<2>{}),
         make_tuple(Sequence<0>{}, Sequence<2>{}, Sequence<1>{}));
@@ -129,7 +130,7 @@ transform_forward_convolution_into_gemm_v4r4r4_nhwgc_gkyxc_nhwgk_pad(
     const auto out_gemmg_gemmm_gemmn_grid_desc = transform_tensor_descriptor(
         make_naive_tensor_descriptor_packed(make_tuple(N * Ho * Wo, G, K)),
         make_tuple(make_pass_through_transform(N * Ho * Wo),
-                   make_pass_through_transform(G), 
+                   make_pass_through_transform(G),
                    make_pass_through_transform(K)),
         make_tuple(Sequence<0>{}, Sequence<1>{}, Sequence<2>{}),
         make_tuple(Sequence<1>{}, Sequence<0>{}, Sequence<2>{}));
