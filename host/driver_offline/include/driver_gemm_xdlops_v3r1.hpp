@@ -11,9 +11,9 @@ template <ck::index_t BlockSize,
           typename FloatAcc,
           typename FloatC,
           ck::InMemoryDataOperationEnum_t CGlobalMemoryDataOperation,
-          typename AK0MK1GridDesc,
-          typename BK0NK1GridDesc,
-          typename CMNGridDesc,
+          typename AGK0MK1GridDesc,
+          typename BGK0NK1GridDesc,
+          typename CGMNGridDesc,
           ck::index_t MPerBlock,
           ck::index_t NPerBlock,
           ck::index_t KPerBlock,
@@ -50,9 +50,9 @@ template <ck::index_t BlockSize,
 __host__ float driver_gemm_xdlops_v3r1(const FloatAB* p_a_grid,
                                        const FloatAB* p_b_grid,
                                        FloatC* p_c_grid,
-                                       const AK0MK1GridDesc& a_g_k0_m_k1_grid_desc,
-                                       const BK0NK1GridDesc& b_g_k0_n_k1_grid_desc,
-                                       const CMNGridDesc& c_g_m_n_grid_desc,
+                                       const AGK0MK1GridDesc& a_g_k0_m_k1_grid_desc,
+                                       const BGK0NK1GridDesc& b_g_k0_n_k1_grid_desc,
+                                       const CGMNGridDesc& c_g_m_n_grid_desc,
                                        AGridStepHacks,
                                        BGridStepHacks,
                                        CGridStepHacks,
@@ -69,14 +69,14 @@ __host__ float driver_gemm_xdlops_v3r1(const FloatAB* p_a_grid,
     constexpr auto I3 = Number<3>{};
 
     using GridwiseGemm =
-        GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v3r1<BlockSize,
+        GridwiseGemm_gk0mk1_gk0nk1_gmn_xdlops_v3r1<BlockSize,
                                                 FloatAB,
                                                 FloatAcc,
                                                 FloatC,
                                                 CGlobalMemoryDataOperation,
-                                                AK0MK1GridDesc,
-                                                BK0NK1GridDesc,
-                                                CMNGridDesc,
+                                                AGK0MK1GridDesc,
+                                                BGK0NK1GridDesc,
+                                                CGMNGridDesc,
                                                 MPerBlock,
                                                 NPerBlock,
                                                 KPerBlock,
@@ -134,26 +134,26 @@ __host__ float driver_gemm_xdlops_v3r1(const FloatAB* p_a_grid,
             "wrong! GridwiseGemm_km_kn_m0m1n0n1_xdlops_v2r3 has invalid setting");
     }
 
-       const auto c_gemmg_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc =
-           GridwiseGemm::MakeCM0N0M1N1M2M3M4N2GridDescriptor(c_g_m_n_grid_desc);
+       const auto c_g_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc =
+           GridwiseGemm::MakeCGM0N0M1N1M2M3M4N2GridDescriptor(c_g_m_n_grid_desc);
 
-/*       using CM0N0M1N1M2M3M4N2GridDesc = decltype(c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc);
+       using CGM0N0M1N1M2M3M4N2GridDesc = decltype(c_g_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc);
 
-       const auto c_block_cluster_adaptor = GridwiseGemm::MakeCBlockClusterAdaptor(c_m_n_grid_desc);
+       const auto c_block_cluster_adaptor = GridwiseGemm::MakeCBlockClusterAdaptor(c_g_m_n_grid_desc);
 
        using CBlockClusterAdaptor = decltype(c_block_cluster_adaptor);
 
-       const index_t grid_size = GridwiseGemm::CalculateGridSize(c_m_n_grid_desc);
+       const index_t grid_size = GridwiseGemm::CalculateGridSize(c_g_m_n_grid_desc);
 
-       const auto kernel = kernel_gemm_xdlops_v2r3<GridwiseGemm,
+       const auto kernel = kernel_gemm_xdlops_v3r1<GridwiseGemm,
                                                    FloatAB,
                                                    FloatC,
-                                                   remove_reference_t<AK0MK1GridDesc>,
-                                                   remove_reference_t<BK0NK1GridDesc>,
-                                                   remove_reference_t<CM0N0M1N1M2M3M4N2GridDesc>,
+                                                   remove_reference_t<AGK0MK1GridDesc>,
+                                                   remove_reference_t<BGK0NK1GridDesc>,
+                                                   remove_reference_t<CGM0N0M1N1M2M3M4N2GridDesc>,
                                                    remove_reference_t<CBlockClusterAdaptor>>;
 
-   #if CK_EXPERIMENTAL_PASS_TENSOR_DESCRIPTOR_BY_VALUE
+/*   #if CK_EXPERIMENTAL_PASS_TENSOR_DESCRIPTOR_BY_VALUE
        float ave_time = launch_and_time_kernel(kernel,
                                                nrepeat,
                                                dim3(grid_size),
