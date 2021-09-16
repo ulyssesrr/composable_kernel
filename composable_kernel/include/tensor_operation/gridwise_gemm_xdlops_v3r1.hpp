@@ -246,22 +246,23 @@ struct GridwiseGemm_gk0mk1_gk0nk1_gmn_xdlops_v3r1
         const auto N0 = N / N1;
 
 #if 1
-        const auto c_blockid_to_m0_n0_block_cluster_adaptor =
-            make_single_stage_tensor_adaptor(make_tuple(make_merge_transform(make_tuple(G, M0, N0))),
-                                             make_tuple(Sequence<0, 1, 2>{}),
-                                             make_tuple(Sequence<0>{}));
+        const auto c_blockid_to_m0_n0_block_cluster_adaptor = make_single_stage_tensor_adaptor(
+            make_tuple(make_merge_transform(make_tuple(G, M0, N0))),
+            make_tuple(Sequence<0, 1, 2>{}),
+            make_tuple(Sequence<0>{}));
 #elif 1
-        const auto c_blockid_to_m0_n0_block_cluster_adaptor =
-            make_single_stage_tensor_adaptor(make_tuple(make_merge_transform(make_tuple(G, N0, M0))),
-                                             make_tuple(Sequence<0, 2, 1>{}),
-                                             make_tuple(Sequence<0>{}));
+        const auto c_blockid_to_m0_n0_block_cluster_adaptor = make_single_stage_tensor_adaptor(
+            make_tuple(make_merge_transform(make_tuple(G, N0, M0))),
+            make_tuple(Sequence<0, 2, 1>{}),
+            make_tuple(Sequence<0>{}));
 #endif
 
         return c_blockid_to_m0_n0_block_cluster_adaptor;
     }
 
-    using CM0N0M1N1M2M3M4N2GridDesc = decltype(MakeCGM0N0M1N1M2M3M4N2GridDescriptor(CGMNGridDesc{}));
-    using CBlockClusterAdaptor      = decltype(MakeCBlockClusterAdaptor(CGMNGridDesc{}));
+    using CM0N0M1N1M2M3M4N2GridDesc =
+        decltype(MakeCGM0N0M1N1M2M3M4N2GridDescriptor(CGMNGridDesc{}));
+    using CBlockClusterAdaptor = decltype(MakeCBlockClusterAdaptor(CGMNGridDesc{}));
 
     __device__ static void Run(const FloatAB* __restrict__ p_a_grid,
                                const FloatAB* __restrict__ p_b_grid,
