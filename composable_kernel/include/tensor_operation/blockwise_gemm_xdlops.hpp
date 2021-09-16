@@ -131,10 +131,35 @@ struct BlockwiseGemmXdlops_k0mk1_k0nk1_m0n0m1n1m2m3m4n2_v1
         return make_naive_tensor_descriptor_packed(make_tuple(I1, I1, I1, I1, M0, M1, M2, N));
     }
 
+    __host__ __device__ static constexpr auto GetCGM0N0M1N1M2M3M4N2ThreadDescriptor()
+    {
+        constexpr auto c_m0_m1_m2_n_tblk_lens = xdlops_gemm.GetCM0M1M2NThreadBlkLengths();
+
+        constexpr auto M0 = c_m0_m1_m2_n_tblk_lens[I0];
+        constexpr auto M1 = c_m0_m1_m2_n_tblk_lens[I1];
+        constexpr auto M2 = c_m0_m1_m2_n_tblk_lens[I2];
+        constexpr auto N  = c_m0_m1_m2_n_tblk_lens[I3];
+
+        return make_naive_tensor_descriptor_packed(make_tuple(Number<1>{}, I1, I1, I1, I1, M0, M1, M2, N));
+    }
     __host__ __device__ static constexpr auto GetCM0N0M1N1M2M3M4N2BlockDescriptor()
     {
         constexpr auto c_m0_n0_m1_n1_m2_n2_block_desc =
             make_naive_tensor_descriptor_packed(make_tuple(Number<MRepeat>{},
+                                                           Number<NRepeat>{},
+                                                           Number<MWaves>{},
+                                                           Number<NWaves>{},
+                                                           Number<MPerXDL>{},
+                                                           Number<NPerXDL>{}));
+
+        return xdlops_gemm.MakeCM0N0M1N1M2M3M4N2Descriptor(c_m0_n0_m1_n1_m2_n2_block_desc);
+    }
+
+    __host__ __device__ static constexpr auto GetCGM0N0M1N1M2M3M4N2BlockDescriptor()
+    {
+        constexpr auto c_m0_n0_m1_n1_m2_n2_block_desc =
+            make_naive_tensor_descriptor_packed(make_tuple(Number<1>{},
+                                                           Number<MRepeat>{},
                                                            Number<NRepeat>{},
                                                            Number<MWaves>{},
                                                            Number<NWaves>{},
