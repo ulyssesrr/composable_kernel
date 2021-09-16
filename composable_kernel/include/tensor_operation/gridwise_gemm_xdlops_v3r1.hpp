@@ -264,444 +264,456 @@ struct GridwiseGemm_gk0mk1_gk0nk1_gmn_xdlops_v3r1
         decltype(MakeCGM0N0M1N1M2M3M4N2GridDescriptor(CGMNGridDesc{}));
     using CBlockClusterAdaptor = decltype(MakeCBlockClusterAdaptor(CGMNGridDesc{}));
 
-    __device__ static void Run(const FloatAB* __restrict__ p_a_grid,
-                               const FloatAB* __restrict__ p_b_grid,
-                               FloatC* __restrict__ p_c_grid,
-                               FloatAB* __restrict__ p_shared_block,
-                               const AGK0MK1GridDesc& a_k0_m_k1_grid_desc,
-                               const BGK0NK1GridDesc& b_k0_n_k1_grid_desc,
-                               const CM0N0M1N1M2M3M4N2GridDesc& c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc,
-                               const CBlockClusterAdaptor& c_block_cluster_adaptor)
+    __device__ static void
+    Run(const FloatAB* __restrict__ p_a_grid,
+        const FloatAB* __restrict__ p_b_grid,
+        FloatC* __restrict__ p_c_grid,
+        FloatAB* __restrict__ p_shared_block,
+        const AGK0MK1GridDesc& a_g_k0_m_k1_grid_desc,
+        const BGK0NK1GridDesc& b_g_k0_n_k1_grid_desc,
+        const CM0N0M1N1M2M3M4N2GridDesc& c_g_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc,
+        const CBlockClusterAdaptor& c_block_cluster_adaptor)
     {
-        /*    const auto a_grid_buf = make_dynamic_buffer<AddressSpaceEnum_t::Global>(
-                p_a_grid, a_k0_m_k1_grid_desc.GetElementSpaceSize());
-            const auto b_grid_buf = make_dynamic_buffer<AddressSpaceEnum_t::Global>(
-                p_b_grid, b_k0_n_k1_grid_desc.GetElementSpaceSize());
-            auto c_grid_buf = make_dynamic_buffer<AddressSpaceEnum_t::Global>(
-                p_c_grid, c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc.GetElementSpaceSize());
+        const auto a_grid_buf = make_dynamic_buffer<AddressSpaceEnum_t::Global>(
+            p_a_grid, a_g_k0_m_k1_grid_desc.GetElementSpaceSize());
+        const auto b_grid_buf = make_dynamic_buffer<AddressSpaceEnum_t::Global>(
+            p_b_grid, b_g_k0_n_k1_grid_desc.GetElementSpaceSize());
+        auto c_grid_buf = make_dynamic_buffer<AddressSpaceEnum_t::Global>(
+            p_c_grid, c_g_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc.GetElementSpaceSize());
 
-            const auto K0 = a_k0_m_k1_grid_desc.GetLength(I0);
+        const auto K0 = a_g_k0_m_k1_grid_desc.GetLength(I1);
 
-            // divide block work by [M, N]
-            const auto block_work_idx =
-                c_block_cluster_adaptor.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
+        // divide block work by [M, N]
+        const auto block_work_idx =
+            c_block_cluster_adaptor.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
 
-            // HACK: this force m/n_block_data_idx_on_grid into SGPR
-            const index_t m_block_data_idx_on_grid =
-                __builtin_amdgcn_readfirstlane(block_work_idx[I0] * MPerBlock);
+        // HACK: this force m/n_block_data_idx_on_grid into SGPR
+        const index_t m_block_data_idx_on_grid =
+            __builtin_amdgcn_readfirstlane(block_work_idx[I1] * MPerBlock);
 
-            const index_t n_block_data_idx_on_grid =
-                __builtin_amdgcn_readfirstlane(block_work_idx[I1] * NPerBlock);
+        const index_t n_block_data_idx_on_grid =
+            __builtin_amdgcn_readfirstlane(block_work_idx[I2] * NPerBlock);
+        const index_t g_idx = block_work_idx[I0];
 
-            // lds max alignment
-            constexpr auto max_lds_align = K1;
+        // lds max alignment
+        constexpr auto max_lds_align = K1;
 
-            // A matrix in LDS memory, dst of blockwise copy
-            //   be careful of LDS alignment
-            constexpr auto a_k0_m_k1_block_desc = make_naive_tensor_descriptor_aligned(
-                make_tuple(Number<KPerBlock>{}, Number<MPerBlock>{}, K1), max_lds_align);
+        // A matrix in LDS memory, dst of blockwise copy
+        //   be careful of LDS alignment
+        constexpr auto a_k0_m_k1_block_desc = make_naive_tensor_descriptor_aligned(
+            make_tuple(Number<KPerBlock>{}, Number<MPerBlock>{}, K1), max_lds_align);
 
-            // B matrix in LDS memory, dst of blockwise copy
-            //   be careful of LDS alignment
-            constexpr auto b_k0_n_k1_block_desc = make_naive_tensor_descriptor_aligned(
-                make_tuple(Number<KPerBlock>{}, Number<NPerBlock>{}, K1), max_lds_align);
+        constexpr auto a_g_k0_m_k1_block_desc = make_naive_tensor_descriptor_aligned(
+            make_tuple(Number<1>{}, Number<KPerBlock>{}, Number<MPerBlock>{}, K1), max_lds_align);
+        // B matrix in LDS memory, dst of blockwise copy
+        //   be careful of LDS alignment
+        constexpr auto b_k0_n_k1_block_desc = make_naive_tensor_descriptor_aligned(
+            make_tuple(Number<KPerBlock>{}, Number<NPerBlock>{}, K1), max_lds_align);
 
-            // A matrix blockwise copy
-            auto a_blockwise_copy =
-                BlockwiseTensorSliceTransfer_v4<BlockSize,
-                                                InMemoryDataOperationEnum_t::Set,
-                                                Sequence<KPerBlock, MPerBlock, K1>,
-                                                ABlockTransferThreadSliceLengths_K0_M_K1,
-                                                ABlockTransferThreadClusterLengths_K0_M_K1,
-                                                ABlockTransferThreadClusterArrangeOrder,
-                                                FloatAB,
-                                                FloatAB,
-                                                decltype(a_k0_m_k1_grid_desc),
-                                                decltype(a_k0_m_k1_block_desc),
-                                                ABlockTransferSrcAccessOrder,
-                                                Sequence<1, 0, 2>,
-                                                ABlockTransferSrcVectorDim,
-                                                2,
-                                                ABlockTransferSrcScalarPerVector,
-                                                ABlockTransferDstScalarPerVector_K1,
-                                                1,
-                                                1,
-                                                AThreadTransferSrcResetCoordinateAfterRun,
-                                                true>(a_k0_m_k1_grid_desc,
-                                                      make_multi_index(0, m_block_data_idx_on_grid,
-           0), a_k0_m_k1_block_desc, make_multi_index(0, 0, 0));
+        constexpr auto b_g_k0_n_k1_block_desc = make_naive_tensor_descriptor_aligned(
+            make_tuple(Number<1>{}, Number<KPerBlock>{}, Number<NPerBlock>{}, K1), max_lds_align);
+        // A matrix blockwise copy
+        auto a_blockwise_copy =
+            BlockwiseTensorSliceTransfer_v4<BlockSize,
+                                            InMemoryDataOperationEnum_t::Set,
+                                            Sequence<1, KPerBlock, MPerBlock, K1>,
+                                            ABlockTransferThreadSliceLengths_G_K0_M_K1,
+                                            ABlockTransferThreadClusterLengths_G_K0_M_K1,
+                                            ABlockTransferThreadClusterArrangeOrder,
+                                            FloatAB,
+                                            FloatAB,
+                                            decltype(a_g_k0_m_k1_grid_desc),
+                                            decltype(a_g_k0_m_k1_block_desc),
+                                            ABlockTransferSrcAccessOrder,
+                                            Sequence<0, 2, 1, 3>,
+                                            ABlockTransferSrcVectorDim,
+                                            3,
+                                            ABlockTransferSrcScalarPerVector,
+                                            ABlockTransferDstScalarPerVector_K1,
+                                            1,
+                                            1,
+                                            AThreadTransferSrcResetCoordinateAfterRun,
+                                            true>(
+                a_g_k0_m_k1_grid_desc,
+                make_multi_index(g_idx, 0, m_block_data_idx_on_grid, 0),
+                a_g_k0_m_k1_block_desc,
+                make_multi_index(0, 0, 0, 0));
 
-            // B matrix blockwise copy
-            auto b_blockwise_copy =
-                BlockwiseTensorSliceTransfer_v4<BlockSize,
-                                                InMemoryDataOperationEnum_t::Set,
-                                                Sequence<KPerBlock, NPerBlock, K1>,
-                                                BBlockTransferThreadSliceLengths_K0_N_K1,
-                                                BBlockTransferThreadClusterLengths_K0_N_K1,
-                                                BBlockTransferThreadClusterArrangeOrder,
-                                                FloatAB,
-                                                FloatAB,
-                                                decltype(b_k0_n_k1_grid_desc),
-                                                decltype(b_k0_n_k1_block_desc),
-                                                BBlockTransferSrcAccessOrder,
-                                                Sequence<1, 0, 2>,
-                                                BBlockTransferSrcVectorDim,
-                                                2,
-                                                BBlockTransferSrcScalarPerVector,
-                                                BBlockTransferDstScalarPerVector_K1,
-                                                1,
-                                                1,
-                                                BThreadTransferSrcResetCoordinateAfterRun,
-                                                true>(b_k0_n_k1_grid_desc,
-                                                      make_multi_index(0, n_block_data_idx_on_grid,
-           0), b_k0_n_k1_block_desc, make_multi_index(0, 0, 0));
+        // B matrix blockwise copy
+        auto b_blockwise_copy =
+            BlockwiseTensorSliceTransfer_v4<BlockSize,
+                                            InMemoryDataOperationEnum_t::Set,
+                                            Sequence<1, KPerBlock, NPerBlock, K1>,
+                                            BBlockTransferThreadSliceLengths_G_K0_N_K1,
+                                            BBlockTransferThreadClusterLengths_G_K0_N_K1,
+                                            BBlockTransferThreadClusterArrangeOrder,
+                                            FloatAB,
+                                            FloatAB,
+                                            decltype(b_g_k0_n_k1_grid_desc),
+                                            decltype(b_g_k0_n_k1_block_desc),
+                                            BBlockTransferSrcAccessOrder,
+                                            Sequence<0, 2, 1, 3>,
+                                            BBlockTransferSrcVectorDim,
+                                            3,
+                                            BBlockTransferSrcScalarPerVector,
+                                            BBlockTransferDstScalarPerVector_K1,
+                                            1,
+                                            1,
+                                            BThreadTransferSrcResetCoordinateAfterRun,
+                                            true>(
+                b_g_k0_n_k1_grid_desc,
+                make_multi_index(g_idx, 0, n_block_data_idx_on_grid, 0),
+                b_g_k0_n_k1_block_desc,
+                make_multi_index(0, 0, 0, 0));
 
-            // GEMM definition
-            //   c_mtx += transpose(a_mtx) * b_mtx
-            //     a_mtx[KPerBlock, MPerBlock] is in LDS
-            //     b_mtx[KPerBlock, NPerBlock] is in LDS
-            //     c_mtx[MPerBlock, NPerBlock] is distributed among threads, and saved in
-            //       register
-            // sanity check
+        // GEMM definition
+        //   c_mtx += transpose(a_mtx) * b_mtx
+        //     a_mtx[KPerBlock, MPerBlock] is in LDS
+        //     b_mtx[KPerBlock, NPerBlock] is in LDS
+        //     c_mtx[MPerBlock, NPerBlock] is distributed among threads, and saved in
+        //       register
+        // sanity check
 
-            const auto blockwise_gemm =
-                BlockwiseGemmXdlops_k0mk1_k0nk1_m0n0m1n1m2m3m4n2_v1<BlockSize,
-                                                                    FloatAB,
-                                                                    decltype(a_k0_m_k1_block_desc),
-                                                                    decltype(b_k0_n_k1_block_desc),
-                                                                    MPerXDL,
-                                                                    NPerXDL,
-                                                                    MRepeat,
-                                                                    NRepeat,
-                                                                    K1>{};
+        const auto blockwise_gemm =
+            BlockwiseGemmXdlops_k0mk1_k0nk1_m0n0m1n1m2m3m4n2_v1<BlockSize,
+                                                                FloatAB,
+                                                                decltype(a_k0_m_k1_block_desc),
+                                                                decltype(b_k0_n_k1_block_desc),
+                                                                MPerXDL,
+                                                                NPerXDL,
+                                                                MRepeat,
+                                                                NRepeat,
+                                                                K1>{};
 
-            constexpr auto c_mr_nr_blk_desc =
-                make_naive_tensor_descriptor_packed(make_tuple(Number<MRepeat>{},
-           Number<NRepeat>{}));
+        constexpr auto c_mr_nr_blk_desc =
+            make_naive_tensor_descriptor_packed(make_tuple(Number<MRepeat>{}, Number<NRepeat>{}));
 
-            constexpr auto c_m0_n0_m1_n1_m2_m3_m4_n2_thread_desc =
-                blockwise_gemm.GetCM0N0M1N1M2M3M4N2ThreadDescriptor();
-            constexpr auto CBlkSize = c_m0_n0_m1_n1_m2_m3_m4_n2_thread_desc.GetElementSpaceSize();
+        constexpr auto c_m0_n0_m1_n1_m2_m3_m4_n2_thread_desc =
+            blockwise_gemm.GetCM0N0M1N1M2M3M4N2ThreadDescriptor();
+        constexpr auto CBlkSize = c_m0_n0_m1_n1_m2_m3_m4_n2_thread_desc.GetElementSpaceSize();
 
-            StaticBuffer<AddressSpaceEnum_t::Vgpr,
-                         vector_type<FloatAcc, CBlkSize>,
-                         c_mr_nr_blk_desc.GetElementSpaceSize(),
-                         true>
-                c_thread_buf;
+        StaticBuffer<AddressSpaceEnum_t::Vgpr,
+                     vector_type<FloatAcc, CBlkSize>,
+                     c_mr_nr_blk_desc.GetElementSpaceSize(),
+                     true>
+            c_thread_buf;
 
-            // LDS allocation for A and B: be careful of alignment
-            constexpr auto a_block_space_size =
-                math::integer_least_multiple(a_k0_m_k1_block_desc.GetElementSpaceSize(),
-           max_lds_align);
+        // LDS allocation for A and B: be careful of alignment
+        constexpr auto a_block_space_size =
+            math::integer_least_multiple(a_k0_m_k1_block_desc.GetElementSpaceSize(), max_lds_align);
 
-            FloatAB* p_a_block = p_shared_block;
-            FloatAB* p_b_block = p_shared_block + a_block_space_size;
+        FloatAB* p_a_block = p_shared_block;
+        FloatAB* p_b_block = p_shared_block + a_block_space_size;
 
-            constexpr auto a_block_slice_copy_step = make_multi_index(KPerBlock, 0, 0);
-            constexpr auto b_block_slice_copy_step = make_multi_index(KPerBlock, 0, 0);
+        constexpr auto a_block_slice_copy_step = make_multi_index(0, KPerBlock, 0, 0);
+        constexpr auto b_block_slice_copy_step = make_multi_index(0, KPerBlock, 0, 0);
 
-            // hack to control index calculation when iterating over A and B matrix for threadwise
-           copy constexpr auto a_k0_m_k1_grid_step_hacks = AGridStepHacks{}; constexpr auto
-           b_k0_n_k1_grid_step_hacks = BGridStepHacks{};
+        // hack to control index calculation when iterating over A and B matrix for threadwise copy
+        constexpr auto a_g_k0_m_k1_grid_step_hacks = AGridStepHacks{};
+        constexpr auto b_g_k0_n_k1_grid_step_hacks = BGridStepHacks{};
 
-            // hack to control index calculation when move slice window for A and B matrix for
-            // threadwise copy
-            constexpr auto a_k0_m_k1_grid_move_slice_window_step_hack =
-           AGridMoveSliceWindowStepHacks{}; constexpr auto
-           b_k0_n_k1_grid_move_slice_window_step_hack = BGridMoveSliceWindowStepHacks{};
+        // hack to control index calculation when move slice window for A and B matrix for
+        // threadwise copy
+        constexpr auto a_g_k0_m_k1_grid_move_slice_window_step_hack =
+            AGridMoveSliceWindowStepHacks{};
+        constexpr auto b_g_k0_n_k1_grid_move_slice_window_step_hack =
+            BGridMoveSliceWindowStepHacks{};
 
-            auto a_block_buf = make_dynamic_buffer<AddressSpaceEnum_t::Lds>(
-                p_a_block, a_k0_m_k1_block_desc.GetElementSpaceSize());
-            auto b_block_buf = make_dynamic_buffer<AddressSpaceEnum_t::Lds>(
-                p_b_block, b_k0_n_k1_block_desc.GetElementSpaceSize());
+        auto a_block_buf = make_dynamic_buffer<AddressSpaceEnum_t::Lds>(
+            p_a_block, a_g_k0_m_k1_block_desc.GetElementSpaceSize());
+        auto b_block_buf = make_dynamic_buffer<AddressSpaceEnum_t::Lds>(
+            p_b_block, b_g_k0_n_k1_block_desc.GetElementSpaceSize());
 
-            // preload data into LDS
-            {
-                a_blockwise_copy.RunRead(a_k0_m_k1_grid_desc, a_grid_buf,
-           a_k0_m_k1_grid_step_hacks); b_blockwise_copy.RunRead(b_k0_n_k1_grid_desc, b_grid_buf,
-           b_k0_n_k1_grid_step_hacks);
+        // preload data into LDS
+        {
+            a_blockwise_copy.RunRead(
+                a_g_k0_m_k1_grid_desc, a_grid_buf, a_g_k0_m_k1_grid_step_hacks);
+            b_blockwise_copy.RunRead(
+                b_g_k0_n_k1_grid_desc, b_grid_buf, b_g_k0_n_k1_grid_step_hacks);
 
-                a_blockwise_copy.RunWrite(a_k0_m_k1_block_desc, a_block_buf);
-                b_blockwise_copy.RunWrite(b_k0_n_k1_block_desc, b_block_buf);
-            }
+            a_blockwise_copy.RunWrite(a_g_k0_m_k1_block_desc, a_block_buf);
+            b_blockwise_copy.RunWrite(b_g_k0_n_k1_block_desc, b_block_buf);
+        }
 
-            // main body
-            index_t k_block_data_begin = 0;
+        // main body
+        index_t k_block_data_begin = 0;
 
-            do
-            {
-                a_blockwise_copy.MoveSrcSliceWindow(a_k0_m_k1_grid_desc,
-                                                    a_block_slice_copy_step,
-                                                    a_k0_m_k1_grid_move_slice_window_step_hack);
-                b_blockwise_copy.MoveSrcSliceWindow(b_k0_n_k1_grid_desc,
-                                                    b_block_slice_copy_step,
-                                                    b_k0_n_k1_grid_move_slice_window_step_hack);
+        do
+        {
+            a_blockwise_copy.MoveSrcSliceWindow(a_g_k0_m_k1_grid_desc,
+                                                a_block_slice_copy_step,
+                                                a_g_k0_m_k1_grid_move_slice_window_step_hack);
+            b_blockwise_copy.MoveSrcSliceWindow(b_g_k0_n_k1_grid_desc,
+                                                b_block_slice_copy_step,
+                                                b_g_k0_n_k1_grid_move_slice_window_step_hack);
 
-                a_blockwise_copy.RunRead(a_k0_m_k1_grid_desc, a_grid_buf,
-           a_k0_m_k1_grid_step_hacks);
+            a_blockwise_copy.RunRead(
+                a_g_k0_m_k1_grid_desc, a_grid_buf, a_g_k0_m_k1_grid_step_hacks);
 
-                block_sync_lds();
+            block_sync_lds();
 
-                b_blockwise_copy.RunRead(b_k0_n_k1_grid_desc, b_grid_buf,
-           b_k0_n_k1_grid_step_hacks);
+            b_blockwise_copy.RunRead(
+                b_g_k0_n_k1_grid_desc, b_grid_buf, b_g_k0_n_k1_grid_step_hacks);
 
-                blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
+            blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
 
-                block_sync_lds();
+            block_sync_lds();
 
-                a_blockwise_copy.RunWrite(a_k0_m_k1_block_desc, a_block_buf);
-                b_blockwise_copy.RunWrite(b_k0_n_k1_block_desc, b_block_buf);
+            a_blockwise_copy.RunWrite(a_g_k0_m_k1_block_desc, a_block_buf);
+            b_blockwise_copy.RunWrite(b_g_k0_n_k1_block_desc, b_block_buf);
 
-                k_block_data_begin += KPerBlock;
-            } while(k_block_data_begin < (K0 - KPerBlock));
+            k_block_data_begin += KPerBlock;
+        } while(k_block_data_begin < (K0 - KPerBlock));
 
-            // tail
-            {
-                block_sync_lds();
+        // tail
+        {
+            block_sync_lds();
 
-                blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
-            }
+            blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
+        }
 
-            // output: register to global memory
-            {
-                constexpr auto c_m0_n0_m1_n1_m2_m3_m4_n2_block_desc =
-                    blockwise_gemm.GetCM0N0M1N1M2M3M4N2BlockDescriptor();
+        /*                         // output: register to global memory
+                                 {
+                                     constexpr auto c_m0_n0_m1_n1_m2_m3_m4_n2_block_desc =
+                                         blockwise_gemm.GetCM0N0M1N1M2M3M4N2BlockDescriptor();
 
-                constexpr auto M2 = c_m0_n0_m1_n1_m2_m3_m4_n2_block_desc.GetLength(I4);
-                constexpr auto M3 = c_m0_n0_m1_n1_m2_m3_m4_n2_block_desc.GetLength(I5);
-                constexpr auto M4 = c_m0_n0_m1_n1_m2_m3_m4_n2_block_desc.GetLength(I6);
+                                     constexpr auto M2 =
+                 c_m0_n0_m1_n1_m2_m3_m4_n2_block_desc.GetLength(I4); constexpr auto M3 =
+                c_m0_n0_m1_n1_m2_m3_m4_n2_block_desc.GetLength(I5); constexpr auto M4 =
+                c_m0_n0_m1_n1_m2_m3_m4_n2_block_desc.GetLength(I6);
 
-                // calculate origin of thread output tensor on global memory
-                //     blockwise GEMM c matrix starting index
-                const auto c_thread_mtx_on_block =
-                    blockwise_gemm.CalculateCThreadOriginDataIndex(I0, I0, I0, I0);
+                                     // calculate origin of thread output tensor on global memory
+                                     //     blockwise GEMM c matrix starting index
+                                     const auto c_thread_mtx_on_block =
+                                         blockwise_gemm.CalculateCThreadOriginDataIndex(I0, I0, I0,
+           I0);
 
-                const index_t m_thread_data_on_grid =
-                    m_block_data_idx_on_grid + c_thread_mtx_on_block[I0];
+                                     const index_t m_thread_data_on_grid =
+                                         m_block_data_idx_on_grid + c_thread_mtx_on_block[I0];
 
-                const index_t n_thread_data_on_grid =
-                    n_block_data_idx_on_grid + c_thread_mtx_on_block[I1];
+                                     const index_t n_thread_data_on_grid =
+                                         n_block_data_idx_on_grid + c_thread_mtx_on_block[I1];
 
-                constexpr auto c_m0_n0_m1_n1_m2_m3_m4_n2_grid_tensor_step_hacks = CGridStepHacks{};
+                                     constexpr auto c_m0_n0_m1_n1_m2_m3_m4_n2_grid_tensor_step_hacks
+           = CGridStepHacks{};
 
-                auto c_thread_copy =
-                    ThreadwiseTensorSliceTransfer_v1r3<FloatC,
-                                                       FloatC,
-                                                       decltype(c_m0_n0_m1_n1_m2_m3_m4_n2_thread_desc),
-                                                       decltype(c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc),
-                                                       Sequence<I1, I1, I1, I1, M2, I1, M4, I1>,
-                                                       CThreadTransferSrcDstAccessOrder,
-                                                       CThreadTransferSrcDstVectorDim,
-                                                       CThreadTransferDstScalarPerVector,
-                                                       CGlobalMemoryDataOperation,
-                                                       1,
-                                                       true>{
-                        c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc,
-                        make_multi_index(0,
-                                         0,
-                                         0,
-                                         0,
-                                         m_thread_data_on_grid / (M3 * M4),
-                                         m_thread_data_on_grid % (M3 * M4) / M4,
-                                         m_thread_data_on_grid % M4,
-                                         n_thread_data_on_grid)};
+                                     auto c_thread_copy =
+                                         ThreadwiseTensorSliceTransfer_v1r3<FloatC,
+                                                                            FloatC,
+                                                                            decltype(c_m0_n0_m1_n1_m2_m3_m4_n2_thread_desc),
+                                                                            decltype(c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc),
+                                                                            Sequence<I1, I1, I1, I1,
+           M2, I1, M4, I1>, CThreadTransferSrcDstAccessOrder, CThreadTransferSrcDstVectorDim,
+                                                                            CThreadTransferDstScalarPerVector,
+                                                                            CGlobalMemoryDataOperation,
+                                                                            1,
+                                                                            true>{
+                                             c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc,
+                                             make_multi_index(0,
+                                                              0,
+                                                              0,
+                                                              0,
+                                                              m_thread_data_on_grid / (M3 * M4),
+                                                              m_thread_data_on_grid % (M3 * M4) /
+           M4, m_thread_data_on_grid % M4, n_thread_data_on_grid)};
 
-                auto init_copy = [&](auto c_thread_idx_) {
-                    constexpr auto blk_off = c_mr_nr_blk_desc.CalculateOffset(c_thread_idx_);
-                    c_thread_copy.Run(c_m0_n0_m1_n1_m2_m3_m4_n2_thread_desc,
-                                      make_tuple(I0, I0, I0, I0, I0, I0, I0, I0),
-                                      c_thread_buf[Number<blk_off>{}].template AsType<FloatAcc>(),
-                                      c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc,
-                                      c_grid_buf,
-                                      c_m0_n0_m1_n1_m2_m3_m4_n2_grid_tensor_step_hacks);
+                                     auto init_copy = [&](auto c_thread_idx_) {
+                                         constexpr auto blk_off =
+                        c_mr_nr_blk_desc.CalculateOffset(c_thread_idx_);
+                                         c_thread_copy.Run(c_m0_n0_m1_n1_m2_m3_m4_n2_thread_desc,
+                                                           make_tuple(I0, I0, I0, I0, I0, I0, I0,
+           I0), c_thread_buf[Number<blk_off>{}].template AsType<FloatAcc>(),
+           c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc, c_grid_buf,
+                                                           c_m0_n0_m1_n1_m2_m3_m4_n2_grid_tensor_step_hacks);
 
-                    return c_thread_idx_;
-                };
+                                         return c_thread_idx_;
+                                     };
 
-                auto mrepeat_plus_copy = [&](auto c_thread_idx_) {
-                    constexpr auto mrepeat_step_plus = make_multi_index(1, 0, 0, 0, 0, 0, 0, 0);
-                    c_thread_copy.MoveDstSliceWindow(c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc,
-                                                     mrepeat_step_plus);
+                                     auto mrepeat_plus_copy = [&](auto c_thread_idx_) {
+                                         constexpr auto mrepeat_step_plus = make_multi_index(1, 0,
+           0, 0, 0, 0, 0, 0); c_thread_copy.MoveDstSliceWindow(c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc,
+                                                                          mrepeat_step_plus);
 
-                    constexpr auto blk_off = c_mr_nr_blk_desc.CalculateOffset(c_thread_idx_);
-                    c_thread_copy.Run(c_m0_n0_m1_n1_m2_m3_m4_n2_thread_desc,
-                                      make_tuple(I0, I0, I0, I0, I0, I0, I0, I0),
-                                      c_thread_buf[Number<blk_off>{}].template AsType<FloatAcc>(),
-                                      c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc,
-                                      c_grid_buf,
-                                      c_m0_n0_m1_n1_m2_m3_m4_n2_grid_tensor_step_hacks);
-                };
+                                         constexpr auto blk_off =
+                        c_mr_nr_blk_desc.CalculateOffset(c_thread_idx_);
+                                         c_thread_copy.Run(c_m0_n0_m1_n1_m2_m3_m4_n2_thread_desc,
+                                                           make_tuple(I0, I0, I0, I0, I0, I0, I0,
+           I0), c_thread_buf[Number<blk_off>{}].template AsType<FloatAcc>(),
+           c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc, c_grid_buf,
+                                                           c_m0_n0_m1_n1_m2_m3_m4_n2_grid_tensor_step_hacks);
+                                     };
 
-                auto nrepeat_plus_copy = [&](auto c_thread_idx_) {
-                    constexpr auto nrepeat_step_plus = make_multi_index(0, 1, 0, 0, 0, 0, 0, 0);
-                    c_thread_copy.MoveDstSliceWindow(c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc,
-                                                     nrepeat_step_plus);
+                                     auto nrepeat_plus_copy = [&](auto c_thread_idx_) {
+                                         constexpr auto nrepeat_step_plus = make_multi_index(0, 1,
+           0, 0, 0, 0, 0, 0); c_thread_copy.MoveDstSliceWindow(c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc,
+                                                                          nrepeat_step_plus);
 
-                    constexpr auto blk_off = c_mr_nr_blk_desc.CalculateOffset(c_thread_idx_);
-                    c_thread_copy.Run(c_m0_n0_m1_n1_m2_m3_m4_n2_thread_desc,
-                                      make_tuple(I0, I0, I0, I0, I0, I0, I0, I0),
-                                      c_thread_buf[Number<blk_off>{}].template AsType<FloatAcc>(),
-                                      c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc,
-                                      c_grid_buf,
-                                      c_m0_n0_m1_n1_m2_m3_m4_n2_grid_tensor_step_hacks);
-                };
+                                         constexpr auto blk_off =
+                        c_mr_nr_blk_desc.CalculateOffset(c_thread_idx_);
+                                         c_thread_copy.Run(c_m0_n0_m1_n1_m2_m3_m4_n2_thread_desc,
+                                                           make_tuple(I0, I0, I0, I0, I0, I0, I0,
+           I0), c_thread_buf[Number<blk_off>{}].template AsType<FloatAcc>(),
+           c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc, c_grid_buf,
+                                                           c_m0_n0_m1_n1_m2_m3_m4_n2_grid_tensor_step_hacks);
+                                     };
 
-                auto mrepeat_minus_copy = [&](auto c_thread_idx_) {
-                    constexpr auto mrepeat_step_plus = make_multi_index(-1, 0, 0, 0, 0, 0, 0, 0);
-                    c_thread_copy.MoveDstSliceWindow(c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc,
-                                                     mrepeat_step_plus);
+                                     auto mrepeat_minus_copy = [&](auto c_thread_idx_) {
+                                         constexpr auto mrepeat_step_plus = make_multi_index(-1, 0,
+           0, 0, 0, 0, 0, 0); c_thread_copy.MoveDstSliceWindow(c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc,
+                                                                          mrepeat_step_plus);
 
-                    constexpr auto blk_off = c_mr_nr_blk_desc.CalculateOffset(c_thread_idx_);
-                    c_thread_copy.Run(c_m0_n0_m1_n1_m2_m3_m4_n2_thread_desc,
-                                      make_tuple(I0, I0, I0, I0, I0, I0, I0, I0),
-                                      c_thread_buf[Number<blk_off>{}].template AsType<FloatAcc>(),
-                                      c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc,
-                                      c_grid_buf,
-                                      c_m0_n0_m1_n1_m2_m3_m4_n2_grid_tensor_step_hacks);
-                };
+                                         constexpr auto blk_off =
+                        c_mr_nr_blk_desc.CalculateOffset(c_thread_idx_);
+                                         c_thread_copy.Run(c_m0_n0_m1_n1_m2_m3_m4_n2_thread_desc,
+                                                           make_tuple(I0, I0, I0, I0, I0, I0, I0,
+           I0), c_thread_buf[Number<blk_off>{}].template AsType<FloatAcc>(),
+           c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc, c_grid_buf,
+                                                           c_m0_n0_m1_n1_m2_m3_m4_n2_grid_tensor_step_hacks);
+                                     };
 
-                auto nrepeat_minus_copy = [&](auto c_thread_idx_) {
-                    constexpr auto nrepeat_step_minus = make_multi_index(0, -1, 0, 0, 0, 0, 0, 0);
-                    c_thread_copy.MoveDstSliceWindow(c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc,
-                                                     nrepeat_step_minus);
+                                     auto nrepeat_minus_copy = [&](auto c_thread_idx_) {
+                                         constexpr auto nrepeat_step_minus = make_multi_index(0, -1,
+           0, 0, 0, 0, 0, 0); c_thread_copy.MoveDstSliceWindow(c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc,
+                                                                          nrepeat_step_minus);
 
-                    constexpr auto blk_off = c_mr_nr_blk_desc.CalculateOffset(c_thread_idx_);
-                    c_thread_copy.Run(c_m0_n0_m1_n1_m2_m3_m4_n2_thread_desc,
-                                      make_tuple(I0, I0, I0, I0, I0, I0, I0, I0),
-                                      c_thread_buf[Number<blk_off>{}].template AsType<FloatAcc>(),
-                                      c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc,
-                                      c_grid_buf,
-                                      c_m0_n0_m1_n1_m2_m3_m4_n2_grid_tensor_step_hacks);
-                };
+                                         constexpr auto blk_off =
+                        c_mr_nr_blk_desc.CalculateOffset(c_thread_idx_);
+                                         c_thread_copy.Run(c_m0_n0_m1_n1_m2_m3_m4_n2_thread_desc,
+                                                           make_tuple(I0, I0, I0, I0, I0, I0, I0,
+           I0), c_thread_buf[Number<blk_off>{}].template AsType<FloatAcc>(),
+           c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc, c_grid_buf,
+                                                           c_m0_n0_m1_n1_m2_m3_m4_n2_grid_tensor_step_hacks);
+                                     };
 
-                static_assert((MRepeat == 4 && NRepeat == 4) or (MRepeat == 4 && NRepeat == 2) or
-                                  (MRepeat == 2 && NRepeat == 4) or (MRepeat == 2 && NRepeat == 2)
-           or (MRepeat == 2 && NRepeat == 1) or (MRepeat == 1 && NRepeat == 2) or (MRepeat == 1 &&
+                                     static_assert((MRepeat == 4 && NRepeat == 4) or (MRepeat == 4
+           && NRepeat == 2) or (MRepeat == 2 && NRepeat == 4) or (MRepeat == 2 && NRepeat == 2) or
+                (MRepeat == 2
+                        && NRepeat == 1) or (MRepeat == 1 && NRepeat == 2) or (MRepeat == 1 &&
            NRepeat == 1), "wrong");
 
-                if constexpr(MRepeat == 4 && NRepeat == 4)
-                {
-                    init_copy(make_tuple(I0, I0));
+                                     if constexpr(MRepeat == 4 && NRepeat == 4)
+                                     {
+                                         init_copy(make_tuple(I0, I0));
 
-                    if constexpr(CAccessOrderMRepeatNRepeat)
-                    {
-                        nrepeat_plus_copy(make_tuple(I0, I1));
-                        nrepeat_plus_copy(make_tuple(I0, I2));
-                        nrepeat_plus_copy(make_tuple(I0, I3));
-                        mrepeat_plus_copy(make_tuple(I1, I3));
-                        nrepeat_minus_copy(make_tuple(I1, I2));
-                        nrepeat_minus_copy(make_tuple(I1, I1));
-                        nrepeat_minus_copy(make_tuple(I1, I0));
-                        mrepeat_plus_copy(make_tuple(I2, I0));
-                        nrepeat_plus_copy(make_tuple(I2, I1));
-                        nrepeat_plus_copy(make_tuple(I2, I2));
-                        nrepeat_plus_copy(make_tuple(I2, I3));
-                        mrepeat_plus_copy(make_tuple(I3, I3));
-                        nrepeat_minus_copy(make_tuple(I3, I2));
-                        nrepeat_minus_copy(make_tuple(I3, I1));
-                        nrepeat_minus_copy(make_tuple(I3, I0));
-                    }
-                    else
-                    {
-                        mrepeat_plus_copy(make_tuple(I1, I0));
-                        mrepeat_plus_copy(make_tuple(I2, I0));
-                        mrepeat_plus_copy(make_tuple(I3, I0));
-                        nrepeat_plus_copy(make_tuple(I3, I1));
-                        mrepeat_minus_copy(make_tuple(I2, I1));
-                        mrepeat_minus_copy(make_tuple(I1, I1));
-                        mrepeat_minus_copy(make_tuple(I0, I1));
-                        nrepeat_plus_copy(make_tuple(I0, I2));
-                        mrepeat_plus_copy(make_tuple(I1, I2));
-                        mrepeat_plus_copy(make_tuple(I2, I2));
-                        mrepeat_plus_copy(make_tuple(I3, I2));
-                        nrepeat_plus_copy(make_tuple(I3, I3));
-                        mrepeat_minus_copy(make_tuple(I2, I3));
-                        mrepeat_minus_copy(make_tuple(I1, I3));
-                        mrepeat_minus_copy(make_tuple(I0, I3));
-                    }
-                }
-                else if constexpr(MRepeat == 4 && NRepeat == 2)
-                {
-                    init_copy(make_tuple(I0, I0));
+                                         if constexpr(CAccessOrderMRepeatNRepeat)
+                                         {
+                                             nrepeat_plus_copy(make_tuple(I0, I1));
+                                             nrepeat_plus_copy(make_tuple(I0, I2));
+                                             nrepeat_plus_copy(make_tuple(I0, I3));
+                                             mrepeat_plus_copy(make_tuple(I1, I3));
+                                             nrepeat_minus_copy(make_tuple(I1, I2));
+                                             nrepeat_minus_copy(make_tuple(I1, I1));
+                                             nrepeat_minus_copy(make_tuple(I1, I0));
+                                             mrepeat_plus_copy(make_tuple(I2, I0));
+                                             nrepeat_plus_copy(make_tuple(I2, I1));
+                                             nrepeat_plus_copy(make_tuple(I2, I2));
+                                             nrepeat_plus_copy(make_tuple(I2, I3));
+                                             mrepeat_plus_copy(make_tuple(I3, I3));
+                                             nrepeat_minus_copy(make_tuple(I3, I2));
+                                             nrepeat_minus_copy(make_tuple(I3, I1));
+                                             nrepeat_minus_copy(make_tuple(I3, I0));
+                                         }
+                                         else
+                                         {
+                                             mrepeat_plus_copy(make_tuple(I1, I0));
+                                             mrepeat_plus_copy(make_tuple(I2, I0));
+                                             mrepeat_plus_copy(make_tuple(I3, I0));
+                                             nrepeat_plus_copy(make_tuple(I3, I1));
+                                             mrepeat_minus_copy(make_tuple(I2, I1));
+                                             mrepeat_minus_copy(make_tuple(I1, I1));
+                                             mrepeat_minus_copy(make_tuple(I0, I1));
+                                             nrepeat_plus_copy(make_tuple(I0, I2));
+                                             mrepeat_plus_copy(make_tuple(I1, I2));
+                                             mrepeat_plus_copy(make_tuple(I2, I2));
+                                             mrepeat_plus_copy(make_tuple(I3, I2));
+                                             nrepeat_plus_copy(make_tuple(I3, I3));
+                                             mrepeat_minus_copy(make_tuple(I2, I3));
+                                             mrepeat_minus_copy(make_tuple(I1, I3));
+                                             mrepeat_minus_copy(make_tuple(I0, I3));
+                                         }
+                                     }
+                                     else if constexpr(MRepeat == 4 && NRepeat == 2)
+                                     {
+                                         init_copy(make_tuple(I0, I0));
 
-                    if constexpr(CAccessOrderMRepeatNRepeat)
-                    {
-                        nrepeat_plus_copy(make_tuple(I0, I1));
-                        mrepeat_plus_copy(make_tuple(I1, I1));
-                        nrepeat_minus_copy(make_tuple(I1, I0));
-                        mrepeat_plus_copy(make_tuple(I2, I0));
-                        nrepeat_plus_copy(make_tuple(I2, I1));
-                        mrepeat_plus_copy(make_tuple(I3, I1));
-                        nrepeat_minus_copy(make_tuple(I3, I0));
-                    }
-                    else
-                    {
-                        mrepeat_plus_copy(make_tuple(I1, I0));
-                        mrepeat_plus_copy(make_tuple(I2, I0));
-                        mrepeat_plus_copy(make_tuple(I3, I0));
-                        nrepeat_plus_copy(make_tuple(I3, I1));
-                        mrepeat_minus_copy(make_tuple(I2, I1));
-                        mrepeat_minus_copy(make_tuple(I1, I1));
-                        mrepeat_minus_copy(make_tuple(I0, I1));
-                    }
-                }
-                else if constexpr(MRepeat == 2 && NRepeat == 4)
-                {
-                    init_copy(make_tuple(I0, I0));
+                                         if constexpr(CAccessOrderMRepeatNRepeat)
+                                         {
+                                             nrepeat_plus_copy(make_tuple(I0, I1));
+                                             mrepeat_plus_copy(make_tuple(I1, I1));
+                                             nrepeat_minus_copy(make_tuple(I1, I0));
+                                             mrepeat_plus_copy(make_tuple(I2, I0));
+                                             nrepeat_plus_copy(make_tuple(I2, I1));
+                                             mrepeat_plus_copy(make_tuple(I3, I1));
+                                             nrepeat_minus_copy(make_tuple(I3, I0));
+                                         }
+                                         else
+                                         {
+                                             mrepeat_plus_copy(make_tuple(I1, I0));
+                                             mrepeat_plus_copy(make_tuple(I2, I0));
+                                             mrepeat_plus_copy(make_tuple(I3, I0));
+                                             nrepeat_plus_copy(make_tuple(I3, I1));
+                                             mrepeat_minus_copy(make_tuple(I2, I1));
+                                             mrepeat_minus_copy(make_tuple(I1, I1));
+                                             mrepeat_minus_copy(make_tuple(I0, I1));
+                                         }
+                                     }
+                                     else if constexpr(MRepeat == 2 && NRepeat == 4)
+                                     {
+                                         init_copy(make_tuple(I0, I0));
 
-                    if constexpr(CAccessOrderMRepeatNRepeat)
-                    {
-                        nrepeat_plus_copy(make_tuple(I0, I1));
-                        nrepeat_plus_copy(make_tuple(I0, I2));
-                        nrepeat_plus_copy(make_tuple(I0, I3));
-                        mrepeat_plus_copy(make_tuple(I1, I3));
-                        nrepeat_minus_copy(make_tuple(I1, I2));
-                        nrepeat_minus_copy(make_tuple(I1, I1));
-                        nrepeat_minus_copy(make_tuple(I1, I0));
-                    }
-                    else
-                    {
-                        mrepeat_plus_copy(make_tuple(I1, I0));
-                        nrepeat_plus_copy(make_tuple(I1, I1));
-                        mrepeat_minus_copy(make_tuple(I0, I1));
-                        nrepeat_plus_copy(make_tuple(I0, I2));
-                        mrepeat_plus_copy(make_tuple(I1, I2));
-                        nrepeat_plus_copy(make_tuple(I1, I3));
-                        mrepeat_minus_copy(make_tuple(I0, I3));
-                    }
-                }
-                else if constexpr(MRepeat == 2 && NRepeat == 2)
-                {
-                    init_copy(make_tuple(I0, I0));
+                                         if constexpr(CAccessOrderMRepeatNRepeat)
+                                         {
+                                             nrepeat_plus_copy(make_tuple(I0, I1));
+                                             nrepeat_plus_copy(make_tuple(I0, I2));
+                                             nrepeat_plus_copy(make_tuple(I0, I3));
+                                             mrepeat_plus_copy(make_tuple(I1, I3));
+                                             nrepeat_minus_copy(make_tuple(I1, I2));
+                                             nrepeat_minus_copy(make_tuple(I1, I1));
+                                             nrepeat_minus_copy(make_tuple(I1, I0));
+                                         }
+                                         else
+                                         {
+                                             mrepeat_plus_copy(make_tuple(I1, I0));
+                                             nrepeat_plus_copy(make_tuple(I1, I1));
+                                             mrepeat_minus_copy(make_tuple(I0, I1));
+                                             nrepeat_plus_copy(make_tuple(I0, I2));
+                                             mrepeat_plus_copy(make_tuple(I1, I2));
+                                             nrepeat_plus_copy(make_tuple(I1, I3));
+                                             mrepeat_minus_copy(make_tuple(I0, I3));
+                                         }
+                                     }
+                                     else if constexpr(MRepeat == 2 && NRepeat == 2)
+                                     {
+                                         init_copy(make_tuple(I0, I0));
 
-                    if constexpr(CAccessOrderMRepeatNRepeat)
-                    {
-                        nrepeat_plus_copy(make_tuple(I0, I1));
-                        mrepeat_plus_copy(make_tuple(I1, I1));
-                        nrepeat_minus_copy(make_tuple(I1, I0));
-                    }
-                    else
-                    {
-                        mrepeat_plus_copy(make_tuple(I1, I0));
-                        nrepeat_plus_copy(make_tuple(I1, I1));
-                        mrepeat_minus_copy(make_tuple(I0, I1));
-                    }
-                }
-                else if constexpr(MRepeat == 2 && NRepeat == 1)
-                {
-                    init_copy(make_tuple(I0, I0));
-                    mrepeat_plus_copy(make_tuple(I1, I0));
-                }
-                else if constexpr(MRepeat == 1 && NRepeat == 2)
-                {
-                    init_copy(make_tuple(I0, I0));
-                    nrepeat_plus_copy(make_tuple(I0, I1));
-                }
-                else if constexpr(MRepeat == 1 && NRepeat == 1)
-                {
-                    init_copy(make_tuple(I0, I0));
-                }
-            }*/
+                                         if constexpr(CAccessOrderMRepeatNRepeat)
+                                         {
+                                             nrepeat_plus_copy(make_tuple(I0, I1));
+                                             mrepeat_plus_copy(make_tuple(I1, I1));
+                                             nrepeat_minus_copy(make_tuple(I1, I0));
+                                         }
+                                         else
+                                         {
+                                             mrepeat_plus_copy(make_tuple(I1, I0));
+                                             nrepeat_plus_copy(make_tuple(I1, I1));
+                                             mrepeat_minus_copy(make_tuple(I0, I1));
+                                         }
+                                     }
+                                     else if constexpr(MRepeat == 2 && NRepeat == 1)
+                                     {
+                                         init_copy(make_tuple(I0, I0));
+                                         mrepeat_plus_copy(make_tuple(I1, I0));
+                                     }
+                                     else if constexpr(MRepeat == 1 && NRepeat == 2)
+                                     {
+                                         init_copy(make_tuple(I0, I0));
+                                         nrepeat_plus_copy(make_tuple(I0, I1));
+                                     }
+                                     else if constexpr(MRepeat == 1 && NRepeat == 1)
+                                     {
+                                         init_copy(make_tuple(I0, I0));
+                                     }
+                                 }*/
     }
 }; // namespace ck
 
