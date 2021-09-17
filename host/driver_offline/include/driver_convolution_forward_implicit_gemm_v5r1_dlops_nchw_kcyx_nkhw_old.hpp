@@ -75,8 +75,8 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_old
         const auto ConvDilationH = conv_dilations[I0];
         const auto ConvDilationW = conv_dilations[I1];
 
-        const auto Hop = (Ho + HoPerBlock - 1) / HoPerBlock * HoPerBlock;
-        const auto Wop = (Wo + WoPerBlock - 1) / WoPerBlock * WoPerBlock;
+        const auto Hop = Number<(Ho + HoPerBlock - 1) / HoPerBlock * HoPerBlock>{};
+        const auto Wop = Number<(Wo + WoPerBlock - 1) / WoPerBlock * WoPerBlock>{};
 
         const auto OutRightPadH = Hop - Ho;
         const auto OutRightPadW = Wop - Wo;
@@ -133,8 +133,8 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_old
             make_naive_tensor_descriptor_packed(make_tuple(N, K0, Ho, Wo, K1)),
             make_tuple(make_merge_transform(make_tuple(K0, K1)),
                        make_pass_through_transform(N),
-                       make_pad_transform(Ho, 0, OutRightPadH),
-                       make_pad_transform(Wo, 0, OutRightPadW)),
+                       make_pad_transform(Ho, I0, OutRightPadH),
+                       make_pad_transform(Wo, I0, OutRightPadW)),
             make_tuple(Sequence<1, 4>{}, Sequence<0>{}, Sequence<2>{}, Sequence<3>{}),
             make_tuple(Sequence<0>{}, Sequence<1>{}, Sequence<2>{}, Sequence<3>{}));
 
@@ -179,6 +179,10 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_old
                                   Sequence<0, 0, 0, 0, 0>{},
                                   Sequence<0, 0, 0, 0, 0>{},
                                   Sequence<0, 0, 0, 0, 0>{}));
+
+        static_assert(wei_e_k_global_desc.IsKnownAtCompileTime(), "");
+        static_assert(in_e_n_ho_wo_global_desc.IsKnownAtCompileTime(), "");
+        static_assert(out_k_n_hop_wop_global_desc.IsKnownAtCompileTime(), "");
 
         // GEMM
         using gridwise_gemm = GridwiseGemmDlops_km_kn_mn_v3_old<
