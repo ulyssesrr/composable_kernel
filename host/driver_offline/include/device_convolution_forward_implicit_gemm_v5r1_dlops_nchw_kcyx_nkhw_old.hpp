@@ -4,9 +4,9 @@
 #include "driver_convolution_forward_implicit_gemm_v5r1_dlops_nchw_kcyx_nkhw_old.hpp"
 
 template <typename TInWei,
-          ck::index_t InWeiVectorSize,
           typename TAcc,
           typename TOut,
+          ck::index_t InWeiVectorSize,
           typename InLengths,
           typename WeiLengths,
           typename OutLengths,
@@ -96,7 +96,7 @@ void device_convolution_forward_implicit_gemm_v5r1_dlops_nchw_kcyx_nkhw_old(
     constexpr index_t KPerBlock  = 16;
     constexpr index_t HoPerBlock = 8;
     constexpr index_t WoPerBlock = 32;
-    constexpr index_t EPerBlock  = 4;
+    constexpr index_t EPerBlock  = 2;
 
     constexpr index_t KPerThread  = KPerBlock;
     constexpr index_t HoPerThread = 2;
@@ -141,25 +141,25 @@ void device_convolution_forward_implicit_gemm_v5r1_dlops_nchw_kcyx_nkhw_old(
 #endif
 
     constexpr auto conv_driver =
-        DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_old
-        <BlockSize,
-         typename vector_type<TInWei, InWeiVectorSize>::type,
-         TAcc,
-         TOut,
-         KPerBlock,
-         HoPerBlock,
-         WoPerBlock,
-         EPerBlock,
-         KPerThread,
-         HoPerThread,
-         WoPerThread,
-         EPerThread,
-         ABlockTransferThreadSliceLengths_E_K,
-         ABlockTransferThreadClusterLengths_E_K,
-         ABlockTransferSrcScalarPerVector_E,
-         ABlockTransferDstScalarPerVector_K,
-         BThreadTransferSrcScalarPerVector_W,
-         CThreadTransferDstScalarPerVector_W>{};
+        DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_old<
+            BlockSize,
+            typename vector_type<TInWei, InWeiVectorSize>::type,
+            TAcc,
+            TOut,
+            KPerBlock,
+            HoPerBlock,
+            WoPerBlock,
+            EPerBlock,
+            KPerThread,
+            HoPerThread,
+            WoPerThread,
+            EPerThread,
+            ABlockTransferThreadSliceLengths_E_K,
+            ABlockTransferThreadClusterLengths_E_K,
+            ABlockTransferSrcScalarPerVector_E,
+            ABlockTransferDstScalarPerVector_K,
+            BThreadTransferSrcScalarPerVector_W,
+            CThreadTransferDstScalarPerVector_W>{};
 
     conv_driver.Run(wei_k_c0_y_x_desc,
                     in_n_c0_hi_wi_desc,

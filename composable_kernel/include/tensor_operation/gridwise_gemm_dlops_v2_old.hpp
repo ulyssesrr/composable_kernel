@@ -149,19 +149,19 @@ struct GridwiseGemmDlops_km_kn_mn_v3_old
             Number<KPerThread>{}, Number<1>{}, Number<HoPerThread>{}, Number<WoPerThread>{}));
 
         auto blockwise_gemm =
-            BlockwiseGemmDlops_km_kn_m0m1n0n1_v3<BlockSize,
-                                                 FloatAB,
-                                                 FloatAB,
-                                                 FloatAcc,
-                                                 decltype(a_e_k_block_desc),
-                                                 decltype(b_e_n_ho_wo_block_desc),
-                                                 decltype(c_k_n_ho_wo_thread_desc),
-                                                 KPerThread,
-                                                 HoPerThread,
-                                                 WoPerThread,
-                                                 EPerThread,
-                                                 ABlockTransferSrcScalarPerVector,
-                                                 ABlockTransferDstScalarPerVector_K>{};
+            BlockwiseGemmDlops_km_kn_m0m1n0n1_v3_old<BlockSize,
+                                                     FloatAB,
+                                                     FloatAB,
+                                                     FloatAcc,
+                                                     decltype(a_e_k_block_desc),
+                                                     decltype(b_e_n_ho_wo_block_desc),
+                                                     decltype(c_k_n_ho_wo_thread_desc),
+                                                     KPerThread,
+                                                     HoPerThread,
+                                                     WoPerThread,
+                                                     EPerThread,
+                                                     ABlockTransferSrcScalarPerVector,
+                                                     ABlockTransferDstScalarPerVector_K>{};
 
         auto c_thread_mtx_index = blockwise_gemm.GetBeginOfThreadMatrixC(get_thread_local_1d_id());
 

@@ -50,7 +50,7 @@ struct BlockwiseGemmDlops_km_kn_m0m1n0n1_v3_old
                                                          ThreadGemmADataPerRead_K,
                                                          1>;
 
-    __device__ BlockwiseGemmDlops_km_kn_m0m1n0n1_v3()
+    __device__ BlockwiseGemmDlops_km_kn_m0m1n0n1_v3_old()
         : c_thread_begin_mtx_idx_{GetBeginOfThreadMatrixC(get_thread_local_1d_id())},
           a_thread_copy_{make_tuple(0, c_thread_begin_mtx_idx_.k * KPerThread)}
     {
@@ -134,14 +134,15 @@ struct BlockwiseGemmDlops_km_kn_m0m1n0n1_v3_old
         StaticBuffer<AddressSpaceEnum_t::Vgpr, FloatA, a_thread_mtx_.GetElementSpaceSize(), true>
             a_thread_buf;
 
-        constexpr auto threadwise_gemm = ThreadwiseGemmDlops_km_kn_mn_v3_old<FloatA,
-                                                                         FloatB,
-                                                                         FloatC,
-                                                                         decltype(a_thread_mtx_),
-                                                                         decltype(b_thread_mtx_),
-                                                                         decltype(c_thread_mtx_),
-                                                                         HoPerThreadSubC,
-                                                                         WoPerThreadSubC>{};
+        constexpr auto threadwise_gemm =
+            ThreadwiseGemmDlops_km_kn_mn_v3_old<FloatA,
+                                                FloatB,
+                                                FloatC,
+                                                decltype(a_thread_mtx_),
+                                                decltype(b_thread_mtx_),
+                                                decltype(c_thread_mtx_),
+                                                HoPerThreadSubC,
+                                                WoPerThreadSubC>{};
 
         static_for<0, EPerBlock, EPerThreadLoop>{}([&](auto e_begin) {
             static_for<0, KPerThread, KPerThreadSubC>{}([&](auto k_begin) {

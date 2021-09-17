@@ -6,6 +6,7 @@
 template <typename TInWei,
           typename TAcc,
           typename TOut,
+          ck::index_t InWeiVectorSize,
           typename InLengths,
           typename WeiLengths,
           typename OutLengths,
@@ -47,8 +48,6 @@ void device_convolution_forward_implicit_gemm_v5r1_dlops_nchw_kcyx_nkhw(
 
     const auto Y = wei_k_c_y_x_lengths[I2];
     const auto X = wei_k_c_y_x_lengths[I3];
-
-    constexpr auto InWeiVectorSize = 8;
 
 #if 1
     const auto C0 = C / Number<InWeiVectorSize>{};
