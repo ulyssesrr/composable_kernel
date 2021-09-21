@@ -29,7 +29,7 @@ __global__ void
                                 FloatC* __restrict__ p_c_grid,
                                 const AK0MK1GridDesc a_k0_m_k1_grid_desc,
                                 const BK0NK1GridDesc b_k0_n_k1_grid_desc,
-                                const CM0N0M1N1M2M3M4N2GridDesc c_m0_m1_m2_n_grid_desc,
+                                const CM0N0M1N1M2M3M4N2GridDesc c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc,
                                 const CBlockClusterAdaptor c_block_cluster_adaptor)
 {
     constexpr index_t shared_block_size =

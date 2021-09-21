@@ -296,7 +296,7 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_outp
         float ave_time = 0;
 
 #if CK_EXPERIMENTAL_PASS_TENSOR_DESCRIPTOR_BY_VALUE
-        if(has_main_k_block_loop && has_double_tail_k_block_loop)
+        if constexpr(has_main_k_block_loop && has_double_tail_k_block_loop)
         {
             const auto kernel =
                 kernel_gemm_dlops_v2<GridwiseGemm,
@@ -322,7 +322,7 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_outp
                                               c_k_n_hop_wop_grid_desc,
                                               c_blockid_to_k_n_ho_wo_block_cluster_adaptor);
         }
-        else if(has_main_k_block_loop && !has_double_tail_k_block_loop)
+        else if constexpr(has_main_k_block_loop && !has_double_tail_k_block_loop)
         {
             const auto kernel =
                 kernel_gemm_dlops_v2<GridwiseGemm,
@@ -348,7 +348,7 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_outp
                                               c_k_n_hop_wop_grid_desc,
                                               c_blockid_to_k_n_ho_wo_block_cluster_adaptor);
         }
-        else if(!has_main_k_block_loop && has_double_tail_k_block_loop)
+        else if constexpr(!has_main_k_block_loop && has_double_tail_k_block_loop)
         {
             const auto kernel =
                 kernel_gemm_dlops_v2<GridwiseGemm,
@@ -413,7 +413,7 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_outp
         c_blockid_to_k_n_ho_wo_block_cluster_adaptor_dev_buf.ToDevice(
             &c_blockid_to_k_n_ho_wo_block_cluster_adaptor);
 
-        if(has_main_k_block_loop && has_double_tail_k_block_loop)
+        if constexpr(has_main_k_block_loop && has_double_tail_k_block_loop)
         {
             const auto kernel =
                 kernel_gemm_dlops_v2<GridwiseGemm,
@@ -444,7 +444,7 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_outp
                 cast_pointer_to_constant_address_space(
                     c_blockid_to_k_n_ho_wo_block_cluster_adaptor_dev_buf.GetDeviceBuffer()));
         }
-        else if(has_main_k_block_loop && !has_double_tail_k_block_loop)
+        else if constexpr(has_main_k_block_loop && !has_double_tail_k_block_loop)
         {
             const auto kernel =
                 kernel_gemm_dlops_v2<GridwiseGemm,
@@ -475,7 +475,7 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_outp
                 cast_pointer_to_constant_address_space(
                     c_blockid_to_k_n_ho_wo_block_cluster_adaptor_dev_buf.GetDeviceBuffer()));
         }
-        else if(!has_main_k_block_loop && has_double_tail_k_block_loop)
+        else if constexpr(!has_main_k_block_loop && has_double_tail_k_block_loop)
         {
             const auto kernel =
                 kernel_gemm_dlops_v2<GridwiseGemm,

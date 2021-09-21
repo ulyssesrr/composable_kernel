@@ -244,7 +244,7 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_old
 
             for(index_t j = 0; j < nrepeat; ++j)
             {
-                if(has_main_k_block_loop && has_double_tail_k_block_loop)
+                if constexpr(has_main_k_block_loop && has_double_tail_k_block_loop)
                 {
                     const auto kernel =
                         run_gridwise_operation<gridwise_gemm,
@@ -270,7 +270,7 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_old
                                   integral_constant<bool, true>{},
                                   integral_constant<bool, true>{});
                 }
-                else if(has_main_k_block_loop && !has_double_tail_k_block_loop)
+                else if constexpr(has_main_k_block_loop && !has_double_tail_k_block_loop)
                 {
                     const auto kernel =
                         run_gridwise_operation<gridwise_gemm,
@@ -296,7 +296,7 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_old
                                   integral_constant<bool, true>{},
                                   integral_constant<bool, false>{});
                 }
-                else if(!has_main_k_block_loop && has_double_tail_k_block_loop)
+                else if constexpr(!has_main_k_block_loop && has_double_tail_k_block_loop)
                 {
                     const auto kernel =
                         run_gridwise_operation<gridwise_gemm,
