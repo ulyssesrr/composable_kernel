@@ -91,9 +91,9 @@ void device_convolution_forward_implicit_gemm_v5r1_dlops_nchw_kcyx_nkhw(
     wei_k_c0_y_x_c1_device_buf.ToDevice(wei_k_c0_y_x_c1.mData.data());
 
     const auto in_n_c0_hi_wi_c1_desc =
-        make_naive_tensor_descriptor_packed(make_tuple(N, C0, Hi, Wi, C1));
+        make_naive_tensor_descriptor_packed(make_tuple(N, C0, Hi, Wi, 1));
     const auto wei_k_c0_y_x_c1_desc =
-        make_naive_tensor_descriptor_packed(make_tuple(K, C0, Y, X, C1));
+        make_naive_tensor_descriptor_packed(make_tuple(K, C0, Y, X, 1));
     const auto out_n_k0_ho_wo_k1_desc =
         make_naive_tensor_descriptor_packed(make_tuple(N, K0, Ho, Wo, K1));
 
@@ -106,7 +106,7 @@ void device_convolution_forward_implicit_gemm_v5r1_dlops_nchw_kcyx_nkhw(
     constexpr index_t WoPerBlock = 32;
 
     constexpr index_t E1        = 4 * 9;
-    constexpr index_t E2        = C1;
+    constexpr index_t E2        = 1;
     constexpr index_t EPerBlock = 4;
 
     constexpr index_t KPerThread  = KPerBlock;
@@ -128,7 +128,7 @@ void device_convolution_forward_implicit_gemm_v5r1_dlops_nchw_kcyx_nkhw(
     constexpr auto conv_driver =
         DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_outpad<
             BlockSize,
-            TInWei,
+            typename vector_type<TInWei, InWeiVectorSize>::type,
             TAcc,
             TOut,
             E1,
@@ -159,8 +159,10 @@ void device_convolution_forward_implicit_gemm_v5r1_dlops_nchw_kcyx_nkhw(
                             conv_dilations,
                             in_left_pads,
                             in_right_pads,
-                            static_cast<TInWei*>(wei_k_c0_y_x_c1_device_buf.GetDeviceBuffer()),
-                            static_cast<TInWei*>(in_n_c0_hi_wi_c1_device_buf.GetDeviceBuffer()),
+                            static_cast<typename vector_type<TInWei, InWeiVectorSize>::type*>(
+                                wei_k_c0_y_x_c1_device_buf.GetDeviceBuffer()),
+                            static_cast<typename vector_type<TInWei, InWeiVectorSize>::type*>(
+                                in_n_c0_hi_wi_c1_device_buf.GetDeviceBuffer()),
                             static_cast<TOut*>(out_n_k0_ho_wo_k1_device_buf.GetDeviceBuffer()),
                             nrepeat);
 

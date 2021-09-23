@@ -146,30 +146,33 @@ struct ThreadwiseGemmDlops_km_kn_mn_v3
             static_for<0, E1, 1>{}([&](auto e) {
                 static_for<0, Ho, 1>{}([&](auto h) {
                     static_for<0, Wo, 1>{}([&](auto w) {
-                        vector_type<FloatA, E2> a_vec;
-                        vector_type<FloatB, E2> b_vec;
+                        //vector_type<FloatA, E2> a_vec;
+                        //vector_type<FloatB, E2> b_vec;
 
-                        static_for<0, E2, 1>{}([&](auto v) {
+                            constexpr index_t v = 0;
+                        //static_for<0, E2, 1>{}([&](auto v) {
                             constexpr index_t a_offset = AThreadDesc_E1_K_E2{}.CalculateOffset(
-                                a_origin_idx + make_tuple(e, k, v));
+                                    a_origin_idx + make_tuple(e, k, v));
 
                             constexpr index_t b_offset =
-                                BThreadDesc_E1_N_Ho_Wo_E2{}.CalculateOffset(
+                            BThreadDesc_E1_N_Ho_Wo_E2{}.CalculateOffset(
                                     b_origin_idx + make_tuple(e, 0, h, w, v));
 
-                            a_vec.template AsType<FloatA>()(v) = a_buf[Number<a_offset>{}];
-                            b_vec.template AsType<FloatB>()(v) = b_buf[Number<b_offset>{}];
-                        });
+                            //a_vec.template AsType<FloatA>()(v) = a_buf[Number<a_offset>{}];
+                            //b_vec.template AsType<FloatB>()(v) = b_buf[Number<b_offset>{}];
+                        //});
 
-                        using a_vector_t = typename vector_type<FloatA, E2>::type;
-                        using b_vector_t = typename vector_type<FloatB, E2>::type;
+                        //using a_vector_t = typename vector_type<FloatA, E2>::type;
+                        //using b_vector_t = typename vector_type<FloatB, E2>::type;
 
                         constexpr index_t c_offset = CThreadDesc_K_N_Ho_Wo{}.CalculateOffset(
                             c_origin_idx + make_tuple(k, 0, h, w));
 
-                        inner_product<a_vector_t, b_vector_t, FloatC>(
-                            a_vec.template AsType<a_vector_t>()[I0],
-                            b_vec.template AsType<b_vector_t>()[I0],
+                        inner_product<FloatA, FloatB, FloatC>(
+                                a_buf[Number<a_offset>{}],
+                                b_buf[Number<b_offset>{}],
+                            //a_vec.template AsType<a_vector_t>()[I0],
+                            //b_vec.template AsType<b_vector_t>()[I0],
                             c_buf(Number<c_offset>{}));
                     });
                 });
