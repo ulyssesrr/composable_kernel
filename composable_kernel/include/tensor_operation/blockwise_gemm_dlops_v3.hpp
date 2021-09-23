@@ -162,14 +162,14 @@ struct BlockwiseGemmDlops_km_kn_m0m1n0n1_v3
 
     using AThreadCopy =
         ThreadwiseTensorSliceTransfer_v4<FloatA,
-                                         FloatB,
+                                         FloatA,
                                          ABlockDesc_E1_K_E2,
                                          decltype(a_thread_mtx_),
                                          Sequence<EPerThreadLoop, KPerThreadLoop, E2>,
                                          Sequence<0, 1, 2>,
                                          2,
-                                         ThreadGemmADataPerRead_E2,
-                                         ThreadGemmADataPerRead_E2>;
+                                         E2,
+                                         E2>;
 
     AThreadCopy a_thread_copy_;
 };
