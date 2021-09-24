@@ -42,7 +42,7 @@ struct BlockwiseGemmDlops_km_kn_m0m1n0n1_v3
     static constexpr auto HPerThread = CThreadDesc_K_N_Ho_Wo{}.GetLength(I2);
     static constexpr auto WPerThread = CThreadDesc_K_N_Ho_Wo{}.GetLength(I3);
 
-    static constexpr index_t KPerThreadLoop = KPerThread;
+    static constexpr index_t KPerThreadLoop = 2;
 
     static constexpr auto a_thread_mtx_ = make_naive_tensor_descriptor_packed(
         make_tuple(Number<EPerThreadLoop>{}, Number<KPerThreadLoop>{}, Number<E2>{}));

@@ -27,7 +27,7 @@
 #define USE_CONV_FWD_V6R1_NCHW 0
 #define USE_CONV_FWD_V5R1_NHWC 0
 #define USE_CONV_FWD_V5R1_NCHWC 1
-#define USE_CONV_FWD_V5R1_OLD_NCHWC 0
+#define USE_CONV_FWD_V5R1_OLD_NCHWC 1
 #define USE_CONV_FWD_V4R4R2_XDL_NCHW 0
 #define USE_CONV_FWD_V4R4R4_XDL_NHWC 0
 
@@ -360,7 +360,7 @@ int main(int argc, char* argv[])
         device_convolution_forward_implicit_gemm_v5r1_dlops_nchw_kcyx_nkhw<in_data_t,
                                                                            acc_data_t,
                                                                            out_data_t,
-                                                                           4>(tmp[I0],
+                                                                           8>(tmp[I0],
                                                                               tmp[I1],
                                                                               tmp[I2],
                                                                               tmp[I3],

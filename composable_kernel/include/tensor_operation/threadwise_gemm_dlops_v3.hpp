@@ -78,43 +78,22 @@ struct ThreadwiseGemmDlops_km_kn_mn_v3
             static_for<0, E1, 1>{}([&](auto e) {
                 static_for<0, Ho, Vec>{}([&](auto h) {
                     static_for<0, Wo, Vec>{}([&](auto w) {
-                        vector_type<FloatA, E2> a_vec;
+                        constexpr index_t v = 0;
 
-                        vector_type<FloatB, E2> b0_vec;
-                        vector_type<FloatB, E2> b1_vec;
-                        vector_type<FloatB, E2> b2_vec;
-                        vector_type<FloatB, E2> b3_vec;
+                        constexpr index_t a_offset = AThreadDesc_E1_K_E2{}.CalculateOffset(
+                            a_origin_idx + make_tuple(e, k, v));
 
-                        static_for<0, E2, 1>{}([&](auto v) {
-                            constexpr index_t a_offset = AThreadDesc_E1_K_E2{}.CalculateOffset(
-                                a_origin_idx + make_tuple(e, k, v));
+                        constexpr index_t b0_offset = BThreadDesc_E1_N_Ho_Wo_E2{}.CalculateOffset(
+                            b_origin_idx + make_tuple(e, 0, h, w, v));
 
-                            constexpr index_t b0_offset =
-                                BThreadDesc_E1_N_Ho_Wo_E2{}.CalculateOffset(
-                                    b_origin_idx + make_tuple(e, 0, h, w, v));
+                        constexpr index_t b1_offset = BThreadDesc_E1_N_Ho_Wo_E2{}.CalculateOffset(
+                            b_origin_idx + make_tuple(e, 0, h, w + 1, v));
 
-                            constexpr index_t b1_offset =
-                                BThreadDesc_E1_N_Ho_Wo_E2{}.CalculateOffset(
-                                    b_origin_idx + make_tuple(e, 0, h, w + 1, v));
+                        constexpr index_t b2_offset = BThreadDesc_E1_N_Ho_Wo_E2{}.CalculateOffset(
+                            b_origin_idx + make_tuple(e, 0, h + 1, w, v));
 
-                            constexpr index_t b2_offset =
-                                BThreadDesc_E1_N_Ho_Wo_E2{}.CalculateOffset(
-                                    b_origin_idx + make_tuple(e, 0, h + 1, w, v));
-
-                            constexpr index_t b3_offset =
-                                BThreadDesc_E1_N_Ho_Wo_E2{}.CalculateOffset(
-                                    b_origin_idx + make_tuple(e, 0, h + 1, w + 1, v));
-
-                            a_vec.template AsType<FloatA>()(v) = a_buf[Number<a_offset>{}];
-
-                            b0_vec.template AsType<FloatB>()(v) = b_buf[Number<b0_offset>{}];
-                            b1_vec.template AsType<FloatB>()(v) = b_buf[Number<b1_offset>{}];
-                            b2_vec.template AsType<FloatB>()(v) = b_buf[Number<b2_offset>{}];
-                            b3_vec.template AsType<FloatB>()(v) = b_buf[Number<b3_offset>{}];
-                        });
-
-                        using a_vector_t = typename vector_type<FloatA, E2>::type;
-                        using b_vector_t = typename vector_type<FloatB, E2>::type;
+                        constexpr index_t b3_offset = BThreadDesc_E1_N_Ho_Wo_E2{}.CalculateOffset(
+                            b_origin_idx + make_tuple(e, 0, h + 1, w + 1, v));
 
                         constexpr index_t c0_offset = CThreadDesc_K_N_Ho_Wo{}.CalculateOffset(
                             c_origin_idx + make_tuple(k, 0, h, w));
@@ -128,11 +107,11 @@ struct ThreadwiseGemmDlops_km_kn_mn_v3
                         constexpr index_t c3_offset = CThreadDesc_K_N_Ho_Wo{}.CalculateOffset(
                             c_origin_idx + make_tuple(k, 0, h + 1, w + 1));
 
-                        amd_assembly_outer_product_1x4(a_vec.template AsType<a_vector_t>()[I0],
-                                                       b0_vec.template AsType<b_vector_t>()[I0],
-                                                       b1_vec.template AsType<b_vector_t>()[I0],
-                                                       b2_vec.template AsType<b_vector_t>()[I0],
-                                                       b3_vec.template AsType<b_vector_t>()[I0],
+                        amd_assembly_outer_product_1x4(a_buf[Number<a_offset>{}],
+                                                       b_buf[Number<b0_offset>{}],
+                                                       b_buf[Number<b1_offset>{}],
+                                                       b_buf[Number<b2_offset>{}],
+                                                       b_buf[Number<b3_offset>{}],
                                                        c_buf(Number<c0_offset>{}),
                                                        c_buf(Number<c1_offset>{}),
                                                        c_buf(Number<c2_offset>{}),
@@ -143,37 +122,24 @@ struct ThreadwiseGemmDlops_km_kn_mn_v3
         });
 #else
         static_for<0, K, 1>{}([&](auto k) {
-            static_for<0, E1, 1>{}([&](auto e) {
-                static_for<0, Ho, 1>{}([&](auto h) {
-                    static_for<0, Wo, 1>{}([&](auto w) {
-                        //vector_type<FloatA, E2> a_vec;
-                        //vector_type<FloatB, E2> b_vec;
-
-                            constexpr index_t v = 0;
-                        //static_for<0, E2, 1>{}([&](auto v) {
+            static_for<0, Ho, 1>{}([&](auto h) {
+                static_for<0, Wo, 1>{}([&](auto w) {
+                    static_for<0, E1, 1>{}([&](auto e1) {
+                        static_for<0, E2, 1>{}([&](auto e2) {
                             constexpr index_t a_offset = AThreadDesc_E1_K_E2{}.CalculateOffset(
-                                    a_origin_idx + make_tuple(e, k, v));
+                                a_origin_idx + make_tuple(e1, k, e2));
 
                             constexpr index_t b_offset =
-                            BThreadDesc_E1_N_Ho_Wo_E2{}.CalculateOffset(
-                                    b_origin_idx + make_tuple(e, 0, h, w, v));
+                                BThreadDesc_E1_N_Ho_Wo_E2{}.CalculateOffset(
+                                    b_origin_idx + make_tuple(e1, 0, h, w, e2));
 
-                            //a_vec.template AsType<FloatA>()(v) = a_buf[Number<a_offset>{}];
-                            //b_vec.template AsType<FloatB>()(v) = b_buf[Number<b_offset>{}];
-                        //});
+                            constexpr index_t c_offset = CThreadDesc_K_N_Ho_Wo{}.CalculateOffset(
+                                c_origin_idx + make_tuple(k, 0, h, w));
 
-                        //using a_vector_t = typename vector_type<FloatA, E2>::type;
-                        //using b_vector_t = typename vector_type<FloatB, E2>::type;
-
-                        constexpr index_t c_offset = CThreadDesc_K_N_Ho_Wo{}.CalculateOffset(
-                            c_origin_idx + make_tuple(k, 0, h, w));
-
-                        inner_product<FloatA, FloatB, FloatC>(
-                                a_buf[Number<a_offset>{}],
-                                b_buf[Number<b_offset>{}],
-                            //a_vec.template AsType<a_vector_t>()[I0],
-                            //b_vec.template AsType<b_vector_t>()[I0],
-                            c_buf(Number<c_offset>{}));
+                            inner_product<FloatA, FloatB, FloatC>(a_buf[Number<a_offset>{}],
+                                                                  b_buf[Number<b_offset>{}],
+                                                                  c_buf(Number<c_offset>{}));
+                        });
                     });
                 });
             });

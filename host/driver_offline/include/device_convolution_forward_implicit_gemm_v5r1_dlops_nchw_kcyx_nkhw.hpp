@@ -49,19 +49,11 @@ void device_convolution_forward_implicit_gemm_v5r1_dlops_nchw_kcyx_nkhw(
     const auto Y = wei_k_c_y_x_lengths[I2];
     const auto X = wei_k_c_y_x_lengths[I3];
 
-#if 1
     const auto C0 = C / Number<InWeiVectorSize>{};
     const auto C1 = Number<InWeiVectorSize>{};
 
     const auto K0 = K / Number<InWeiVectorSize>{};
     const auto K1 = Number<InWeiVectorSize>{};
-#else
-    const auto C0 = 1;
-    const auto C1 = C;
-
-    const auto K0 = 1;
-    const auto K1 = K;
-#endif
 
     Tensor<TInWei> in_n_c0_hi_wi_c1(
         HostTensorDescriptor(std::initializer_list<index_t>{N, C0, Hi, Wi, C1}));
@@ -91,9 +83,9 @@ void device_convolution_forward_implicit_gemm_v5r1_dlops_nchw_kcyx_nkhw(
     wei_k_c0_y_x_c1_device_buf.ToDevice(wei_k_c0_y_x_c1.mData.data());
 
     const auto in_n_c0_hi_wi_c1_desc =
-        make_naive_tensor_descriptor_packed(make_tuple(N, C0, Hi, Wi, 1));
+        make_naive_tensor_descriptor_packed(make_tuple(N, C0, Hi, Wi, I1));
     const auto wei_k_c0_y_x_c1_desc =
-        make_naive_tensor_descriptor_packed(make_tuple(K, C0, Y, X, 1));
+        make_naive_tensor_descriptor_packed(make_tuple(K, C0, Y, X, I1));
     const auto out_n_k0_ho_wo_k1_desc =
         make_naive_tensor_descriptor_packed(make_tuple(N, K0, Ho, Wo, K1));
 
@@ -105,9 +97,9 @@ void device_convolution_forward_implicit_gemm_v5r1_dlops_nchw_kcyx_nkhw(
     constexpr index_t HoPerBlock = 8;
     constexpr index_t WoPerBlock = 32;
 
-    constexpr index_t E1        = 4 * 9;
+    constexpr index_t E1        = 2 * 9;
     constexpr index_t E2        = 1;
-    constexpr index_t EPerBlock = 4;
+    constexpr index_t EPerBlock = 2;
 
     constexpr index_t KPerThread  = KPerBlock;
     constexpr index_t HoPerThread = 2;
