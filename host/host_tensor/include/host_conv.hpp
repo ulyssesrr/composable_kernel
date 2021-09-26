@@ -1,6 +1,18 @@
 #pragma once
 #include "host_tensor.hpp"
 
+template <typename T>
+inline auto activ(T v, const ck::index_t activ_type)
+{
+    switch(activ_type)
+    {
+    case 0: return v;
+    case 1: return (v >= 0 ? v : 0);
+    case 2: return (1 / (1 + exp(-v)));
+    default: throw std::runtime_error("unsupported activ type"); break;
+    }
+}
+
 template <typename TIn,
           typename TWei,
           typename TOut,
@@ -15,7 +27,8 @@ void host_direct_convolution(const Tensor<TIn>& in,
                              const ConvDilations& conv_dilations,
                              const InLeftPads& in_left_pads,
                              const InRightPads&,
-                             const ConvTensorLayout layout = ConvTensorLayout::NCHW)
+                             const ConvTensorLayout layout = ConvTensorLayout::NCHW,
+                             const ck::index_t activ_type  = 0)
 {
     using namespace ck;
 
@@ -41,7 +54,7 @@ void host_direct_convolution(const Tensor<TIn>& in,
                 }
             }
         }
-        out(n, k, ho, wo) = v;
+        out(n, k, ho, wo) = activ(v, activ_type);
     };
 
     auto f_nhwc = [&](auto n, auto ho, auto wo, auto k) {
@@ -63,7 +76,7 @@ void host_direct_convolution(const Tensor<TIn>& in,
                 }
             }
         }
-        out(n, ho, wo, k) = v;
+        out(n, ho, wo, k) = activ(v, activ_type);
     };
 
     if(layout == ConvTensorLayout::NCHW)

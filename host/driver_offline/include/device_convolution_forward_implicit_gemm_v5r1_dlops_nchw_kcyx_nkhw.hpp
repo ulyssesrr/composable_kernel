@@ -7,6 +7,7 @@ template <typename TInWei,
           typename TAcc,
           typename TOut,
           ck::index_t InWeiVectorSize,
+          ck::index_t activ_type,
           typename InLengths,
           typename WeiLengths,
           typename OutLengths,
@@ -162,7 +163,8 @@ void device_convolution_forward_implicit_gemm_v5r1_dlops_nchw_kcyx_nkhw(
             ABlockTransferSrcScalarPerVector_E2,
             ABlockTransferDstScalarPerVector_E2,
             BThreadTransferSrcScalarPerVector_E2,
-            CThreadTransferDstScalarPerVector_K>{};
+            CThreadTransferDstScalarPerVector_K,
+            activ_type>{};
 
     for(int i = 0; i < 5; i++)
     {

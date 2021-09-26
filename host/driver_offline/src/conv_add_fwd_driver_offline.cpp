@@ -229,12 +229,14 @@ int main(int argc, char* argv[])
 
     Tensor<in_data_t> in(in_lengths_host);
     Tensor<in_data_t> wei(wei_lengths_host);
+    Tensor<in_data_t> add(add_lengths_host);
     Tensor<out_data_t> out_host(out_lengths_host);
     Tensor<out_data_t> out_device(out_lengths_host);
 
     std::cout << "layout: " << layout << std::endl;
     ostream_HostTensorDescriptor(in.mDesc, std::cout << "in: ");
     ostream_HostTensorDescriptor(wei.mDesc, std::cout << "wei: ");
+    ostream_HostTensorDescriptor(add.mDesc, std::cout << "add: ");
     ostream_HostTensorDescriptor(out_host.mDesc, std::cout << "out: ");
     print_array("InLeftPads", make_tuple(in_left_pad_h, in_left_pad_w));
     print_array("InRightPads", make_tuple(in_right_pad_h, in_right_pad_w));
@@ -313,84 +315,7 @@ int main(int argc, char* argv[])
                           in_right_pads_dev);
     };
 
-#if USE_CONV_FWD_V4R4_NCHW
-    if(algo == ConvForwardAlgo::V4R4NCHW)
-    {
-        if(layout != ConvTensorLayout::NCHW)
-        {
-            throw std::runtime_error("wrong! layout");
-        }
-
-        const auto tmp = f_make_for_device_nchw();
-
-        device_convolution_forward_implicit_gemm_v4r4_dlops_nchw_kcyx_nkhw<in_data_t,
-                                                                           acc_data_t,
-                                                                           out_data_t>(tmp[I0],
-                                                                                       tmp[I1],
-                                                                                       tmp[I2],
-                                                                                       tmp[I3],
-                                                                                       tmp[I4],
-                                                                                       tmp[I5],
-                                                                                       tmp[I6],
-                                                                                       in,
-                                                                                       wei,
-                                                                                       out_device,
-                                                                                       nrepeat);
-    }
-#endif
-
-#if USE_CONV_FWD_V4R4R2_NHWC
-    if(algo == ConvForwardAlgo::V4R4R2NHWC)
-    {
-        if(layout != ConvTensorLayout::NHWC)
-        {
-            throw std::runtime_error("wrong! layout");
-        }
-
-        const auto tmp = f_make_for_device_nhwc();
-
-        device_convolution_forward_implicit_gemm_v4r4r2_dlops_nhwc_kyxc_nhwk<in_data_t,
-                                                                             acc_data_t,
-                                                                             out_data_t>(tmp[I0],
-                                                                                         tmp[I1],
-                                                                                         tmp[I2],
-                                                                                         tmp[I3],
-                                                                                         tmp[I4],
-                                                                                         tmp[I5],
-                                                                                         tmp[I6],
-                                                                                         in,
-                                                                                         wei,
-                                                                                         out_device,
-                                                                                         nrepeat);
-    }
-#endif
-
-#if USE_CONV_FWD_V6R1_NCHW
-    if(algo == ConvForwardAlgo::V6R1NCHW)
-    {
-        if(layout != ConvTensorLayout::NCHW)
-        {
-            throw std::runtime_error("wrong! layout");
-        }
-
-        const auto tmp = f_make_for_device_nchw();
-
-        device_convolution_forward_implicit_gemm_v6r1_dlops_nchw_kcyx_nkhw<in_data_t,
-                                                                           acc_data_t,
-                                                                           out_data_t>(tmp[I0],
-                                                                                       tmp[I1],
-                                                                                       tmp[I2],
-                                                                                       tmp[I3],
-                                                                                       tmp[I4],
-                                                                                       tmp[I5],
-                                                                                       tmp[I6],
-                                                                                       in,
-                                                                                       wei,
-                                                                                       out_device,
-                                                                                       nrepeat);
-    }
-#endif
-
+    constexpr ck::index_t activ_type = 2;
 #if USE_CONV_FWD_V5R1_NCHWC
     if(algo == ConvForwardAlgo::V5R1NCHWc)
     {
@@ -419,116 +344,9 @@ int main(int argc, char* argv[])
     }
 #endif
 
-#if USE_CONV_FWD_V5R1_OLD_NCHWC
-    if(algo == ConvForwardAlgo::V5R1NCHWcOld)
-    {
-        if(layout != ConvTensorLayout::NCHW)
-        {
-            throw std::runtime_error("wrong! layout");
-        }
-
-        const auto tmp = f_make_for_device_nchw();
-
-        device_convolution_forward_implicit_gemm_v5r1_dlops_nchw_kcyx_nkhw_old<in_data_t,
-                                                                               acc_data_t,
-                                                                               out_data_t,
-                                                                               8>(tmp[I0],
-                                                                                  tmp[I1],
-                                                                                  tmp[I2],
-                                                                                  tmp[I3],
-                                                                                  tmp[I4],
-                                                                                  tmp[I5],
-                                                                                  tmp[I6],
-                                                                                  in,
-                                                                                  wei,
-                                                                                  out_device,
-                                                                                  nrepeat);
-    }
-#endif
-
-#if USE_CONV_FWD_V5R1_NHWC
-    if(algo == ConvForwardAlgo::V5R1NHWC)
-    {
-        if(layout != ConvTensorLayout::NHWC)
-        {
-            throw std::runtime_error("wrong! layout");
-        }
-
-        const auto tmp = f_make_for_device_nhwc();
-
-        device_convolution_forward_implicit_gemm_v5r1_dlops_nhwc_kyxc_nhwk<in_data_t,
-                                                                           acc_data_t,
-                                                                           out_data_t>(tmp[I0],
-                                                                                       tmp[I1],
-                                                                                       tmp[I2],
-                                                                                       tmp[I3],
-                                                                                       tmp[I4],
-                                                                                       tmp[I5],
-                                                                                       tmp[I6],
-                                                                                       in,
-                                                                                       wei,
-                                                                                       out_device,
-                                                                                       nrepeat);
-    }
-#endif
-
-#if USE_CONV_FWD_V4R4R2_XDL_NCHW
-    if(algo == ConvForwardAlgo::V4R4R2XDLNCHW)
-    {
-        if(layout != ConvTensorLayout::NCHW)
-        {
-            throw std::runtime_error("wrong! layout");
-        }
-
-        const auto tmp = f_make_for_device_nchw();
-
-        device_convolution_forward_implicit_gemm_v4r4r2_xdlops_nchw_kcyx_nkhw<in_data_t,
-                                                                              acc_data_t,
-                                                                              out_data_t>(
-            tmp[I0],
-            tmp[I1],
-            tmp[I2],
-            tmp[I3],
-            tmp[I4],
-            tmp[I5],
-            tmp[I6],
-            in,
-            wei,
-            out_device,
-            nrepeat);
-    }
-#endif
-
-#if USE_CONV_FWD_V4R4R4_XDL_NHWC
-    if(algo == ConvForwardAlgo::V4R4R4XDLNHWC)
-    {
-        if(layout != ConvTensorLayout::NHWC)
-        {
-            throw std::runtime_error("wrong! layout");
-        }
-
-        const auto tmp = f_make_for_device_nhwc();
-
-        device_convolution_forward_implicit_gemm_v4r4r4_xdlops_nhwc_kyxc_nhwk<in_data_t,
-                                                                              acc_data_t,
-                                                                              out_data_t>(
-            tmp[I0],
-            tmp[I1],
-            tmp[I2],
-            tmp[I3],
-            tmp[I4],
-            tmp[I5],
-            tmp[I6],
-            in,
-            wei,
-            out_device,
-            nrepeat);
-    }
-#endif
-
     if(do_verification)
     {
-        host_direct_convolution(in,
+        host_direct_convolution_add(in,
                                 wei,
                                 out_host,
                                 make_tuple(conv_stride_h, conv_stride_w),

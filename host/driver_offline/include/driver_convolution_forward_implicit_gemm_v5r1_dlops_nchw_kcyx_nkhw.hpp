@@ -25,7 +25,8 @@ template <ck::index_t BlockSize,
           ck::index_t ABlockTransferSrcScalarPerVector_E2,
           ck::index_t ABlockTransferDstScalarPerVector_E2,
           ck::index_t BThreadTransferSrcScalarPerVector_E2,
-          ck::index_t CThreadTransferDstScalarPerVector_K>
+          ck::index_t CThreadTransferDstScalarPerVector_K,
+          ck::index_t activ_type>
 struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_outpad
 {
     template <typename... Wei,
@@ -269,7 +270,8 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_outp
             decltype(b_e0_e1_n_ho_wo_e2_global_step_hacks),
             decltype(c_k_n_ho_wo_global_tensor_step_hacks),
             decltype(a_e0_e1_k_e2_global_move_slice_window_step_hack),
-            decltype(b_e0_e1_n_ho_wo_e2_global_move_slice_window_step_hack)>;
+            decltype(b_e0_e1_n_ho_wo_e2_global_move_slice_window_step_hack),
+            activ_type>;
 
         using AGridDesc_E0_E1_K_E2       = decltype(a_e0_e1_k_e2_grid_desc);
         using BGridDesc_E0_E1_N_Ho_Wo_E2 = decltype(b_e0_e1_n_ho_wo_e2_grid_desc);

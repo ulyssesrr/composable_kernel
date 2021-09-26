@@ -138,7 +138,8 @@ template <index_t BlockSize,
           typename BGlobalStepHacks,
           typename CGlobalStepHacks,
           typename AGlobalMoveSliceWindowStepHacks,
-          typename BGlobalMoveSliceWindowStepHacks>
+          typename BGlobalMoveSliceWindowStepHacks,
+          index_t activ_type>
 struct GridwiseGemmDlops_km_kn_mn_v3
 {
     static constexpr auto I0 = Number<0>{};
@@ -563,6 +564,27 @@ struct GridwiseGemmDlops_km_kn_mn_v3
                 // LDS double buffer: GEMM on last data
                 blockwise_gemm.Run(a_block_buf, b_thread_even_buf, c_thread_buf);
             }
+        }
+
+        // activ
+        {
+            static_for<0, c_k_n_ho_wo_thread_desc.GetElementSpaceSize(), 1>{}([&](auto i) {
+                if constexpr(activ_type == 1)
+                {
+                    c_thread_buf(i) = c_thread_buf[i] >= 0 ? c_thread_buf[i] : 0.0;
+                }
+                else if constexpr(activ_type == 2)
+                {
+                    const auto x = c_thread_buf[i];
+                    // constexpr auto log2_e = FloatAcc(1.44269504089);
+                    // const auto r          = 1.0 + pow(2, -x * log2_e);
+                    // c_thread_buf(i)       = 1.0 / r;
+
+                    c_thread_buf(i) = 1.0 / (1.0 + expf(-c_thread_buf[i]));
+                    // c_thread_buf(i) = 0.5 * (x / (1 + abs(x))) + 0.5;
+                    // c_thread_buf(i) = x / sqrt(1 + x * x);
+                }
+            });
         }
 
         // output: register to global memory
