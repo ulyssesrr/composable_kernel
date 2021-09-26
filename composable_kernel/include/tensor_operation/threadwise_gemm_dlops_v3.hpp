@@ -72,11 +72,11 @@ struct ThreadwiseGemmDlops_km_kn_mn_v3
         constexpr auto c_origin_idx = to_multi_index(COriginIdx{});
 
 #if 1
-        constexpr index_t Vec = 2;
+        constexpr index_t SubHW = 2;
 
         static_for<0, K, 1>{}([&](auto k) {
-            static_for<0, Ho, Vec>{}([&](auto h) {
-                static_for<0, Wo, Vec>{}([&](auto w) {
+            static_for<0, Ho, SubHW>{}([&](auto h) {
+                static_for<0, Wo, SubHW>{}([&](auto w) {
                     static_for<0, E1, 1>{}([&](auto e1) {
                         static_for<0, E2, 1>{}([&](auto e2) {
                             constexpr index_t a_offset = AThreadDesc_E1_K_E2{}.CalculateOffset(

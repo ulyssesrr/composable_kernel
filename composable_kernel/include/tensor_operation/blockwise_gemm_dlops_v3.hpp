@@ -13,8 +13,7 @@ template <index_t BlockSize,
           typename ABlockDesc_E1_K_E2,
           typename BBlockDesc_E1_N_Ho_Wo_E2,
           typename CThreadDesc_K_N_Ho_Wo,
-          index_t EPerThreadLoop,
-          index_t ThreadGemmADataPerRead_E2>
+          index_t EPerThreadLoop>
 struct BlockwiseGemmDlops_km_kn_m0m1n0n1_v3
 {
     static constexpr auto I0 = Number<0>{};

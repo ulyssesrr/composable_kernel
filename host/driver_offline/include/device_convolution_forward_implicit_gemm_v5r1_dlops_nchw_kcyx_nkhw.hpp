@@ -90,24 +90,48 @@ void device_convolution_forward_implicit_gemm_v5r1_dlops_nchw_kcyx_nkhw(
         make_naive_tensor_descriptor_packed(make_tuple(N, K0, Ho, Wo, K1));
 
 #if 1
-    // cdata = 64, BlockSize = 64, 16x8x32x4
-    constexpr index_t BlockSize = 64;
+    constexpr index_t BlockSize = 256;
 
-    constexpr index_t KPerBlock  = 16;
+    constexpr index_t KPerBlock  = 32;
     constexpr index_t HoPerBlock = 8;
-    constexpr index_t WoPerBlock = 32;
+    constexpr index_t WoPerBlock = 64;
 
-    constexpr index_t E1        = 2 * 9;
+    constexpr index_t E1        = C0 * 9;
     constexpr index_t E2        = 1;
-    constexpr index_t EPerBlock = 2;
+    constexpr index_t EPerBlock = C0;
 
-    constexpr index_t KPerThread  = KPerBlock;
+    constexpr index_t KPerThread  = 16;
     constexpr index_t HoPerThread = 2;
     constexpr index_t WoPerThread = 2;
     constexpr index_t EPerThread  = 1;
 
     using ABlockTransferThreadSliceLengths_E0_E1_K_E2   = Sequence<1, 9, 1, E2>;
-    using ABlockTransferThreadClusterLengths_E0_E1_K_E2 = Sequence<1, EPerBlock, 16, 1>;
+    using ABlockTransferThreadClusterLengths_E0_E1_K_E2 = Sequence<1, EPerBlock, KPerBlock, 1>;
+
+    constexpr index_t ABlockTransferSrcScalarPerVector_E2 = E2;
+    constexpr index_t ABlockTransferDstScalarPerVector_E2 = E2;
+
+    constexpr index_t BThreadTransferSrcScalarPerVector_E2 = E2;
+
+    constexpr index_t CThreadTransferDstScalarPerVector_K = K1;
+#elif 1
+    constexpr index_t BlockSize = 64;
+
+    constexpr index_t KPerBlock  = 32;
+    constexpr index_t HoPerBlock = 4;
+    constexpr index_t WoPerBlock = 32;
+
+    constexpr index_t E1        = C0 * 9;
+    constexpr index_t E2        = 1;
+    constexpr index_t EPerBlock = C0;
+
+    constexpr index_t KPerThread  = 16;
+    constexpr index_t HoPerThread = 2;
+    constexpr index_t WoPerThread = 2;
+    constexpr index_t EPerThread  = 1;
+
+    using ABlockTransferThreadSliceLengths_E0_E1_K_E2   = Sequence<1, 9, 1, E2>;
+    using ABlockTransferThreadClusterLengths_E0_E1_K_E2 = Sequence<1, EPerBlock, KPerBlock, 1>;
 
     constexpr index_t ABlockTransferSrcScalarPerVector_E2 = E2;
     constexpr index_t ABlockTransferDstScalarPerVector_E2 = E2;

@@ -253,8 +253,7 @@ struct GridwiseGemmDlops_km_kn_mn_v3
                                                  decltype(a_e1_k_e2_block_desc),
                                                  decltype(b_e1_n_ho_wo_e2_block_desc),
                                                  decltype(c_k_n_ho_wo_thread_desc),
-                                                 EPerThread,
-                                                 ABlockTransferDstScalarPerVector_E2>{};
+                                                 EPerThread>{};
 
         auto c_thread_mtx_index =
             blockwise_gemm.GetBeginOfCThreadDesc_K_N_Ho_Wo(get_thread_local_1d_id());
