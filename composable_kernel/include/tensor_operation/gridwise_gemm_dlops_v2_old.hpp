@@ -80,7 +80,7 @@ struct GridwiseGemmDlops_km_kn_mn_v3_old
                         integral_constant<bool, HasDoubleTailKBlockLoop>) const
     {
         constexpr auto I0 = Number<0>{};
-        //constexpr auto I1 = Number<1>{};
+        // constexpr auto I1 = Number<1>{};
         constexpr auto I2 = Number<2>{};
         constexpr auto I3 = Number<3>{};
 

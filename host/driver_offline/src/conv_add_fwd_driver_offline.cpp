@@ -12,35 +12,14 @@
 #include "conv_common.hpp"
 #include "host_conv.hpp"
 #include "device_tensor.hpp"
-#include "device_convolution_forward_implicit_gemm_v4r4_dlops_nchw_kcyx_nkhw.hpp"
-#include "device_convolution_forward_implicit_gemm_v4r4r2_dlops_nhwc_kyxc_nhwk.hpp"
-#include "device_convolution_forward_implicit_gemm_v6r1_dlops_nchw_kcyx_nkhw.hpp"
-#include "device_convolution_forward_implicit_gemm_v5r1_dlops_nchw_kcyx_nkhw.hpp"
-#include "device_convolution_forward_implicit_gemm_v5r1_dlops_nchw_kcyx_nkhw_old.hpp"
-#include "device_convolution_forward_implicit_gemm_v5r1_dlops_nhwc_kyxc_nhwk.hpp"
-#include "device_convolution_forward_implicit_gemm_v4r4r2_xdlops_nchw_kcyx_nkhw.hpp"
-#include "device_convolution_forward_implicit_gemm_v4r4r4_xdlops_nhwc_kyxc_nhwk.hpp"
+#include "device_convolution_add_forward_implicit_gemm_v5r1_dlops_nchw_kcyx_nkhw.hpp"
 
 #define USE_DYNAMIC_MODE 0
-#define USE_CONV_FWD_V4R4_NCHW 0
-#define USE_CONV_FWD_V4R4R2_NHWC 0
-#define USE_CONV_FWD_V6R1_NCHW 0
-#define USE_CONV_FWD_V5R1_NHWC 0
 #define USE_CONV_FWD_V5R1_NCHWC 1
-#define USE_CONV_FWD_V5R1_OLD_NCHWC 0
-#define USE_CONV_FWD_V4R4R2_XDL_NCHW 0
-#define USE_CONV_FWD_V4R4R4_XDL_NHWC 0
 
 enum ConvForwardAlgo
 {
-    V4R4NCHW,      // 0
-    V4R4R2NHWC,    // 1
-    V6R1NCHW,      // 2
-    V5R1NCHWc,     // 3
-    V5R1NCHWcOld,  // 4
-    V5R1NHWC,      // 4
-    V4R4R2XDLNCHW, // 5
-    V4R4R4XDLNHWC  // 6
+    V5R1NCHWC, // 0
 };
 
 int main(int argc, char* argv[])
@@ -54,6 +33,7 @@ int main(int argc, char* argv[])
     constexpr auto I4 = Number<4>{};
     constexpr auto I5 = Number<5>{};
     constexpr auto I6 = Number<6>{};
+    constexpr auto I7 = Number<7>{};
 
 #if USE_DYNAMIC_MODE
     // dynamic mode
@@ -108,14 +88,14 @@ int main(int argc, char* argv[])
     const bool do_log             = std::stoi(argv[5]);
     const int nrepeat             = std::stoi(argv[6]);
 
-    constexpr index_t activ_type = 1;
+    constexpr index_t activ_type = 0;
 
-#if 0
+#if 1
     constexpr auto N             = Number<1>{};
     constexpr auto C             = Number<16>{};
     constexpr auto Hi            = Number<1080>{};
     constexpr auto Wi            = Number<1920>{};
-    constexpr auto K             = Number<64>{};
+    constexpr auto K             = Number<16>{};
     constexpr auto Y             = Number<3>{};
     constexpr auto X             = Number<3>{};
 #elif 0
@@ -150,12 +130,20 @@ int main(int argc, char* argv[])
     constexpr auto K  = Number<64>{};
     constexpr auto Y  = Number<3>{};
     constexpr auto X  = Number<3>{};
-#elif 1
+#elif 0
     constexpr auto N  = Number<1>{};
     constexpr auto C  = Number<16>{};
     constexpr auto Hi = Number<2160>{};
     constexpr auto Wi = Number<3840>{};
     constexpr auto K  = Number<64>{};
+    constexpr auto Y  = Number<3>{};
+    constexpr auto X  = Number<3>{};
+#elif 1
+    constexpr auto N  = Number<1>{};
+    constexpr auto C  = Number<8>{};
+    constexpr auto Hi = Number<8>{};
+    constexpr auto Wi = Number<32>{};
+    constexpr auto K  = Number<32>{};
     constexpr auto Y  = Number<3>{};
     constexpr auto X  = Number<3>{};
 #endif
@@ -176,6 +164,9 @@ int main(int argc, char* argv[])
     constexpr auto Wo = (Wi + in_left_pad_w + in_right_pad_w - XEff) / conv_stride_w + I1;
 #endif
 
+    const index_t Hox2 = Ho * 2;
+    const index_t Wox2 = Wo * 2;
+
 #if 0
     using in_data_t  = float;
     using acc_data_t = float;
@@ -190,7 +181,8 @@ int main(int argc, char* argv[])
     using out_data_t = int8_t;
 #endif
 
-    std::vector<std::size_t> in_lengths_host(4), wei_lengths_host(4), out_lengths_host(4);
+    std::vector<std::size_t> in_lengths_host(4), wei_lengths_host(4), out_lengths_host(4),
+        add_lengths_host(4);
 
     if(layout == ConvTensorLayout::NCHW)
     {
@@ -206,6 +198,10 @@ int main(int argc, char* argv[])
         out_lengths_host[1] = static_cast<std::size_t>(K);
         out_lengths_host[2] = static_cast<std::size_t>(Ho);
         out_lengths_host[3] = static_cast<std::size_t>(Wo);
+        add_lengths_host[0] = static_cast<std::size_t>(N);
+        add_lengths_host[1] = static_cast<std::size_t>(K);
+        add_lengths_host[2] = static_cast<std::size_t>(Hox2);
+        add_lengths_host[3] = static_cast<std::size_t>(Wox2);
     }
     else if(layout == ConvTensorLayout::NHWC)
     {
@@ -221,6 +217,10 @@ int main(int argc, char* argv[])
         out_lengths_host[1] = static_cast<std::size_t>(Ho);
         out_lengths_host[2] = static_cast<std::size_t>(Wo);
         out_lengths_host[3] = static_cast<std::size_t>(K);
+        add_lengths_host[0] = static_cast<std::size_t>(N);
+        add_lengths_host[1] = static_cast<std::size_t>(Hox2);
+        add_lengths_host[2] = static_cast<std::size_t>(Wox2);
+        add_lengths_host[3] = static_cast<std::size_t>(K);
     }
     else
     {
@@ -230,8 +230,8 @@ int main(int argc, char* argv[])
     Tensor<in_data_t> in(in_lengths_host);
     Tensor<in_data_t> wei(wei_lengths_host);
     Tensor<in_data_t> add(add_lengths_host);
-    Tensor<out_data_t> out_host(out_lengths_host);
-    Tensor<out_data_t> out_device(out_lengths_host);
+    Tensor<out_data_t> out_host(add_lengths_host);
+    Tensor<out_data_t> out_device(add_lengths_host);
 
     std::cout << "layout: " << layout << std::endl;
     ostream_HostTensorDescriptor(in.mDesc, std::cout << "in: ");
@@ -279,6 +279,8 @@ int main(int argc, char* argv[])
         wei.GenerateTensorValue(gen_wei, num_thread);
     }
 
+    add.GenerateTensorValue(GeneratorTensor_1{}, num_thread);
+
     auto f_make_for_device_nchw = [&]() {
         const auto in_lengths_dev     = make_tuple(N, C, Hi, Wi);
         const auto wei_lengths_dev    = make_tuple(K, C, Y, X);
@@ -287,9 +289,12 @@ int main(int argc, char* argv[])
         const auto conv_dilations_dev = make_tuple(conv_dilation_h, conv_dilation_w);
         const auto in_left_pads_dev   = make_tuple(in_left_pad_h, in_left_pad_w);
         const auto in_right_pads_dev  = make_tuple(in_right_pad_h, in_right_pad_w);
+        const auto add_lengths_dev =
+            make_tuple(Number<N>{}, Number<K>{}, Number<Hox2>{}, Number<Wox2>{});
 
         return make_tuple(in_lengths_dev,
                           wei_lengths_dev,
+                          add_lengths_dev,
                           out_lengths_dev,
                           conv_strides_dev,
                           conv_dilations_dev,
@@ -305,9 +310,12 @@ int main(int argc, char* argv[])
         const auto conv_dilations_dev = make_tuple(conv_dilation_h, conv_dilation_w);
         const auto in_left_pads_dev   = make_tuple(in_left_pad_h, in_left_pad_w);
         const auto in_right_pads_dev  = make_tuple(in_right_pad_h, in_right_pad_w);
+        const auto add_lengths_dev =
+            make_tuple(Number<N>{}, Number<Hox2>{}, Number<Wox2>{}, Number<K>{});
 
         return make_tuple(in_lengths_dev,
                           wei_lengths_dev,
+                          add_lengths_dev,
                           out_lengths_dev,
                           conv_strides_dev,
                           conv_dilations_dev,
@@ -315,9 +323,8 @@ int main(int argc, char* argv[])
                           in_right_pads_dev);
     };
 
-    constexpr ck::index_t activ_type = 2;
 #if USE_CONV_FWD_V5R1_NCHWC
-    if(algo == ConvForwardAlgo::V5R1NCHWc)
+    if(algo == ConvForwardAlgo::V5R1NCHWC)
     {
         if(layout != ConvTensorLayout::NCHW)
         {
@@ -326,35 +333,39 @@ int main(int argc, char* argv[])
 
         const auto tmp = f_make_for_device_nchw();
 
-        device_convolution_forward_implicit_gemm_v5r1_dlops_nchw_kcyx_nkhw<in_data_t,
-                                                                           acc_data_t,
-                                                                           out_data_t,
-                                                                           8,
-                                                                           activ_type>(tmp[I0],
-                                                                                       tmp[I1],
-                                                                                       tmp[I2],
-                                                                                       tmp[I3],
-                                                                                       tmp[I4],
-                                                                                       tmp[I5],
-                                                                                       tmp[I6],
-                                                                                       in,
-                                                                                       wei,
-                                                                                       out_device,
-                                                                                       nrepeat);
+        device_convolution_add_forward_implicit_gemm_v5r1_dlops_nchw_kcyx_nkhw<in_data_t,
+                                                                               acc_data_t,
+                                                                               out_data_t,
+                                                                               8,
+                                                                               activ_type>(
+            tmp[I0],
+            tmp[I1],
+            tmp[I2],
+            tmp[I3],
+            tmp[I4],
+            tmp[I5],
+            tmp[I6],
+            tmp[I7],
+            in,
+            wei,
+            add,
+            out_device,
+            nrepeat);
     }
 #endif
 
     if(do_verification)
     {
         host_direct_convolution_add(in,
-                                wei,
-                                out_host,
-                                make_tuple(conv_stride_h, conv_stride_w),
-                                make_tuple(conv_dilation_h, conv_dilation_w),
-                                make_tuple(in_left_pad_h, in_left_pad_w),
-                                make_tuple(in_right_pad_h, in_right_pad_w),
-                                layout,
-                                activ_type);
+                                    wei,
+                                    add,
+                                    out_host,
+                                    make_tuple(conv_stride_h, conv_stride_w),
+                                    make_tuple(conv_dilation_h, conv_dilation_w),
+                                    make_tuple(in_left_pad_h, in_left_pad_w),
+                                    make_tuple(in_right_pad_h, in_right_pad_w),
+                                    layout,
+                                    activ_type);
 
         check_error(out_host, out_device);
 

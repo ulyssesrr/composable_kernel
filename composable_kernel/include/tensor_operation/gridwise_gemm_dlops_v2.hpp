@@ -19,6 +19,7 @@ template <typename GridwiseGemm,
           typename BGridDesc_E0_E1_N_Ho_Wo_E2,
           typename CGridDesc_K_N_Ho_Wo,
           typename CBlockIdToBlockClusterAdaptor_K_N_Ho_Wo,
+          bool HasMainE0BlockLoop,
           bool HasMainE1BlockLoop,
           bool HasDoubleTailE1BlockLoop>
 __global__ void
@@ -46,6 +47,7 @@ __global__ void
                       a_e0_e1_k_e2_grid_desc,
                       b_e0_e1_n_ho_wo_e2_grid_desc,
                       c_k_n_ho_wo_grid_desc,
+                      integral_constant<bool, HasMainE0BlockLoop>{},
                       integral_constant<bool, HasMainE1BlockLoop>{},
                       integral_constant<bool, HasDoubleTailE1BlockLoop>{});
 }
@@ -60,6 +62,7 @@ template <typename GridwiseGemm,
           typename BGridDesc_E0_E1_N_Ho_Wo_E2,
           typename CGridDesc_K_N_Ho_Wo,
           typename CBlockIdToBlockClusterAdaptor_K_N_Ho_Wo,
+          bool HasMainE0BlockLoop,
           bool HasMainE1BlockLoop,
           bool HasDoubleTailE1BlockLoop>
 __global__ void
@@ -96,6 +99,7 @@ __global__ void
                       a_e0_e1_k_e2_grid_desc,
                       b_e0_e1_n_ho_wo_e2_grid_desc,
                       c_k_n_ho_wo_grid_desc,
+                      integral_constant<bool, HasMainE0BlockLoop>{},
                       integral_constant<bool, HasMainE1BlockLoop>{},
                       integral_constant<bool, HasDoubleTailE1BlockLoop>{});
 }
@@ -168,7 +172,7 @@ struct GridwiseGemmDlops_km_kn_mn_v3
         return a_block_space_size * sizeof(FloatAB);
     }
 
-    template <bool HasMainE1BlockLoop, bool HasDoubleTailE1BlockLoop>
+    template <bool HasMainE0BlockLoop, bool HasMainE1BlockLoop, bool HasDoubleTailE1BlockLoop>
     __device__ static void Run(const FloatAB* __restrict__ p_a_global,
                                const FloatAB* __restrict__ p_b_global,
                                FloatC* __restrict__ p_c_global,
@@ -176,6 +180,7 @@ struct GridwiseGemmDlops_km_kn_mn_v3
                                const AGlobalDesc_E0_E1_K_E2& a_e0_e1_k_e2_global_desc,
                                const BGlobalDesc_E0_E1_N_Ho_Wo_E2& b_e0_e1_n_ho_wo_e2_global_desc,
                                const CGlobalDesc_K_N_Ho_Wo& c_k_n_ho_wo_global_desc,
+                               integral_constant<bool, HasMainE0BlockLoop>,
                                integral_constant<bool, HasMainE1BlockLoop>,
                                integral_constant<bool, HasDoubleTailE1BlockLoop>)
     {
@@ -339,10 +344,10 @@ struct GridwiseGemmDlops_km_kn_mn_v3
             c_thread_buf;
 
         // initialize output thread tensor
-        ThreadwiseTensorSliceSet_v1<FloatAcc,
-                                    decltype(c_k_n_ho_wo_thread_desc),
-                                    Sequence<KPerThread, 1, HoPerThread, WoPerThread>>{}
-            .Run(c_k_n_ho_wo_thread_desc, make_tuple(I0, I0, I0, I0), c_thread_buf, FloatAcc{0});
+        // ThreadwiseTensorSliceSet_v1<FloatAcc,
+        // decltype(c_k_n_ho_wo_thread_desc),
+        // Sequence<KPerThread, 1, HoPerThread, WoPerThread>>{}
+        //.Run(c_k_n_ho_wo_thread_desc, make_tuple(I0, I0, I0, I0), c_thread_buf, FloatAcc{0});
 
         constexpr auto b_thread_slice_copy_step = make_multi_index(0, E1PerBlock, 0, 0, 0, 0);
 
@@ -356,8 +361,6 @@ struct GridwiseGemmDlops_km_kn_mn_v3
                      b_e0_e1_n_ho_wo_e2_thread_desc.GetElementSpaceSize(),
                      true>
             b_thread_even_buf, b_thread_odd_buf;
-
-        constexpr auto HasMainE0BlockLoop = false;
 
         if constexpr(HasMainE0BlockLoop)
         {

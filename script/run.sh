@@ -16,6 +16,7 @@
 #rm -rf /tmp/olCompile*
 
 make -j conv_fwd_driver_offline
+#make -j conv_add_fwd_driver_offline
 #make -j conv_bwd_driver_offline
 #make -j conv_wrw_driver_offline
 #make -j conv_fwd_driver_online
@@ -30,6 +31,7 @@ LOG=$5
 REPEAT=$6
 
 ./host/driver_offline/conv_fwd_driver_offline  $LAYOUT $ALGO $VERIFY $INIT $LOG $REPEAT
+#./host/driver_offline/conv_add_fwd_driver_offline  $LAYOUT $ALGO $VERIFY $INIT $LOG $REPEAT
 
 ################################################ layout  algo  verify  init  log  repeat  N__ K___ C___ Y X Hi_ Wi__ Strides Dilations LeftPads RightPads
 #./host/driver_offline/conv_fwd_driver_offline  $LAYOUT $ALGO $VERIFY $INIT $LOG $REPEAT  128  128  192 3 3  71   71     2 2       1 1      1 1       1 1

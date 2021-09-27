@@ -1,10 +1,10 @@
-#ifndef DRIVER_CONVOLUTION_FORWARD_IMPLICIT_GEMM_V5R1_DLOPS_NCHW_KCYX_NKHW_HPP
-#define DRIVER_CONVOLUTION_FORWARD_IMPLICIT_GEMM_V5R1_DLOPS_NCHW_KCYX_NKHW_HPP
+#ifndef DRIVER_CONVOLUTION_ADD_FORWARD_IMPLICIT_GEMM_V5R1_DLOPS_NCHW_KCYX_NKHW_HPP
+#define DRIVER_CONVOLUTION_ADD_FORWARD_IMPLICIT_GEMM_V5R1_DLOPS_NCHW_KCYX_NKHW_HPP
 
 #include "common_header.hpp"
 #include "tensor_descriptor.hpp"
 #include "tensor_descriptor_helper.hpp"
-#include "gridwise_gemm_dlops_v2.hpp"
+#include "gridwise_gemm_dlops_add_v2.hpp"
 
 template <ck::index_t BlockSize,
           typename FloatAB,
@@ -31,6 +31,7 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_outp
 {
     template <typename... Wei,
               typename... In,
+              typename... Add,
               typename... Out,
               typename ConvStrides,
               typename ConvDilations,
@@ -38,6 +39,7 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_outp
               typename InRightPads>
     __host__ float Run(const ck::TensorDescriptor<Wei...>& wei_k_c0_y_x_c1_global_desc,
                        const ck::TensorDescriptor<In...>& in_n_c0_hi_wi_c1_global_desc,
+                       const ck::TensorDescriptor<Add...>& add_n_k0_hox2_wox2_k1_global_desc,
                        const ck::TensorDescriptor<Out...>& out_n_k0_ho_wo_k1_global_desc,
                        const ConvStrides& conv_strides,
                        const ConvDilations& conv_dilations,
@@ -45,6 +47,7 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_outp
                        const InRightPads& in_right_pads,
                        const FloatAB* __restrict__ p_a_grid,
                        const FloatAB* __restrict__ p_b_grid,
+                       const FloatC* __restrict__ p_d_grid,
                        FloatC* __restrict__ p_c_grid,
                        const int nrepeat) const
     {
@@ -66,6 +69,9 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_outp
         const auto Ho = out_n_k0_ho_wo_k1_global_desc.GetLength(I2);
         const auto Wo = out_n_k0_ho_wo_k1_global_desc.GetLength(I3);
         const auto K1 = out_n_k0_ho_wo_k1_global_desc.GetLength(I4);
+
+        const auto Hox2 = add_n_k0_hox2_wox2_k1_global_desc.GetLength(I2);
+        const auto Wox2 = add_n_k0_hox2_wox2_k1_global_desc.GetLength(I3);
 
         const auto K = wei_k_c0_y_x_c1_global_desc.GetLength(I0);
         const auto Y = wei_k_c0_y_x_c1_global_desc.GetLength(I2);
@@ -175,6 +181,15 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_outp
             make_tuple(Sequence<1, 4>{}, Sequence<0>{}, Sequence<2>{}, Sequence<3>{}),
             make_tuple(Sequence<0>{}, Sequence<1>{}, Sequence<2>{}, Sequence<3>{}));
 
+        const auto d_k_n_hopx2_wopx2_grid_desc = transform_tensor_descriptor(
+            make_naive_tensor_descriptor_packed(make_tuple(N, K0, Hox2, Wox2, K1)),
+            make_tuple(make_merge_transform(make_tuple(K0, K1)),
+                       make_pass_through_transform(N),
+                       make_pad_transform(Hox2, I0, Number<OutRightPadH * 2>{}),
+                       make_pad_transform(Wox2, I0, Number<OutRightPadW * 2>{})),
+            make_tuple(Sequence<1, 4>{}, Sequence<0>{}, Sequence<2>{}, Sequence<3>{}),
+            make_tuple(Sequence<0>{}, Sequence<1>{}, Sequence<2>{}, Sequence<3>{}));
+
         std::cerr << "Hop = " << Hop << " Wop = " << Wop << std::endl;
 
         if(!((K % KPerBlock) == 0 && (Hop % HoPerBlock) == 0 && (Wop % WoPerBlock) == 0 &&
@@ -229,9 +244,10 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_outp
         static_assert(a_e0_e1_k_e2_grid_desc.IsKnownAtCompileTime(), "");
         static_assert(b_e0_e1_n_ho_wo_e2_grid_desc.IsKnownAtCompileTime(), "");
         static_assert(c_k_n_hop_wop_grid_desc.IsKnownAtCompileTime(), "");
+        static_assert(d_k_n_hopx2_wopx2_grid_desc.IsKnownAtCompileTime(), "");
 
         // GEMM
-        using GridwiseGemm = GridwiseGemmDlops_km_kn_mn_v3<
+        using GridwiseGemm = GridwiseGemmDlops_km_kn_mn_add_v3<
             BlockSize,
             FloatAB,
             FloatAcc,
@@ -239,6 +255,7 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_outp
             InMemoryDataOperationEnum_t::Set,
             decltype(a_e0_e1_k_e2_grid_desc),
             decltype(b_e0_e1_n_ho_wo_e2_grid_desc),
+            decltype(d_k_n_hopx2_wopx2_grid_desc),
             decltype(c_k_n_hop_wop_grid_desc),
             E1,
             E2,
@@ -275,15 +292,16 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_outp
 
         using AGridDesc_E0_E1_K_E2       = decltype(a_e0_e1_k_e2_grid_desc);
         using BGridDesc_E0_E1_N_Ho_Wo_E2 = decltype(b_e0_e1_n_ho_wo_e2_grid_desc);
+        using DGridDesc_K_N_Hox2_Wox2    = decltype(d_k_n_hopx2_wopx2_grid_desc);
         using CGridDesc_K_N_Ho_Wo        = decltype(c_k_n_hop_wop_grid_desc);
 
         const auto grid_size = (K / KPerBlock) * (Hop / HoPerBlock) * (Wop / WoPerBlock) * N;
 
-        const bool has_main_e0_block_loop       = E0 > 1;
-        const bool has_main_e1_block_loop       = (E1 + E1PerBlock) / (2 * E1PerBlock) > 1;
+        const bool has_main_k_block_loop = (E1 + E1PerBlock) / (2 * E1PerBlock) > 1;
+
         const bool has_double_tail_k_block_loop = (E1 / E1PerBlock) % 2 == 0;
 
-        std::cerr << "has_main_e1_block_loop = " << has_main_e1_block_loop
+        std::cerr << "has_main_k_block_loop = " << has_main_k_block_loop
                   << " has_double_tail_k_block_loop = " << has_double_tail_k_block_loop
                   << std::endl;
 
@@ -298,19 +316,19 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_outp
         float ave_time = 0;
 
 #if CK_EXPERIMENTAL_PASS_TENSOR_DESCRIPTOR_BY_VALUE
-        if constexpr(has_main_e1_block_loop && has_double_tail_k_block_loop)
+        if constexpr(has_main_k_block_loop && has_double_tail_k_block_loop)
         {
-            const auto kernel =
-                kernel_gemm_dlops_v2<GridwiseGemm,
-                                     FloatAB,
-                                     FloatC,
-                                     remove_reference_t<AGridDesc_E0_E1_K_E2>,
-                                     remove_reference_t<BGridDesc_E0_E1_N_Ho_Wo_E2>,
-                                     remove_reference_t<CGridDesc_K_N_Ho_Wo>,
-                                     remove_reference_t<CBlockIdToBlockClusterAdaptor_K_N_Ho_Wo>,
-                                     has_main_e0_block_loop,
-                                     true,
-                                     true>;
+            const auto kernel = kernel_gemm_dlops_add_v2<
+                GridwiseGemm,
+                FloatAB,
+                FloatC,
+                remove_reference_t<AGridDesc_E0_E1_K_E2>,
+                remove_reference_t<BGridDesc_E0_E1_N_Ho_Wo_E2>,
+                remove_reference_t<DGridDesc_K_N_Hox2_Wox2>,
+                remove_reference_t<CGridDesc_K_N_Ho_Wo>,
+                remove_reference_t<CBlockIdToBlockClusterAdaptor_K_N_Ho_Wo>,
+                true,
+                true>;
 
             ave_time = launch_and_time_kernel(kernel,
                                               nrepeat,
@@ -319,25 +337,27 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_outp
                                               0,
                                               p_a_grid,
                                               p_b_grid,
+                                              p_d_grid,
                                               p_c_grid,
                                               a_e0_e1_k_e2_grid_desc,
                                               b_e0_e1_n_ho_wo_e2_grid_desc,
+                                              d_k_n_hopx2_wopx2_grid_desc,
                                               c_k_n_hop_wop_grid_desc,
                                               c_blockid_to_k_n_ho_wo_block_cluster_adaptor);
         }
-        else if constexpr(has_main_e1_block_loop && !has_double_tail_k_block_loop)
+        else if constexpr(has_main_k_block_loop && !has_double_tail_k_block_loop)
         {
-            const auto kernel =
-                kernel_gemm_dlops_v2<GridwiseGemm,
-                                     FloatAB,
-                                     FloatC,
-                                     remove_reference_t<AGridDesc_E0_E1_K_E2>,
-                                     remove_reference_t<BGridDesc_E0_E1_N_Ho_Wo_E2>,
-                                     remove_reference_t<CGridDesc_K_N_Ho_Wo>,
-                                     remove_reference_t<CBlockIdToBlockClusterAdaptor_K_N_Ho_Wo>,
-                                     has_main_e0_block_loop,
-                                     true,
-                                     false>;
+            const auto kernel = kernel_gemm_dlops_add_v2<
+                GridwiseGemm,
+                FloatAB,
+                FloatC,
+                remove_reference_t<AGridDesc_E0_E1_K_E2>,
+                remove_reference_t<BGridDesc_E0_E1_N_Ho_Wo_E2>,
+                remove_reference_t<DGridDesc_K_N_Hox2_Wox2>,
+                remove_reference_t<CGridDesc_K_N_Ho_Wo>,
+                remove_reference_t<CBlockIdToBlockClusterAdaptor_K_N_Ho_Wo>,
+                true,
+                false>;
 
             ave_time = launch_and_time_kernel(kernel,
                                               nrepeat,
@@ -346,25 +366,27 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_outp
                                               0,
                                               p_a_grid,
                                               p_b_grid,
+                                              p_d_grid,
                                               p_c_grid,
                                               a_e0_e1_k_e2_grid_desc,
                                               b_e0_e1_n_ho_wo_e2_grid_desc,
+                                              d_k_n_hopx2_wopx2_grid_desc,
                                               c_k_n_hop_wop_grid_desc,
                                               c_blockid_to_k_n_ho_wo_block_cluster_adaptor);
         }
-        else if constexpr(!has_main_e1_block_loop && has_double_tail_k_block_loop)
+        else if constexpr(!has_main_k_block_loop && has_double_tail_k_block_loop)
         {
-            const auto kernel =
-                kernel_gemm_dlops_v2<GridwiseGemm,
-                                     FloatAB,
-                                     FloatC,
-                                     remove_reference_t<AGridDesc_E0_E1_K_E2>,
-                                     remove_reference_t<BGridDesc_E0_E1_N_Ho_Wo_E2>,
-                                     remove_reference_t<CGridDesc_K_N_Ho_Wo>,
-                                     remove_reference_t<CBlockIdToBlockClusterAdaptor_K_N_Ho_Wo>,
-                                     has_main_e0_block_loop,
-                                     false,
-                                     true>;
+            const auto kernel = kernel_gemm_dlops_add_v2<
+                GridwiseGemm,
+                FloatAB,
+                FloatC,
+                remove_reference_t<AGridDesc_E0_E1_K_E2>,
+                remove_reference_t<BGridDesc_E0_E1_N_Ho_Wo_E2>,
+                remove_reference_t<DGridDesc_K_N_Hox2_Wox2>,
+                remove_reference_t<CGridDesc_K_N_Ho_Wo>,
+                remove_reference_t<CBlockIdToBlockClusterAdaptor_K_N_Ho_Wo>,
+                false,
+                true>;
 
             ave_time = launch_and_time_kernel(kernel,
                                               nrepeat,
@@ -373,25 +395,27 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_outp
                                               0,
                                               p_a_grid,
                                               p_b_grid,
+                                              p_d_grid,
                                               p_c_grid,
                                               a_e0_e1_k_e2_grid_desc,
                                               b_e0_e1_n_ho_wo_e2_grid_desc,
+                                              d_k_n_hopx2_wopx2_grid_desc,
                                               c_k_n_hop_wop_grid_desc,
                                               c_blockid_to_k_n_ho_wo_block_cluster_adaptor);
         }
         else
         {
-            const auto kernel =
-                kernel_gemm_dlops_v2<GridwiseGemm,
-                                     FloatAB,
-                                     FloatC,
-                                     remove_reference_t<AGridDesc_E0_E1_K_E2>,
-                                     remove_reference_t<BGridDesc_E0_E1_N_Ho_Wo_E2>,
-                                     remove_reference_t<CGridDesc_K_N_Ho_Wo>,
-                                     remove_reference_t<CBlockIdToBlockClusterAdaptor_K_N_Ho_Wo>,
-                                     has_main_e0_block_loop,
-                                     false,
-                                     false>;
+            const auto kernel = kernel_gemm_dlops_add_v2<
+                GridwiseGemm,
+                FloatAB,
+                FloatC,
+                remove_reference_t<AGridDesc_E0_E1_K_E2>,
+                remove_reference_t<BGridDesc_E0_E1_N_Ho_Wo_E2>,
+                remove_reference_t<DGridDesc_K_N_Hox2_Wox2>,
+                remove_reference_t<CGridDesc_K_N_Ho_Wo>,
+                remove_reference_t<CBlockIdToBlockClusterAdaptor_K_N_Ho_Wo>,
+                false,
+                false>;
 
             ave_time = launch_and_time_kernel(kernel,
                                               nrepeat,
@@ -400,38 +424,41 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_outp
                                               0,
                                               p_a_grid,
                                               p_b_grid,
+                                              p_d_grid,
                                               p_c_grid,
                                               a_e0_e1_k_e2_grid_desc,
                                               b_e0_e1_n_ho_wo_e2_grid_desc,
+                                              d_k_n_hopx2_wopx2_grid_desc,
                                               c_k_n_hop_wop_grid_desc,
                                               c_blockid_to_k_n_ho_wo_block_cluster_adaptor);
         }
 #elif CK_EXPERIMENTAL_PASS_TENSOR_DESCRIPTOR_BY_VOID_POINTER
         DeviceMem a_e0_e1_k_e2_grid_desc_dev_buf(sizeof(AGridDesc_E0_E1_K_E2));
         DeviceMem b_e0_e1_n_ho_wo_e2_grid_desc_dev_buf(sizeof(BGridDesc_E0_E1_N_Ho_Wo_E2));
+        DeviceMem d_k_n_hopx2_wopx2_grid_desc_dev_buf(sizeof(DGridDesc_K_N_Hox2_Wox2));
         DeviceMem c_k_n_hop_wop_grid_desc_dev_buf(sizeof(CGridDesc_K_N_Ho_Wo));
         DeviceMem c_blockid_to_k_n_ho_wo_block_cluster_adaptor_dev_buf(
             sizeof(CBlockIdToBlockClusterAdaptor_K_N_Ho_Wo));
 
         a_e0_e1_k_e2_grid_desc_dev_buf.ToDevice(&a_e0_e1_k_e2_grid_desc);
         b_e0_e1_n_ho_wo_e2_grid_desc_dev_buf.ToDevice(&b_e0_e1_n_ho_wo_e2_grid_desc);
+        d_k_n_hopx2_wopx2_grid_desc_dev_buf.ToDevice(&d_k_n_hopx2_wopx2_grid_desc);
         c_k_n_hop_wop_grid_desc_dev_buf.ToDevice(&c_k_n_hop_wop_grid_desc);
         c_blockid_to_k_n_ho_wo_block_cluster_adaptor_dev_buf.ToDevice(
             &c_blockid_to_k_n_ho_wo_block_cluster_adaptor);
 
-        if constexpr(has_main_e1_block_loop && has_double_tail_k_block_loop)
+        if constexpr(has_main_k_block_loop && has_double_tail_k_block_loop)
         {
-            const auto kernel =
-                kernel_gemm_dlops_v2<GridwiseGemm,
-                                     FloatAB,
-                                     FloatC,
-                                     remove_reference_t<AGridDesc_E0_E1_K_E2>,
-                                     remove_reference_t<BGridDesc_E0_E1_N_Ho_Wo_E2>,
-                                     remove_reference_t<CGridDesc_K_N_Ho_Wo>,
-                                     remove_reference_t<CBlockIdToBlockClusterAdaptor_K_N_Ho_Wo>,
-                                     has_main_e0_block_loop,
-                                     true,
-                                     true>;
+            const auto kernel = kernel_gemm_dlops_add_v2<
+                GridwiseGemm,
+                FloatAB,
+                FloatC,
+                remove_reference_t<AGridDesc_E0_E1_K_E2>,
+                remove_reference_t<BGridDesc_E0_E1_N_Ho_Wo_E2>,
+                remove_reference_t<CGridDesc_K_N_Ho_Wo>,
+                remove_reference_t<CBlockIdToBlockClusterAdaptor_K_N_Ho_Wo>,
+                true,
+                true>;
 
             ave_time = launch_and_time_kernel(
                 kernel,
@@ -441,29 +468,31 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_outp
                 0,
                 p_a_grid,
                 p_b_grid,
+                p_d_grid,
                 p_c_grid,
                 cast_pointer_to_constant_address_space(
                     a_e0_e1_k_e2_grid_desc_dev_buf.GetDeviceBuffer()),
                 cast_pointer_to_constant_address_space(
                     b_e0_e1_n_ho_wo_e2_grid_desc_dev_buf.GetDeviceBuffer()),
+                cast_pointer_to_constant_address_space(
+                    d_k_n_hopx2_wopx2_grid_desc_dev_buf.GetDeviceBuffer()),
                 cast_pointer_to_constant_address_space(
                     c_k_n_hop_wop_grid_desc_dev_buf.GetDeviceBuffer()),
                 cast_pointer_to_constant_address_space(
                     c_blockid_to_k_n_ho_wo_block_cluster_adaptor_dev_buf.GetDeviceBuffer()));
         }
-        else if constexpr(has_main_e1_block_loop && !has_double_tail_k_block_loop)
+        else if constexpr(has_main_k_block_loop && !has_double_tail_k_block_loop)
         {
-            const auto kernel =
-                kernel_gemm_dlops_v2<GridwiseGemm,
-                                     FloatAB,
-                                     FloatC,
-                                     remove_reference_t<AGridDesc_E0_E1_K_E2>,
-                                     remove_reference_t<BGridDesc_E0_E1_N_Ho_Wo_E2>,
-                                     remove_reference_t<CGridDesc_K_N_Ho_Wo>,
-                                     remove_reference_t<CBlockIdToBlockClusterAdaptor_K_N_Ho_Wo>,
-                                     has_main_e0_block_loop,
-                                     true,
-                                     false>;
+            const auto kernel = kernel_gemm_dlops_add_v2<
+                GridwiseGemm,
+                FloatAB,
+                FloatC,
+                remove_reference_t<AGridDesc_E0_E1_K_E2>,
+                remove_reference_t<BGridDesc_E0_E1_N_Ho_Wo_E2>,
+                remove_reference_t<CGridDesc_K_N_Ho_Wo>,
+                remove_reference_t<CBlockIdToBlockClusterAdaptor_K_N_Ho_Wo>,
+                true,
+                false>;
 
             ave_time = launch_and_time_kernel(
                 kernel,
@@ -473,29 +502,31 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_outp
                 0,
                 p_a_grid,
                 p_b_grid,
+                p_d_grid,
                 p_c_grid,
                 cast_pointer_to_constant_address_space(
                     a_e0_e1_k_e2_grid_desc_dev_buf.GetDeviceBuffer()),
                 cast_pointer_to_constant_address_space(
                     b_e0_e1_n_ho_wo_e2_grid_desc_dev_buf.GetDeviceBuffer()),
+                cast_pointer_to_constant_address_space(
+                    d_k_n_hopx2_wopx2_grid_desc_dev_buf.GetDeviceBuffer()),
                 cast_pointer_to_constant_address_space(
                     c_k_n_hop_wop_grid_desc_dev_buf.GetDeviceBuffer()),
                 cast_pointer_to_constant_address_space(
                     c_blockid_to_k_n_ho_wo_block_cluster_adaptor_dev_buf.GetDeviceBuffer()));
         }
-        else if constexpr(!has_main_e1_block_loop && has_double_tail_k_block_loop)
+        else if constexpr(!has_main_k_block_loop && has_double_tail_k_block_loop)
         {
-            const auto kernel =
-                kernel_gemm_dlops_v2<GridwiseGemm,
-                                     FloatAB,
-                                     FloatC,
-                                     remove_reference_t<AGridDesc_E0_E1_K_E2>,
-                                     remove_reference_t<BGridDesc_E0_E1_N_Ho_Wo_E2>,
-                                     remove_reference_t<CGridDesc_K_N_Ho_Wo>,
-                                     remove_reference_t<CBlockIdToBlockClusterAdaptor_K_N_Ho_Wo>,
-                                     has_main_e0_block_loop,
-                                     false,
-                                     true>;
+            const auto kernel = kernel_gemm_dlops_add_v2<
+                GridwiseGemm,
+                FloatAB,
+                FloatC,
+                remove_reference_t<AGridDesc_E0_E1_K_E2>,
+                remove_reference_t<BGridDesc_E0_E1_N_Ho_Wo_E2>,
+                remove_reference_t<CGridDesc_K_N_Ho_Wo>,
+                remove_reference_t<CBlockIdToBlockClusterAdaptor_K_N_Ho_Wo>,
+                false,
+                true>;
 
             ave_time = launch_and_time_kernel(
                 kernel,
@@ -505,11 +536,14 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_outp
                 0,
                 p_a_grid,
                 p_b_grid,
+                p_d_grid,
                 p_c_grid,
                 cast_pointer_to_constant_address_space(
                     a_e0_e1_k_e2_grid_desc_dev_buf.GetDeviceBuffer()),
                 cast_pointer_to_constant_address_space(
                     b_e0_e1_n_ho_wo_e2_grid_desc_dev_buf.GetDeviceBuffer()),
+                cast_pointer_to_constant_address_space(
+                    d_k_n_hopx2_wopx2_grid_desc_dev_buf.GetDeviceBuffer()),
                 cast_pointer_to_constant_address_space(
                     c_k_n_hop_wop_grid_desc_dev_buf.GetDeviceBuffer()),
                 cast_pointer_to_constant_address_space(
@@ -517,17 +551,16 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_outp
         }
         else
         {
-            const auto kernel =
-                kernel_gemm_dlops_v2<GridwiseGemm,
-                                     FloatAB,
-                                     FloatC,
-                                     remove_reference_t<AGridDesc_E0_E1_K_E2>,
-                                     remove_reference_t<BGridDesc_E0_E1_N_Ho_Wo_E2>,
-                                     remove_reference_t<CGridDesc_K_N_Ho_Wo>,
-                                     remove_reference_t<CBlockIdToBlockClusterAdaptor_K_N_Ho_Wo>,
-                                     has_main_e0_block_loop,
-                                     false,
-                                     false>;
+            const auto kernel = kernel_gemm_dlops_add_v2<
+                GridwiseGemm,
+                FloatAB,
+                FloatC,
+                remove_reference_t<AGridDesc_E0_E1_K_E2>,
+                remove_reference_t<BGridDesc_E0_E1_N_Ho_Wo_E2>,
+                remove_reference_t<CGridDesc_K_N_Ho_Wo>,
+                remove_reference_t<CBlockIdToBlockClusterAdaptor_K_N_Ho_Wo>,
+                false,
+                false>;
 
             ave_time = launch_and_time_kernel(
                 kernel,
@@ -537,11 +570,14 @@ struct DriverDynamicConvolutionForwardImplicitGemmDlops_v5r1_nchw_kcyx_nkhw_outp
                 0,
                 p_a_grid,
                 p_b_grid,
+                p_d_grid,
                 p_c_grid,
                 cast_pointer_to_constant_address_space(
                     a_e0_e1_k_e2_grid_desc_dev_buf.GetDeviceBuffer()),
                 cast_pointer_to_constant_address_space(
                     b_e0_e1_n_ho_wo_e2_grid_desc_dev_buf.GetDeviceBuffer()),
+                cast_pointer_to_constant_address_space(
+                    d_k_n_hopx2_wopx2_grid_desc_dev_buf.GetDeviceBuffer()),
                 cast_pointer_to_constant_address_space(
                     c_k_n_hop_wop_grid_desc_dev_buf.GetDeviceBuffer()),
                 cast_pointer_to_constant_address_space(
