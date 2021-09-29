@@ -186,25 +186,27 @@ void host_direct_convolution_add(const Tensor<TIn>& in,
         out(n, k, hox2 + 1, wox2 + 1) = v + add(n, k, hox2 + 1, wox2 + 1);
     };
 
-    switch(layout)
+    if(layout == ConvTensorLayout::NCHW)
     {
-    case ConvTensorLayout::NCHW:
         make_ParallelTensorFunctor(f_nchw,
                                    out.mDesc.GetLengths()[0],
                                    out.mDesc.GetLengths()[1],
                                    out.mDesc.GetLengths()[2] / 2,
                                    out.mDesc.GetLengths()[3] /
                                        2)(std::thread::hardware_concurrency());
-        break;
-    case ConvTensorLayout::NHWC:
+    }
+    else if(layout == ConvTensorLayout::NHWC)
+    {
         make_ParallelTensorFunctor(f_nhwc,
                                    out.mDesc.GetLengths()[0],
                                    out.mDesc.GetLengths()[1],
                                    out.mDesc.GetLengths()[2] / 2,
                                    out.mDesc.GetLengths()[3] /
                                        2)(std::thread::hardware_concurrency());
-        break;
-    default: throw std::runtime_error("wrong! not supported layout");
+    }
+    else
+    {
+        throw std::runtime_error("wrong! not supported layout");
     }
 }
 

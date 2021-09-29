@@ -344,10 +344,10 @@ struct GridwiseGemmDlops_km_kn_mn_v3
             c_thread_buf;
 
         // initialize output thread tensor
-        // ThreadwiseTensorSliceSet_v1<FloatAcc,
-        // decltype(c_k_n_ho_wo_thread_desc),
-        // Sequence<KPerThread, 1, HoPerThread, WoPerThread>>{}
-        //.Run(c_k_n_ho_wo_thread_desc, make_tuple(I0, I0, I0, I0), c_thread_buf, FloatAcc{0});
+        ThreadwiseTensorSliceSet_v1<FloatAcc,
+                                    decltype(c_k_n_ho_wo_thread_desc),
+                                    Sequence<KPerThread, 1, HoPerThread, WoPerThread>>{}
+            .Run(c_k_n_ho_wo_thread_desc, make_tuple(I0, I0, I0, I0), c_thread_buf, FloatAcc{0});
 
         constexpr auto b_thread_slice_copy_step = make_multi_index(0, E1PerBlock, 0, 0, 0, 0);
 
@@ -578,14 +578,14 @@ struct GridwiseGemmDlops_km_kn_mn_v3
                 }
                 else if constexpr(activ_type == 2)
                 {
-                    const auto x = c_thread_buf[i];
-                    // constexpr auto log2_e = FloatAcc(1.44269504089);
-                    // const auto r          = 1.0 + pow(2, -x * log2_e);
-                    // c_thread_buf(i)       = 1.0 / r;
+                    FloatAcc x = 1.0 + exp(-c_thread_buf[i]);
 
-                    c_thread_buf(i) = 1.0 / (1.0 + expf(-c_thread_buf[i]));
-                    // c_thread_buf(i) = 0.5 * (x / (1 + abs(x))) + 0.5;
-                    // c_thread_buf(i) = x / sqrt(1 + x * x);
+                    asm volatile("\n \
+                        v_rcp_f32 %0, %1 \n"
+                                 : "=v"(x)
+                                 : "0"(x));
+
+                    c_thread_buf(i) = x;
                 }
             });
         }

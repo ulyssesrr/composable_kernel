@@ -20,6 +20,7 @@ template <typename GridwiseGemm,
           typename DGridDesc_K_N_Hox2_Wox2,
           typename CGridDesc_K_N_Ho_Wo,
           typename CBlockIdToBlockClusterAdaptor_K_N_Ho_Wo,
+          bool HasMainE0BlockLoop,
           bool HasMainE1BlockLoop,
           bool HasDoubleTailE1BlockLoop>
 __global__ void
@@ -51,6 +52,7 @@ __global__ void
                       b_e0_e1_n_ho_wo_e2_grid_desc,
                       d_k_n_hox2_wox2_grid_desc,
                       c_k_n_ho_wo_grid_desc,
+                      integral_constant<bool, HasMainE0BlockLoop>{},
                       integral_constant<bool, HasMainE1BlockLoop>{},
                       integral_constant<bool, HasDoubleTailE1BlockLoop>{});
 }
@@ -66,6 +68,7 @@ template <typename GridwiseGemm,
           typename DGridDesc_K_N_Hox2_Wox2,
           typename CGridDesc_K_N_Ho_Wo,
           typename CBlockIdToBlockClusterAdaptor_K_N_Ho_Wo,
+          bool HasMainE0BlockLoop,
           bool HasMainE1BlockLoop,
           bool HasDoubleTailE1BlockLoop>
 __global__ void
@@ -109,6 +112,7 @@ __global__ void
                       b_e0_e1_n_ho_wo_e2_grid_desc,
                       d_k_n_hox2_wox2_grid_desc,
                       c_k_n_ho_wo_grid_desc,
+                      integral_constant<bool, HasMainE0BlockLoop>,
                       integral_constant<bool, HasMainE1BlockLoop>{},
                       integral_constant<bool, HasDoubleTailE1BlockLoop>{});
 }
@@ -182,7 +186,7 @@ struct GridwiseGemmDlops_km_kn_mn_add_v3
         return a_block_space_size * sizeof(FloatAB);
     }
 
-    template <bool HasMainE1BlockLoop, bool HasDoubleTailE1BlockLoop>
+    template <bool HasMainE0BlockLoop, bool HasMainE1BlockLoop, bool HasDoubleTailE1BlockLoop>
     __device__ static void Run(const FloatAB* __restrict__ p_a_global,
                                const FloatAB* __restrict__ p_b_global,
                                const FloatC* __restrict__ p_d_global,
@@ -192,6 +196,7 @@ struct GridwiseGemmDlops_km_kn_mn_add_v3
                                const BGlobalDesc_E0_E1_N_Ho_Wo_E2& b_e0_e1_n_ho_wo_e2_global_desc,
                                const DGlobalDesc_K_N_Hox2_Wox2& d_k_n_hox2_wox2_global_desc,
                                const CGlobalDesc_K_N_Ho_Wo& c_k_n_ho_wo_global_desc,
+                               integral_constant<bool, HasMainE0BlockLoop>,
                                integral_constant<bool, HasMainE1BlockLoop>,
                                integral_constant<bool, HasDoubleTailE1BlockLoop>)
     {
@@ -374,8 +379,6 @@ struct GridwiseGemmDlops_km_kn_mn_add_v3
                      b_e0_e1_n_ho_wo_e2_thread_desc.GetElementSpaceSize(),
                      true>
             b_thread_even_buf, b_thread_odd_buf;
-
-        constexpr auto HasMainE0BlockLoop = false;
 
         if constexpr(HasMainE0BlockLoop)
         {
@@ -593,14 +596,7 @@ struct GridwiseGemmDlops_km_kn_mn_add_v3
                 }
                 else if constexpr(activ_type == 2)
                 {
-                    // const auto x = c_thread_buf[i];
-                    // constexpr auto log2_e = FloatAcc(1.44269504089);
-                    // const auto r          = 1.0 + pow(2, -x * log2_e);
-                    // c_thread_buf(i)       = 1.0 / r;
-
                     c_thread_buf(i) = 1.0 / (1.0 + expf(-c_thread_buf[i]));
-                    // c_thread_buf(i) = 0.5 * (x / (1 + abs(x))) + 0.5;
-                    // c_thread_buf(i) = x / sqrt(1 + x * x);
                 }
             });
         }
@@ -627,6 +623,8 @@ struct GridwiseGemmDlops_km_kn_mn_add_v3
 
         // Resize_Add
         {
+
+#if 1
             ThreadwiseTensorSliceTransfer_v2<FloatC,
                                              FloatC,
                                              decltype(d_k_n_hox2_wox2_global_desc),
@@ -647,6 +645,7 @@ struct GridwiseGemmDlops_km_kn_mn_add_v3
                      make_tuple(I0, I0, I0, I0),
                      d_thread_buf,
                      c_k_n_ho_wo_global_tensor_step_hacks);
+#endif
 
             static_for<0, KPerThread, 1>{}([&](auto k_i) {
                 static_for<0, HoPerThreadx2, 1>{}([&](auto h_i) {

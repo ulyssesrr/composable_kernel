@@ -141,7 +141,7 @@ void device_convolution_add_forward_implicit_gemm_v5r1_dlops_nchw_kcyx_nkhw(
     constexpr index_t HoPerBlock = 8;
     constexpr index_t WoPerBlock = 32;
 
-    constexpr index_t E1        = C0 * 9;
+    constexpr index_t E1        = C0;
     constexpr index_t E2        = 1;
     constexpr index_t EPerBlock = C0;
 
@@ -150,7 +150,7 @@ void device_convolution_add_forward_implicit_gemm_v5r1_dlops_nchw_kcyx_nkhw(
     constexpr index_t WoPerThread = 2;
     constexpr index_t EPerThread  = 1;
 
-    using ABlockTransferThreadSliceLengths_E0_E1_K_E2   = Sequence<1, 9, 1, E2>;
+    using ABlockTransferThreadSliceLengths_E0_E1_K_E2   = Sequence<1, 1, 1, E2>;
     using ABlockTransferThreadClusterLengths_E0_E1_K_E2 = Sequence<1, EPerBlock, KPerBlock, 1>;
 
     constexpr index_t ABlockTransferSrcScalarPerVector_E2 = E2;
