@@ -188,7 +188,7 @@ void device_convolution_forward_implicit_gemm_v4r4r4_xdlops_nhwc_kyxc_nhwk(
     constexpr index_t GemmBBlockTransferDstScalarPerVector_GemmK1 = 8;
 
     constexpr index_t GemmCThreadTransferDstScalarPerVector = 1;
-#elif 1
+#elif 0
     // [M, N, K0, K1] = [128, 128, 4, 8], C = 64, for fp16
     constexpr index_t BlockSize = 256;
 
@@ -216,7 +216,7 @@ void device_convolution_forward_implicit_gemm_v4r4r4_xdlops_nhwc_kyxc_nhwk(
     constexpr index_t GemmBBlockTransferDstScalarPerVector_GemmK1 = 8;
 
     constexpr index_t GemmCThreadTransferDstScalarPerVector = 1;
-#elif 0
+#elif 1
     // [M, N, K0, K1] = [128, 64, 4, 8], C = 64, for fp16
     constexpr index_t BlockSize = 128;
 
@@ -329,7 +329,7 @@ void device_convolution_forward_implicit_gemm_v4r4r4_xdlops_nhwc_kyxc_nhwk(
     constexpr auto wei_gemmk0_gemmn_gemmk1_grid_move_slice_window_step_hacks =
         Sequence<0, 0, 0, 0, 0>{};
 
-    for(index_t i = 0; i < 5; ++i)
+    for(index_t i = 0; i < 1; ++i)
     {
         float ave_time = driver_gemm_xdlops_v2r3<
             BlockSize,

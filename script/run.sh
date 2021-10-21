@@ -128,7 +128,7 @@ REPEAT=$6
 #$DRIVER $LAYOUT $ALGO $VERIFY $INIT $LOG $REPEAT  128  256   64 1 1  56   56    1  1      1  1     0  0      0  0  112
 
 # 64x128x32 c64
- $DRIVER $LAYOUT $ALGO $VERIFY $INIT $LOG $REPEAT  128   64  256 1 1  56   56    1  1      1  1     0  0      0  0  $KBATCH
+#$DRIVER $LAYOUT $ALGO $VERIFY $INIT $LOG $REPEAT  128   64  256 1 1  56   56    1  1      1  1     0  0      0  0  $KBATCH
 
 # 64x64x32 c32
 #$DRIVER $LAYOUT $ALGO $VERIFY $INIT $LOG $REPEAT  128   64  256 1 1  56   56    1  1      1  1     0  0      0  0  112

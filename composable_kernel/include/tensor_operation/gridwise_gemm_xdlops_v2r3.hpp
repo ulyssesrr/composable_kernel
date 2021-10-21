@@ -134,7 +134,8 @@ template <index_t BlockSize,
           typename BGridMoveSliceWindowStepHacks,
           bool CAccessOrderMRepeatNRepeat,
           bool ABlockLdsExtraM,
-          bool BBlockLdsExtraN>
+          bool BBlockLdsExtraN,
+          index_t activ_type = 0>
 struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
 {
     static constexpr auto I0 = Number<0>{};
@@ -341,7 +342,8 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
                                const AK0MK1GridDesc& a_k0_m_k1_grid_desc,
                                const BK0NK1GridDesc& b_k0_n_k1_grid_desc,
                                const CM0N0M1N1M2M3M4N2GridDesc& c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc,
-                               const CBlockClusterAdaptor& c_block_cluster_adaptor)
+                               const CBlockClusterAdaptor& c_block_cluster_adaptor,
+                               const FloatC alpha = 0.3)
     {
         const auto a_grid_buf = make_dynamic_buffer<AddressSpaceEnum_t::Global>(
             p_a_grid, a_k0_m_k1_grid_desc.GetElementSpaceSize());
@@ -555,6 +557,18 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
             constexpr auto c_m0_n0_m1_n1_m2_m3_m4_n2_thread_desc =
                 make_naive_tensor_descriptor_packed(make_tuple(
                     Number<M0>{}, Number<N0>{}, I1, I1, Number<M2>{}, I1, Number<M4>{}, I1));
+
+            if constexpr(activ_type > 0)
+            {
+                static_for<0, c_m0_n0_m1_n1_m2_m3_m4_n2_thread_desc.GetElementSpaceSize(), 1>{}(
+                    [&](auto i) {
+                        if constexpr(activ_type == 1)
+                        {
+                            c_thread_buf(i) =
+                                c_thread_buf[i] >= 0 ? c_thread_buf[i] : alpha * c_thread_buf[i];
+                        }
+                    });
+            }
 
             // calculate origin of thread output tensor on global memory
             //     blockwise GEMM c matrix starting index
