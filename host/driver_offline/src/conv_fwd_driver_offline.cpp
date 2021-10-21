@@ -399,6 +399,10 @@ int main(int argc, char* argv[])
 #if USE_CONV_FWD_V4R4R4_XDL_NHWC
     if(algo == ConvForwardAlgo::V4R4R4XDLNHWC)
     {
+        const ck::index_t activ_type = 1;
+
+        const out_data_t alpha = 0.3;
+
         if(layout != ConvTensorLayout::NHWC)
         {
             throw std::runtime_error("wrong! layout");
@@ -408,7 +412,8 @@ int main(int argc, char* argv[])
 
         device_convolution_forward_implicit_gemm_v4r4r4_xdlops_nhwc_kyxc_nhwk<in_data_t,
                                                                               acc_data_t,
-                                                                              out_data_t>(
+                                                                              out_data_t,
+                                                                              activ_type>(
             tmp[I0],
             tmp[I1],
             tmp[I2],
@@ -419,6 +424,7 @@ int main(int argc, char* argv[])
             in,
             wei,
             out_device,
+            alpha,
             nrepeat);
     }
 #endif

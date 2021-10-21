@@ -48,10 +48,12 @@ template <ck::index_t BlockSize,
           typename BGridMoveSliceWindowStepHacks,
           bool CAccessOrderMRepeatNRepeat,
           bool ABlockLdsAddExtraM,
-          bool BBlockLdsAddExtraN>
+          bool BBlockLdsAddExtraN,
+          ck::index_t activ_type>
 __host__ float driver_gemm_xdlops_v2r3(const FloatAB* p_a_grid,
                                        const FloatAB* p_b_grid,
                                        FloatC* p_c_grid,
+                                       FloatC alpha,
                                        const AK0MK1GridDesc& a_k0_m_k1_grid_desc,
                                        const BK0NK1GridDesc& b_k0_n_k1_grid_desc,
                                        const CMNGridDesc& c_m_n_grid_desc,
@@ -114,7 +116,8 @@ __host__ float driver_gemm_xdlops_v2r3(const FloatAB* p_a_grid,
                                                 BGridMoveSliceWindowStepHacks,
                                                 CAccessOrderMRepeatNRepeat,
                                                 ABlockLdsAddExtraM,
-                                                BBlockLdsAddExtraN>;
+                                                BBlockLdsAddExtraN,
+                                                activ_type>;
 
     {
         std::cout << "a_k0_m_k1_grid_desc{" << a_k0_m_k1_grid_desc.GetLength(I0) << ", "
@@ -165,6 +168,7 @@ __host__ float driver_gemm_xdlops_v2r3(const FloatAB* p_a_grid,
                                             p_a_grid,
                                             p_b_grid,
                                             p_c_grid,
+                                            alpha,
                                             a_k0_m_k1_grid_desc,
                                             b_k0_n_k1_grid_desc,
                                             c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc,
@@ -190,6 +194,7 @@ __host__ float driver_gemm_xdlops_v2r3(const FloatAB* p_a_grid,
         p_a_grid,
         p_b_grid,
         p_c_grid,
+        alpha,
         cast_pointer_to_constant_address_space(a_k0_m_k1_grid_desc_dev_buf.GetDeviceBuffer()),
         cast_pointer_to_constant_address_space(b_k0_n_k1_grid_desc_dev_buf.GetDeviceBuffer()),
         cast_pointer_to_constant_address_space(

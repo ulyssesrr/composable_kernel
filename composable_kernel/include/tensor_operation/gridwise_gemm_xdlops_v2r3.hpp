@@ -27,6 +27,7 @@ __global__ void
         kernel_gemm_xdlops_v2r3(const FloatAB* __restrict__ p_a_grid,
                                 const FloatAB* __restrict__ p_b_grid,
                                 FloatC* __restrict__ p_c_grid,
+                                FloatC alpha,
                                 const AK0MK1GridDesc a_k0_m_k1_grid_desc,
                                 const BK0NK1GridDesc b_k0_n_k1_grid_desc,
                                 const CM0N0M1N1M2M3M4N2GridDesc c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc,
@@ -44,7 +45,8 @@ __global__ void
                       a_k0_m_k1_grid_desc,
                       b_k0_n_k1_grid_desc,
                       c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc,
-                      c_block_cluster_adaptor);
+                      c_block_cluster_adaptor,
+                      alpha);
 }
 #elif CK_EXPERIMENTAL_PASS_TENSOR_DESCRIPTOR_BY_VOID_POINTER
 template <typename GridwiseGemm,
@@ -61,6 +63,7 @@ __global__ void
         kernel_gemm_xdlops_v2r3(const FloatAB* __restrict__ p_a_grid,
                                 const FloatAB* __restrict__ p_b_grid,
                                 FloatC* __restrict__ p_c_grid,
+                                FloatC alpha,
                                 const void CONSTANT* p_a_k0_m_k1_grid_desc,
                                 const void CONSTANT* p_b_k0_n_k1_grid_desc,
                                 const void CONSTANT* p_c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc,
@@ -88,7 +91,8 @@ __global__ void
                       a_k0_m_k1_grid_desc,
                       b_k0_n_k1_grid_desc,
                       c_m0_n0_m1_n1_m2_m3_m4_n2_grid_desc,
-                      c_block_cluster_adaptor);
+                      c_block_cluster_adaptor,
+                      alpha);
 }
 #endif
 
