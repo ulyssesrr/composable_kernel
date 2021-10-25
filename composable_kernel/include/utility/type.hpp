@@ -1,6 +1,7 @@
 #ifndef CK_TYPE_HPP
 #define CK_TYPE_HPP
 
+#include <cstring>
 #include "integral_constant.hpp"
 #include "enable_if.hpp"
 
@@ -43,9 +44,13 @@ struct is_known_at_compile_time<integral_constant<T, X>>
     static constexpr bool value = true;
 };
 
+// https://stackoverflow.com/questions/44137442/what-is-type-punning-and-what-is-the-purpose-of-it
+// https://en.cppreference.com/w/cpp/string/byte/memcpy
+// https://clang.llvm.org/docs/LanguageExtensions.html
 template <typename Y, typename X, typename enable_if<sizeof(X) == sizeof(Y), bool>::type = false>
 __host__ __device__ constexpr Y as_type(X x)
 {
+#if 0 // debug
     union AsType
     {
         X x;
@@ -53,6 +58,13 @@ __host__ __device__ constexpr Y as_type(X x)
     };
 
     return AsType{x}.y;
+#else
+    Y y;
+
+    __builtin_memcpy_inline(&y, &x, sizeof(X));
+
+    return y;
+#endif
 }
 
 } // namespace ck

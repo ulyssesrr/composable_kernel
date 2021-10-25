@@ -201,7 +201,11 @@ struct DynamicBuffer
                 }
                 else
                 {
+#if 1 // debug
                     *c_style_pointer_cast<X*>(&p_data_[i]) = x;
+#else
+                    __builtin_memcpy_inline(&p_data_[i], &x, sizeof(X));
+#endif
                 }
 #endif
             }
