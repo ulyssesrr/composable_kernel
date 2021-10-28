@@ -13,7 +13,7 @@ struct CompileParameterConvIgemmFwdV6r1DlopsNchwKcyxNkhw
     {
         auto param = std::stringstream();
 
-        // clang-format off
+        // clang-format off//////////////
         param <<
             " -DCK_PARAM_ABDataTypeEnum=" << 
                 ABDataTypeEnum <<
