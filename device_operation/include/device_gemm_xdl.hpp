@@ -10,6 +10,11 @@
 #include "tensor_descriptor.hpp"
 #include "tensor_descriptor_helper.hpp"
 #include "gridwise_gemm_xdlops_v2r3.hpp"
+#include "gridwise_gemm_xdlops_v2r3r1.hpp"
+
+#ifndef USING_V2R3R1
+#define USING_V2R3R1 1
+#endif
 
 namespace ck {
 namespace tensor_operation {
@@ -171,6 +176,55 @@ struct DeviceGemmXdl
     static constexpr auto b_k0_n_k1_grid_move_slice_window_step_hacks = Sequence<0, 0, 0>{};
 
     // GridwiseGemm
+#if USING_V2R3R1
+    using GridwiseGemm = GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3r1<
+        BlockSize,
+        ADataType, // TODO: distinguish A/B datatype
+        AccDataType,
+        CDataType,
+        InMemoryDataOperationEnum_t::Set,
+        AGridDesc_K0_M_K1,
+        BGridDesc_K0_N_K1,
+        CGridDesc_M_N,
+        AElementwiseOperation,
+        BElementwiseOperation,
+        CElementwiseOperation,
+        MPerBlock,
+        NPerBlock,
+        K0PerBlock,
+        MPerXDL,
+        NPerXDL,
+        K1,
+        MXdlPerWave,
+        NXdlPerWave,
+        ABlockTransferThreadSliceLengths_K0_M_K1,
+        ABlockTransferThreadClusterLengths_K0_M_K1,
+        ABlockTransferThreadClusterArrangeOrder,
+        ABlockTransferSrcAccessOrder,
+        ABlockTransferSrcVectorDim,
+        ABlockTransferSrcScalarPerVector,
+        ABlockTransferDstScalarPerVector_K1,
+        false, // AThreadTransferSrcResetCoordinateAfterRun,
+        BBlockTransferThreadSliceLengths_K0_N_K1,
+        BBlockTransferThreadClusterLengths_K0_N_K1,
+        BBlockTransferThreadClusterArrangeOrder,
+        BBlockTransferSrcAccessOrder,
+        BBlockTransferSrcVectorDim,
+        BBlockTransferSrcScalarPerVector,
+        BBlockTransferDstScalarPerVector_K1,
+        false,                            // BThreadTransferSrcResetCoordinateAfterRun,
+        Sequence<0, 2, 4, 5, 6, 1, 3, 7>, // CThreadTransferSrcDstAccessOrder,
+        CThreadTransferSrcDstVectorDim,
+        CThreadTransferDstScalarPerVector,
+        decltype(a_k0_m_k1_grid_step_hacks),                   //  AGridStepHacks,
+        decltype(b_k0_n_k1_grid_step_hacks),                   //  BGridStepHacks,
+        decltype(c_m0_n0_m1_n1_m2_m3_m4_n2_grid_step_hacks),   //  CGridStepHacks,
+        decltype(a_k0_m_k1_grid_move_slice_window_step_hacks), //  AGridMoveSliceWindowStepHacks,
+        decltype(b_k0_n_k1_grid_move_slice_window_step_hacks), //  BGridMoveSliceWindowStepHacks,
+        false,                                                 // CAccessOrderMRepeatNRepeat,
+        ABlockLdsAddExtraM,
+        BBlockLdsAddExtraN>;
+#else
     using GridwiseGemm = GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3<
         BlockSize,
         ADataType, // TODO: distinguish A/B datatype
@@ -218,7 +272,7 @@ struct DeviceGemmXdl
         false,                                                 // CAccessOrderMRepeatNRepeat,
         ABlockLdsAddExtraM,
         BBlockLdsAddExtraN>;
-
+#endif
     using CGridDesc_M0_N0_M1_N1_M2_M3_M4_N2 =
         decltype(GridwiseGemm::MakeCGridDescriptor_M0_N0_M1_N1_M2_M3_M4_N2(CGridDesc_M_N{}));
 
@@ -322,6 +376,144 @@ struct DeviceGemmXdl
             const bool has_main_k0_block_loop = GridwiseGemm::CalculateHasMainK0BlockLoop(K0);
 
             float ave_time = 0;
+#if USING_V2R3R1
+            const bool has_double_tail_k_block_loop =
+                GridwiseGemm::CalculateHasDoubleTailKBlockLoop(K0);
+            if(has_main_k0_block_loop)
+            {
+                if(has_double_tail_k_block_loop)
+                {
+                    const auto kernel = kernel_gemm_xdlops_v2r3r1<
+                        GridwiseGemm,
+                        ADataType, // TODO: distiguish A/B datatype
+                        CDataType,
+                        remove_reference_t<DeviceGemmXdl::AGridDesc_K0_M_K1>,
+                        remove_reference_t<DeviceGemmXdl::BGridDesc_K0_N_K1>,
+                        remove_reference_t<DeviceGemmXdl::CGridDesc_M0_N0_M1_N1_M2_M3_M4_N2>,
+                        AElementwiseOperation,
+                        BElementwiseOperation,
+                        CElementwiseOperation,
+                        remove_reference_t<DeviceGemmXdl::Block2CTileMap>,
+                        true,
+                        true>;
+
+                    ave_time = launch_and_time_kernel(kernel,
+                                                      nrepeat,
+                                                      dim3(grid_size),
+                                                      dim3(BlockSize),
+                                                      0,
+                                                      arg.p_a_grid_,
+                                                      arg.p_b_grid_,
+                                                      arg.p_c_grid_,
+                                                      arg.a_grid_desc_k0_m_k1_,
+                                                      arg.b_grid_desc_k0_n_k1_,
+                                                      arg.c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2_,
+                                                      arg.a_element_op_,
+                                                      arg.b_element_op_,
+                                                      arg.c_element_op_,
+                                                      arg.block_2_ctile_map_);
+                }
+                else
+                {
+                    const auto kernel = kernel_gemm_xdlops_v2r3r1<
+                        GridwiseGemm,
+                        ADataType, // TODO: distiguish A/B datatype
+                        CDataType,
+                        remove_reference_t<DeviceGemmXdl::AGridDesc_K0_M_K1>,
+                        remove_reference_t<DeviceGemmXdl::BGridDesc_K0_N_K1>,
+                        remove_reference_t<DeviceGemmXdl::CGridDesc_M0_N0_M1_N1_M2_M3_M4_N2>,
+                        AElementwiseOperation,
+                        BElementwiseOperation,
+                        CElementwiseOperation,
+                        remove_reference_t<DeviceGemmXdl::Block2CTileMap>,
+                        true,
+                        false>;
+
+                    ave_time = launch_and_time_kernel(kernel,
+                                                      nrepeat,
+                                                      dim3(grid_size),
+                                                      dim3(BlockSize),
+                                                      0,
+                                                      arg.p_a_grid_,
+                                                      arg.p_b_grid_,
+                                                      arg.p_c_grid_,
+                                                      arg.a_grid_desc_k0_m_k1_,
+                                                      arg.b_grid_desc_k0_n_k1_,
+                                                      arg.c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2_,
+                                                      arg.a_element_op_,
+                                                      arg.b_element_op_,
+                                                      arg.c_element_op_,
+                                                      arg.block_2_ctile_map_);
+                }
+            }
+            else
+            {
+                if(has_double_tail_k_block_loop)
+                {
+                    const auto kernel = kernel_gemm_xdlops_v2r3r1<
+                        GridwiseGemm,
+                        ADataType, // TODO: distiguish A/B datatype
+                        CDataType,
+                        remove_reference_t<DeviceGemmXdl::AGridDesc_K0_M_K1>,
+                        remove_reference_t<DeviceGemmXdl::BGridDesc_K0_N_K1>,
+                        remove_reference_t<DeviceGemmXdl::CGridDesc_M0_N0_M1_N1_M2_M3_M4_N2>,
+                        AElementwiseOperation,
+                        BElementwiseOperation,
+                        CElementwiseOperation,
+                        remove_reference_t<DeviceGemmXdl::Block2CTileMap>,
+                        false,
+                        true>;
+
+                    ave_time = launch_and_time_kernel(kernel,
+                                                      nrepeat,
+                                                      dim3(grid_size),
+                                                      dim3(BlockSize),
+                                                      0,
+                                                      arg.p_a_grid_,
+                                                      arg.p_b_grid_,
+                                                      arg.p_c_grid_,
+                                                      arg.a_grid_desc_k0_m_k1_,
+                                                      arg.b_grid_desc_k0_n_k1_,
+                                                      arg.c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2_,
+                                                      arg.a_element_op_,
+                                                      arg.b_element_op_,
+                                                      arg.c_element_op_,
+                                                      arg.block_2_ctile_map_);
+                }
+                else
+                {
+                    const auto kernel = kernel_gemm_xdlops_v2r3r1<
+                        GridwiseGemm,
+                        ADataType, // TODO: distiguish A/B datatype
+                        CDataType,
+                        remove_reference_t<DeviceGemmXdl::AGridDesc_K0_M_K1>,
+                        remove_reference_t<DeviceGemmXdl::BGridDesc_K0_N_K1>,
+                        remove_reference_t<DeviceGemmXdl::CGridDesc_M0_N0_M1_N1_M2_M3_M4_N2>,
+                        AElementwiseOperation,
+                        BElementwiseOperation,
+                        CElementwiseOperation,
+                        remove_reference_t<DeviceGemmXdl::Block2CTileMap>,
+                        false,
+                        false>;
+
+                    ave_time = launch_and_time_kernel(kernel,
+                                                      nrepeat,
+                                                      dim3(grid_size),
+                                                      dim3(BlockSize),
+                                                      0,
+                                                      arg.p_a_grid_,
+                                                      arg.p_b_grid_,
+                                                      arg.p_c_grid_,
+                                                      arg.a_grid_desc_k0_m_k1_,
+                                                      arg.b_grid_desc_k0_n_k1_,
+                                                      arg.c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2_,
+                                                      arg.a_element_op_,
+                                                      arg.b_element_op_,
+                                                      arg.c_element_op_,
+                                                      arg.block_2_ctile_map_);
+                }
+            }
+#else
 
             if(has_main_k0_block_loop)
             {
@@ -385,7 +577,7 @@ struct DeviceGemmXdl
                                                   arg.c_element_op_,
                                                   arg.block_2_ctile_map_);
             }
-
+#endif
             return ave_time;
         }
 

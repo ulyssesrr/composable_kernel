@@ -281,7 +281,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3r1
 
     __host__ __device__ static constexpr bool CalculateHasMainK0BlockLoop(index_t K0)
     {
-        const bool has_main_k0_block_loop = (K0 / K0PerBlock) > 1;
+        const bool has_main_k0_block_loop = (K0 + K0PerBlock) / (2 * K0PerBlock) > 1;
 
         return has_main_k0_block_loop;
     }
