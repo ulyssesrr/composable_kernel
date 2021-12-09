@@ -11,10 +11,6 @@
 #include "tensor_descriptor_helper.hpp"
 #include "gridwise_gemm_xdlops_v2r4.hpp"
 
-#ifndef CK_RUN_KERNEL_AND_TIME
-#define CK_RUN_KERNEL_AND_TIME 1
-#endif
-
 namespace ck {
 namespace tensor_operation {
 namespace device {
@@ -407,7 +403,6 @@ struct DeviceGemmSplitKXdl : public DeviceGemm
             float ave_time = 0;
 
             const auto Run = [&](const auto& kernel) {
-#if CK_RUN_KERNEL_AND_TIME
                 ave_time = launch_and_time_kernel(kernel,
                                                   nrepeat,
                                                   dim3(grid_size),
@@ -420,8 +415,13 @@ struct DeviceGemmSplitKXdl : public DeviceGemm
                                                   arg.b_grid_desc_kbatch_k0_n_k1_,
                                                   arg.c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2_,
                                                   arg.block_2_ctile_map_);
-#else
-                nrepeat++;
+
+                hipGetErrorString(
+                    hipMemset(arg.p_c_grid_,
+                              0,
+                              arg.c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2_.GetElementSpaceSize() *
+                                  sizeof(CDataType)));
+
                 launch_kernel(kernel,
                               dim3(grid_size),
                               dim3(BlockSize),
@@ -433,8 +433,8 @@ struct DeviceGemmSplitKXdl : public DeviceGemm
                               arg.b_grid_desc_kbatch_k0_n_k1_,
                               arg.c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2_,
                               arg.block_2_ctile_map_);
-#endif
             };
+
             if(has_main_k0_block_loop)
             {
                 if(kbatch == 1)
