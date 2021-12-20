@@ -615,10 +615,10 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3r1
                 b_blockwise_copy.RunRead(
                     b_grid_desc_k0_n_k1, b_grid_buf, b_k0_n_k1_grid_step_hacks);
                 // gemm odd data
-                blockwise_gemm.Run(a_block_even_buf, b_block_odd_buf, c_thread_buf);
+                blockwise_gemm.Run(a_block_odd_buf, b_block_odd_buf, c_thread_buf);
                 // write data into even buffer
-                a_blockwise_copy.RunWrite(a_block_desc_k0_m_k1, a_block_odd_buf);
-                b_blockwise_copy.RunWrite(b_block_desc_k0_n_k1, b_block_odd_buf);
+                a_blockwise_copy.RunWrite(a_block_desc_k0_m_k1, a_block_even_buf);
+                b_blockwise_copy.RunWrite(b_block_desc_k0_n_k1, b_block_even_buf);
 
                 k0_block_data_begin += 2 * K0PerBlock;
             } while(k0_block_data_begin < (K0 - 2 * K0PerBlock));
@@ -648,7 +648,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3r1
 
             block_sync_lds();
             // gemm odd data
-            blockwise_gemm.Run(a_block_even_buf, b_block_odd_buf, c_thread_buf);
+            blockwise_gemm.Run(a_block_odd_buf, b_block_odd_buf, c_thread_buf);
         }
         else
         {
