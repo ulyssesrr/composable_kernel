@@ -586,13 +586,15 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3r1
                                                     b_block_slice_copy_step,
                                                     b_k0_n_k1_grid_move_slice_window_step_hack);
 
-                block_sync_lds();
-
                 // LDS double buffer: load last data from device mem
                 a_blockwise_copy.RunRead(
                     a_grid_desc_k0_m_k1, a_grid_buf, a_k0_m_k1_grid_step_hacks);
+
+                block_sync_lds();
+
                 b_blockwise_copy.RunRead(
                     b_grid_desc_k0_n_k1, b_grid_buf, b_k0_n_k1_grid_step_hacks);
+
                 // gemm even data
                 blockwise_gemm.Run(a_block_even_buf, b_block_even_buf, c_thread_buf);
                 // write data into odd buffer
@@ -607,13 +609,15 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3r1
                                                     b_block_slice_copy_step,
                                                     b_k0_n_k1_grid_move_slice_window_step_hack);
 
-                block_sync_lds();
-
                 // LDS double buffer: load last data from device mem
                 a_blockwise_copy.RunRead(
                     a_grid_desc_k0_m_k1, a_grid_buf, a_k0_m_k1_grid_step_hacks);
+
+                block_sync_lds();
+
                 b_blockwise_copy.RunRead(
                     b_grid_desc_k0_n_k1, b_grid_buf, b_k0_n_k1_grid_step_hacks);
+
                 // gemm odd data
                 blockwise_gemm.Run(a_block_odd_buf, b_block_odd_buf, c_thread_buf);
                 // write data into even buffer
@@ -634,12 +638,12 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3r1
             b_blockwise_copy.MoveSrcSliceWindow(b_grid_desc_k0_n_k1,
                                                 b_block_slice_copy_step,
                                                 b_k0_n_k1_grid_move_slice_window_step_hack);
-
-            block_sync_lds();
-
             // LDS double buffer: load last data from device mem
             a_blockwise_copy.RunRead(a_grid_desc_k0_m_k1, a_grid_buf, a_k0_m_k1_grid_step_hacks);
+
+            block_sync_lds();
             b_blockwise_copy.RunRead(b_grid_desc_k0_n_k1, b_grid_buf, b_k0_n_k1_grid_step_hacks);
+
             // gemm even data
             blockwise_gemm.Run(a_block_even_buf, b_block_even_buf, c_thread_buf);
             // write data into odd buffer
