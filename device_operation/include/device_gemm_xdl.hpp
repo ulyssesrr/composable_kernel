@@ -157,7 +157,6 @@ struct DeviceGemmXdl
         K1,
         MXdlPerWave,
         NXdlPerWave,
-        ABlockTransferThreadSliceLengths_K0_M_K1,
         ABlockTransferThreadClusterLengths_K0_M_K1,
         ABlockTransferThreadClusterArrangeOrder,
         ABlockTransferSrcAccessOrder,
@@ -165,25 +164,18 @@ struct DeviceGemmXdl
         ABlockTransferSrcScalarPerVector,
         ABlockTransferDstScalarPerVector_K1,
         false, // AThreadTransferSrcResetCoordinateAfterRun,
-        BBlockTransferThreadSliceLengths_K0_N_K1,
+        ABlockLdsAddExtraM,
         BBlockTransferThreadClusterLengths_K0_N_K1,
         BBlockTransferThreadClusterArrangeOrder,
         BBlockTransferSrcAccessOrder,
         BBlockTransferSrcVectorDim,
         BBlockTransferSrcScalarPerVector,
         BBlockTransferDstScalarPerVector_K1,
-        false,                            // BThreadTransferSrcResetCoordinateAfterRun,
+        false, // BThreadTransferSrcResetCoordinateAfterRun,
+        BBlockLdsAddExtraN,
         Sequence<0, 2, 4, 5, 6, 1, 3, 7>, // CThreadTransferSrcDstAccessOrder,
         CThreadTransferSrcDstVectorDim,
-        CThreadTransferDstScalarPerVector,
-        decltype(a_k0_m_k1_grid_step_hacks),                   //  AGridStepHacks,
-        decltype(b_k0_n_k1_grid_step_hacks),                   //  BGridStepHacks,
-        decltype(c_m0_n0_m1_n1_m2_m3_m4_n2_grid_step_hacks),   //  CGridStepHacks,
-        decltype(a_k0_m_k1_grid_move_slice_window_step_hacks), //  AGridMoveSliceWindowStepHacks,
-        decltype(b_k0_n_k1_grid_move_slice_window_step_hacks), //  BGridMoveSliceWindowStepHacks,
-        false,                                                 // CAccessOrderMRepeatNRepeat,
-        ABlockLdsAddExtraM,
-        BBlockLdsAddExtraN>;
+        CThreadTransferDstScalarPerVector>;
 #else
     using GridwiseGemm = GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3<
         BlockSize,
@@ -224,7 +216,7 @@ struct DeviceGemmXdl
         Sequence<0, 2, 4, 5, 6, 1, 3, 7>, // CThreadTransferSrcDstAccessOrder,
         CThreadTransferSrcDstVectorDim,
         CThreadTransferDstScalarPerVector>;
-
+#endif
     // Argument
     struct Argument : public BaseArgument
     {
@@ -337,11 +329,12 @@ struct DeviceGemmXdl
                         CDataType,
                         remove_reference_t<DeviceGemmXdl::AGridDesc_K0_M_K1>,
                         remove_reference_t<DeviceGemmXdl::BGridDesc_K0_N_K1>,
-                        remove_reference_t<DeviceGemmXdl::CGridDesc_M0_N0_M1_N1_M2_M3_M4_N2>,
+                        remove_reference_t<
+                            typename GridwiseGemm::CGridDesc_M0_N0_M1_N1_M2_M3_M4_N2>,
                         AElementwiseOperation,
                         BElementwiseOperation,
                         CElementwiseOperation,
-                        remove_reference_t<DeviceGemmXdl::Block2CTileMap>,
+                        remove_reference_t<typename GridwiseGemm::Block2CTileMap>,
                         true,
                         true>;
 
@@ -369,11 +362,12 @@ struct DeviceGemmXdl
                         CDataType,
                         remove_reference_t<DeviceGemmXdl::AGridDesc_K0_M_K1>,
                         remove_reference_t<DeviceGemmXdl::BGridDesc_K0_N_K1>,
-                        remove_reference_t<DeviceGemmXdl::CGridDesc_M0_N0_M1_N1_M2_M3_M4_N2>,
+                        remove_reference_t<
+                            typename GridwiseGemm::CGridDesc_M0_N0_M1_N1_M2_M3_M4_N2>,
                         AElementwiseOperation,
                         BElementwiseOperation,
                         CElementwiseOperation,
-                        remove_reference_t<DeviceGemmXdl::Block2CTileMap>,
+                        remove_reference_t<typename GridwiseGemm::Block2CTileMap>,
                         true,
                         false>;
 
@@ -404,11 +398,12 @@ struct DeviceGemmXdl
                         CDataType,
                         remove_reference_t<DeviceGemmXdl::AGridDesc_K0_M_K1>,
                         remove_reference_t<DeviceGemmXdl::BGridDesc_K0_N_K1>,
-                        remove_reference_t<DeviceGemmXdl::CGridDesc_M0_N0_M1_N1_M2_M3_M4_N2>,
+                        remove_reference_t<
+                            typename GridwiseGemm::CGridDesc_M0_N0_M1_N1_M2_M3_M4_N2>,
                         AElementwiseOperation,
                         BElementwiseOperation,
                         CElementwiseOperation,
-                        remove_reference_t<DeviceGemmXdl::Block2CTileMap>,
+                        remove_reference_t<typename GridwiseGemm::Block2CTileMap>,
                         false,
                         true>;
 
@@ -436,11 +431,12 @@ struct DeviceGemmXdl
                         CDataType,
                         remove_reference_t<DeviceGemmXdl::AGridDesc_K0_M_K1>,
                         remove_reference_t<DeviceGemmXdl::BGridDesc_K0_N_K1>,
-                        remove_reference_t<DeviceGemmXdl::CGridDesc_M0_N0_M1_N1_M2_M3_M4_N2>,
+                        remove_reference_t<
+                            typename GridwiseGemm::CGridDesc_M0_N0_M1_N1_M2_M3_M4_N2>,
                         AElementwiseOperation,
                         BElementwiseOperation,
                         CElementwiseOperation,
-                        remove_reference_t<DeviceGemmXdl::Block2CTileMap>,
+                        remove_reference_t<typename GridwiseGemm::Block2CTileMap>,
                         false,
                         false>;
 
