@@ -1,6 +1,8 @@
 #ifndef CK_ELEMENT_WISE_OPERATION_HPP
 #define CK_ELEMENT_WISE_OPERATION_HPP
 
+#include "data_type.hpp"
+
 namespace ck {
 namespace tensor_operation {
 namespace element_wise {
@@ -18,6 +20,20 @@ struct PassThrough
     __host__ __device__ constexpr T operator()(T v) const
     {
         return v;
+    }
+};
+
+// TODO - Move bias functor to the kernel
+struct Bias
+{
+    __host__ __device__ constexpr void operator()(float& y_plus_bias, const float& y, const float& bias) const
+    {
+        y_plus_bias = y + bias;
+    }
+
+    __host__ __device__ constexpr void operator()(half_t& y_plus_bias, const half_t& y, const float& bias) const
+    {
+        y_plus_bias = y + bias;
     }
 };
 
