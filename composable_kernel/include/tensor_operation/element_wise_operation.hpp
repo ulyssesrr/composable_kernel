@@ -26,14 +26,9 @@ struct PassThrough
 // TODO - Move bias functor to the kernel
 struct Bias
 {
-    __host__ __device__ constexpr void operator()(float& y_plus_bias, const float& y, const float& bias) const
+    __host__ __device__ constexpr void operator()(half_t& y_plus_bias, const half_t& y, const half_t& bias) const
     {
-        y_plus_bias = y + bias;
-    }
-
-    __host__ __device__ constexpr void operator()(half_t& y_plus_bias, const half_t& y, const float& bias) const
-    {
-        y_plus_bias = y + bias;
+        y_plus_bias = y_plus_bias = y + bias;
     }
 };
 
