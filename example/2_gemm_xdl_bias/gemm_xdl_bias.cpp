@@ -100,7 +100,9 @@ static void host_verify(const Tensor<AType>& a_m_k,
                  static_cast<AccDataType>(b_element_op(b_k_n(k, n)));
         }
 
-        c_element_op(c_m_n(m, n), v, c0_k_n(m, n));
+        CType y = static_cast<CType>(v);
+
+        c_element_op(c_m_n(m, n), y, c0_k_n(m, n));
     };
 
     make_ParallelTensorFunctor(f_mk_kn_mn,
