@@ -132,8 +132,8 @@ struct DeviceGemmXdl_C_Shuffle_Bias
 
     static auto MakeC0GridDescriptor_M_N(index_t M, index_t N)
     {
-        // TODO - bias with stride (I1, I0)
-        return make_naive_tensor_descriptor(make_tuple(M, N), make_tuple(I0, I1));
+        // TODO - bias with stride (I0, I1)
+        return make_naive_tensor_descriptor(make_tuple(M, N), make_tuple(I1, I0));
     }
 
     using AGridDesc_K0_M_K1 = decltype(MakeAGridDescriptor_K0_M_K1(1, 1, 1));
