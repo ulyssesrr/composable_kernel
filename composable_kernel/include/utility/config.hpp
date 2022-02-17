@@ -149,6 +149,12 @@
 #define CK_WORKAROUND_SWDEV_XXXXXX_THREAD_WISE_COPY_V1R5_TYPE_CONVERT_ISSUE 1
 #endif
 
+// enable xdlops inline asm for experimental test only, may result in incorrect outputs due to data
+// harzards
+#ifndef AMD_XDLOPS_INLINE_ASM
+#define AMD_XDLOPS_INLINE_ASM 0
+#endif
+
 namespace ck {
 
 enum InMemoryDataOperationEnum_t

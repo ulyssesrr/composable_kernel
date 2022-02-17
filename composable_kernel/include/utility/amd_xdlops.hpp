@@ -42,8 +42,16 @@ struct intrin_mfma_f32_32x32x2f32<32, 32>
     template <class FloatC>
     __device__ static void Run(const float& reg_a, const float& reg_b, FloatC& reg_c)
     {
+#if AMD_XDLOPS_INLINE_ASM
+        asm volatile(
+            "\n \
+                v_mfma_f32_32x32x2f32 %0, %1, %2, %0"
+            : "=v"(reg_c.template AsType<float16_t>()(Number<0>{}))
+            : "v"(reg_a), "v"(reg_b), "0"(reg_c.template AsType<float16_t>()[Number<0>{}]));
+#else
         reg_c.template AsType<float16_t>()(Number<0>{}) = __builtin_amdgcn_mfma_f32_32x32x2f32(
             reg_a, reg_b, reg_c.template AsType<float16_t>()[Number<0>{}], 0, 0, 0);
+#endif
     }
 };
 
@@ -56,8 +64,15 @@ struct intrin_mfma_f32_16x16x4f32<16, 16>
     template <class FloatC>
     __device__ static void Run(const float& reg_a, const float& reg_b, FloatC& reg_c)
     {
+#if AMD_XDLOPS_INLINE_ASM
+        asm volatile("\n \
+                v_mfma_f32_16x16x4f32 %0, %1, %2, %0"
+                     : "=v"(reg_c.template AsType<float4_t>()(Number<0>{}))
+                     : "v"(reg_a), "v"(reg_b), "0"(reg_c.template AsType<float4_t>()[Number<0>{}]));
+#else
         reg_c.template AsType<float4_t>()(Number<0>{}) = __builtin_amdgcn_mfma_f32_16x16x4f32(
             reg_a, reg_b, reg_c.template AsType<float4_t>()[Number<0>{}], 0, 0, 0);
+#endif
     }
 };
 
@@ -139,8 +154,16 @@ struct intrin_mfma_f32_32x32x8f16<32, 32>
     template <class FloatC>
     __device__ static void Run(const half4_t& reg_a, const half4_t& reg_b, FloatC& reg_c)
     {
+#if AMD_XDLOPS_INLINE_ASM
+        asm volatile(
+            "\n \
+                v_mfma_f32_32x32x8f16 %0, %1, %2, %0"
+            : "=v"(reg_c.template AsType<float16_t>()(Number<0>{}))
+            : "v"(reg_a), "v"(reg_b), "0"(reg_c.template AsType<float16_t>()[Number<0>{}]));
+#else
         reg_c.template AsType<float16_t>()(Number<0>{}) = __builtin_amdgcn_mfma_f32_32x32x8f16(
             reg_a, reg_b, reg_c.template AsType<float16_t>()[Number<0>{}], 0, 0, 0);
+#endif
     }
 };
 
@@ -153,8 +176,15 @@ struct intrin_mfma_f32_16x16x16f16<16, 16>
     template <class FloatC>
     __device__ static void Run(const half4_t& reg_a, const half4_t& reg_b, FloatC& reg_c)
     {
+#if AMD_XDLOPS_INLINE_ASM
+        asm volatile("\n \
+                v_mfma_f32_16x16x16f16 %0, %1, %2, %0"
+                     : "=v"(reg_c.template AsType<float4_t>()(Number<0>{}))
+                     : "v"(reg_a), "v"(reg_b), "0"(reg_c.template AsType<float4_t>()[Number<0>{}]));
+#else
         reg_c.template AsType<float4_t>()(Number<0>{}) = __builtin_amdgcn_mfma_f32_16x16x16f16(
             reg_a, reg_b, reg_c.template AsType<float4_t>()[Number<0>{}], 0, 0, 0);
+#endif
     }
 };
 
