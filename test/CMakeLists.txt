@@ -18,9 +18,8 @@ set(MAGIC_NUMBER_DIVISISON_SOURCE magic_number_division/main.cpp)
 add_executable(test_magic_number_division ${MAGIC_NUMBER_DIVISISON_SOURCE})
 target_link_libraries(test_magic_number_division PRIVATE host_tensor)
 
-
+# test_conv2d_fwd
 set(CONV2D_FWD_SOURCE conv2d_fwd/main.cpp)
-
 add_executable(test_conv2d_fwd ${CONV2D_FWD_SOURCE})
 target_link_libraries(test_conv2d_fwd PRIVATE host_tensor)
 target_link_libraries(test_conv2d_fwd PRIVATE device_conv2d_fwd_instance)
@@ -46,7 +45,7 @@ set(CONVND_FWD_XDL_SOURCE convnd_fwd_xdl/main.cpp)
 add_executable(test_convnd_fwd_xdl ${CONVND_FWD_XDL_SOURCE})
 target_link_libraries(test_convnd_fwd_xdl PRIVATE host_tensor)
 
-# test space_filling_curve_
+# test_space_filling_curve
 set(SPACE_FILLING_CURVE_SOURCE space_filling_curve/space_filling_curve.cpp)
-add_executable(space_filling_curve ${SPACE_FILLING_CURVE_SOURCE})
-target_link_libraries(space_filling_curve PRIVATE host_tensor)
+add_executable(test_space_filling_curve ${SPACE_FILLING_CURVE_SOURCE})
+target_link_libraries(test_space_filling_curve PRIVATE host_tensor)
