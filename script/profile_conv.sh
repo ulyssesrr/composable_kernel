@@ -20,6 +20,7 @@ REPEAT=$9
 # test
 ########  op  datatype  in_layout   wei_layout  out_layout  verify  init  log  repeat  N__ K___ C___ Y X Hi__ Wi__ Strides Dilations LeftPads RightPads  Desired_grid_size__
 #$DRIVER $OP $DATATYPE $IN_LAYOUT  $WEI_LAYOUT $OUT_LAYOUT $VERIFY $INIT $LOG $REPEAT  128  256  192 3 3   71   71     2 2       1 1      1 1       1 1   $DESIRED_GRID_SIZE
+ $DRIVER $OP $DATATYPE $IN_LAYOUT  $WEI_LAYOUT $OUT_LAYOUT $VERIFY $INIT $LOG $REPEAT  128  256  384 3 3   71   71     2 2       1 1      1 1       1 1   $DESIRED_GRID_SIZE
 #$DRIVER $OP $DATATYPE $IN_LAYOUT  $WEI_LAYOUT $OUT_LAYOUT $VERIFY $INIT $LOG $REPEAT  128  256  256 3 3   30   30    2  2      1  1     0  0      0  0   $DESIRED_GRID_SIZE
 #$DRIVER $OP $DATATYPE $IN_LAYOUT  $WEI_LAYOUT $OUT_LAYOUT $VERIFY $INIT $LOG $REPEAT  128  256  256 3 3   28   28    2  2      1  1     1  1      1  1   $DESIRED_GRID_SIZE
 #$DRIVER $OP $DATATYPE $IN_LAYOUT  $WEI_LAYOUT $OUT_LAYOUT $VERIFY $INIT $LOG $REPEAT  128 1024  256 1 1   14   14    1  1      1  1     0  0      0  0   $DESIRED_GRID_SIZE
