@@ -171,20 +171,63 @@ struct ThreadwiseTensorSliceTransfer_v1r3
 
     __device__ static constexpr auto GetDstCoordinateResetStep()
     {
+        constexpr auto I0 = Number<0>{};
+
+        // scalar per access on each dim
+        // TODO: don't use lambda_scalar_per_access
         constexpr auto dst_scalar_per_access = generate_sequence(
             detail::lambda_scalar_per_access<DstVectorDim, DstScalarPerVector>{}, Number<nDim>{});
 
-        using SpaceFillingCurve = SpaceFillingCurve<SliceLengths,
-                                                    DimAccessOrder,
-                                                    remove_cv_t<decltype(dst_scalar_per_access)>>;
+        constexpr auto access_lengths = SliceLengths{} / dst_scalar_per_access;
 
-        constexpr auto num_accesses = SpaceFillingCurve::GetNumOfAccess();
-        constexpr auto reset_step =
-            SpaceFillingCurve::GetStepBetween(Number<num_accesses - 1>{}, Number<0>{});
+        constexpr auto dim_access_order = DimAccessOrder{};
 
-        return reset_step;
+        constexpr auto ordered_access_lengths =
+            container_reorder_given_new2old(access_lengths, dim_access_order);
+
+        // judge move forward or move backward during the last iteration
+        constexpr auto forward_sweep = [&]() {
+            StaticallyIndexedArray<bool, nDim> forward_sweep_;
+
+            forward_sweep_(I0) = true;
+
+            static_for<1, nDim, 1>{}([&](auto i) {
+                index_t tmp = ordered_access_lengths[I0] - 1;
+
+                static_for<1, i, 1>{}([&](auto j) {
+                    tmp = tmp * ordered_access_lengths[j] + ordered_access_lengths[j] - 1;
+                });
+
+                forward_sweep_(i) = tmp % 2 == 0;
+            });
+
+            return forward_sweep_;
+        }();
+
+        // calculate dst data index after last iteration in Run(), if it has not being reset by
+        // RunWrite()
+        constexpr auto dst_data_idx = [&]() {
+            Index ordered_idx;
+
+            static_for<0, nDim, 1>{}([&](auto i) {
+                ordered_idx(i) = forward_sweep[i] ? ordered_access_lengths[i] - 1 : 0;
+            });
+
+            return container_reorder_given_old2new(ordered_idx, dim_access_order) *
+                   dst_scalar_per_access;
+        }();
+
+        //
+        constexpr auto reset_dst_data_step = [&]() {
+            Index reset_dst_data_step_;
+
+            static_for<0, nDim, 1>{}([&](auto i) { reset_dst_data_step_(i) = -dst_data_idx[i]; });
+
+            return reset_dst_data_step_;
+        }();
+
+        return reset_dst_data_step;
     }
-
     // dst_slice_origin_step_idx need to be known at compile-time, for performance reason
     __device__ void MoveDstSliceWindow(const DstDesc& dst_desc,
                                        const Index& dst_slice_origin_step_idx)
