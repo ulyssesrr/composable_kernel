@@ -79,6 +79,12 @@ struct ThreadwiseTensorSliceTransfer_v1r3
     {
         static_assert(SrcDesc::IsKnownAtCompileTime(),
                       "wrong! SrcDesc need to known at compile-time");
+        constexpr index_t slice_size = reduce_on_sequence(SliceLengths{}, math::multiplies{}, Number<1>{});
+        if constexpr (0 != slice_size % DstScalarPerVector)
+        {
+            printf("%c\n", SliceLengths{});
+        }
+        static_assert( 0 == slice_size % DstScalarPerVector);
     }
 
     __device__ void SetDstSliceOrigin(const DstDesc& dst_desc, const Index& dst_slice_origin_idx)
