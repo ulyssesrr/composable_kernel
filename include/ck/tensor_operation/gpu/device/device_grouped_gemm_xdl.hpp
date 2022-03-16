@@ -7,6 +7,7 @@
 #include "device_base.hpp"
 #include "device_gemm.hpp"
 #include "common_header.hpp"
+#include "statically_indexed_array.hpp"
 #include "tensor_layout.hpp"
 #include "tensor_descriptor.hpp"
 #include "tensor_descriptor_helper.hpp"
@@ -181,6 +182,51 @@ struct DeviceGroupedGemmXdl
     using BGridDesc_K0_N_K1 = decltype(MakeBGridDescriptor_K0_N_K1(1, 1, 1));
     using CGridDesc_M_N     = decltype(MakeCGridDescriptor_M_N(1, 1, 1));
 
+    template <int GroupCount>
+    struct Block2CTileMap
+    {
+
+        Block2CTileMap() = default;
+        template <typename GemmDesc>
+        // Block2CTileMap(const StaticallyIndexedArray<GemmDesc, GroupCount>& gemm_desc)
+        Block2CTileMap(const std::vector<GemmDesc>& gemm_desc, const index_t N0) : N0_{N0}
+        {
+            for(index_t grp = 0; grp < GroupCount-1; ++grp)
+            {
+                assert(gemm_desc[grp].BlockEnd == gemm_desc[grp+1].BlockStart);
+            }
+
+            for(index_t grp = 0; grp < GroupCount; ++grp)
+            {
+                block_ptr_[grp] = gemm_desc[grp].BlockStart;
+            }
+
+            block_ptr_[GroupCount] = gemm_desc[GroupCount-1].BlockEnd;
+
+        }
+
+        template <typename Index>
+        __host__ __device__ constexpr auto CalculateBottomIndex(Index blockIdx) const
+        {
+            index_t block_id = blockIdx[Number<0>{}];
+            index_t local_block_id;
+            for(index_t grp = 0; grp < MaxGroupCount; ++grp)
+            {
+                if(block_id >= block_ptr_[grp] && block_id < block_ptr_[grp+1])
+                {
+                    local_block_id = block_id - block_ptr_[grp];
+                }
+            }
+
+            return make_tuple(local_block_id / N0_, local_block_id % N0_);
+            // return make_tuple(local_block_id % N0_, local_block_id / N0_);
+        }
+
+        private:
+        index_t block_ptr_[GroupCount + 1];
+        index_t N0_;
+    };
+
     // GridwiseGemm
     using GridwiseGemm = GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3<
         BlockSize,
@@ -232,13 +278,14 @@ struct DeviceGroupedGemmXdl
         typename GridwiseGemm::CGridDesc_M0_N0_M1_N1_M2_M3_M4_N2
             c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2_;
 
-        typename GridwiseGemm::DefaultBlock2CTileMap block_2_ctile_map_;
 
         const ADataType* a_ptr;
         const BDataType* b_ptr;
         CDataType* c_ptr;
 
         ck::index_t BlockStart, BlockEnd;
+        // typename GridwiseGemm::DefaultBlock2CTileMap block_2_ctile_map_;
+        Block2CTileMap<MaxGroupCount> block_2_ctile_map_;
     };
 
     // Argument
@@ -301,21 +348,24 @@ struct DeviceGroupedGemmXdl
                     const auto c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2_ =
                         GridwiseGemm::MakeCGridDescriptor_M0_N0_M1_N1_M2_M3_M4_N2(c_grid_desc_m_n_);
 
-                    const auto block_2_ctile_map_ =
-                        GridwiseGemm::MakeDefaultBlock2CTileMap(c_grid_desc_m_n_, M01, N01);
 
                     gemm_desc_kernel_arg_.push_back(
                         GemmDescKernelArg{a_grid_desc_k0_m_k1_,
                                           b_grid_desc_k0_n_k1_,
                                           c_grid_desc_m_n_,
                                           c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2_,
-                                          block_2_ctile_map_,
+                                          // block_2_ctile_map_,
                                           static_cast<const ADataType*>(p_a[i]),
                                           static_cast<const BDataType*>(p_b[i]),
                                           static_cast<CDataType*>(p_c[i]),
                                           BlockStart,
                                           BlockEnd});
                 }
+            }
+
+            for(index_t i = 0; i < gemm_shapes.size(); i++)
+            {
+                gemm_desc_kernel_arg_[i].block_2_ctile_map_ = Block2CTileMap<MaxGroupCount>{gemm_desc_kernel_arg_, gemm_desc_kernel_arg_[i].c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2_.GetLength(Number<1>{})};
             }
         }
 
@@ -328,6 +378,7 @@ struct DeviceGroupedGemmXdl
         CElementwiseOperation c_element_op_;
 
         std::vector<GemmDescKernelArg> gemm_desc_kernel_arg_;
+        // Block2CTileMap<MaxGroupCount> block_2_ctile_map_;
 
         index_t grid_size_;
     };
