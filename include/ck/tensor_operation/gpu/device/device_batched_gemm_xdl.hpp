@@ -50,12 +50,19 @@ __global__ void
         __builtin_amdgcn_readfirstlane(get_grid_size() / num_batches);
     const index_t g_idx = __builtin_amdgcn_readfirstlane(get_block_1d_id() / num_blocks_per_batch);
 
-    const long_index_t a_batch_offset = __builtin_amdgcn_readfirstlane(
-        static_cast<long_index_t>(compute_base_ptr_of_batch_.GetABasePtr(g_idx)));
-    const long_index_t b_batch_offset = __builtin_amdgcn_readfirstlane(
-        static_cast<long_index_t>(compute_base_ptr_of_batch_.GetBBasePtr(g_idx)));
-    const long_index_t c_batch_offset = __builtin_amdgcn_readfirstlane(
-        static_cast<long_index_t>(compute_base_ptr_of_batch_.GetCBasePtr(g_idx)));
+    // const long_index_t a_batch_offset = __builtin_amdgcn_readfirstlane(
+    //     static_cast<long_index_t>(compute_base_ptr_of_batch_.GetABasePtr(g_idx)));
+    // const long_index_t b_batch_offset = __builtin_amdgcn_readfirstlane(
+    //     static_cast<long_index_t>(compute_base_ptr_of_batch_.GetBBasePtr(g_idx)));
+    // const long_index_t c_batch_offset = __builtin_amdgcn_readfirstlane(
+    //     static_cast<long_index_t>(compute_base_ptr_of_batch_.GetCBasePtr(g_idx)));
+
+    const index_t a_batch_offset = __builtin_amdgcn_readfirstlane(
+        static_cast<index_t>(compute_base_ptr_of_batch_.GetABasePtr(g_idx)));
+    const index_t b_batch_offset = __builtin_amdgcn_readfirstlane(
+        static_cast<index_t>(compute_base_ptr_of_batch_.GetBBasePtr(g_idx)));
+    const index_t c_batch_offset = __builtin_amdgcn_readfirstlane(
+        static_cast<index_t>(compute_base_ptr_of_batch_.GetCBasePtr(g_idx)));
 
     __shared__ char p_shared[GridwiseGemm::GetSharedMemoryNumberOfByte()];
 
@@ -247,26 +254,26 @@ struct DeviceBatchedGemmXdl
         index_t num_batches_;
     };
 
-    struct ComputeBasePtrOfBatch
+    struct ComputeBasePtrOfStridedBatch
     {
-        ComputeBasePtrOfBatch(index_t BatchStrideA, index_t BatchStrideB, index_t BatchStrideC)
+        ComputeBasePtrOfStridedBatch(index_t BatchStrideA, index_t BatchStrideB, index_t BatchStrideC)
             : BatchStrideA_(BatchStrideA), BatchStrideB_(BatchStrideB), BatchStrideC_(BatchStrideC)
         {
         }
 
-        __host__ __device__ constexpr index_t GetABasePtr(index_t g_idx) const
+        __host__ __device__ constexpr long_index_t GetABasePtr(index_t g_idx) const
         {
-            return g_idx * BatchStrideA_;
+            return g_idx * static_cast<long_index_t>(BatchStrideA_);
         }
 
-        __host__ __device__ constexpr index_t GetBBasePtr(index_t g_idx) const
+        __host__ __device__ constexpr long_index_t GetBBasePtr(index_t g_idx) const
         {
-            return g_idx * BatchStrideB_;
+            return g_idx * static_cast<long_index_t>(BatchStrideB_);
         }
 
-        __host__ __device__ constexpr index_t GetCBasePtr(index_t g_idx) const
+        __host__ __device__ constexpr long_index_t GetCBasePtr(index_t g_idx) const
         {
-            return g_idx * BatchStrideC_;
+            return g_idx * static_cast<long_index_t>(BatchStrideC_);
         }
 
         private:
@@ -381,7 +388,7 @@ struct DeviceBatchedGemmXdl
         BGridDesc_K0_N_K1 b_grid_desc_k0_n_k1_;
         CGridDesc_M_N c_grid_desc_m_n_;
         CGridDesc_M0_N0_M1_N1_M2_M3_M4_N2 c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2_;
-        ComputeBasePtrOfBatch compute_base_ptr_of_batch_;
+        ComputeBasePtrOfStridedBatch compute_base_ptr_of_batch_;
         Block2CTileMap block_2_ctile_map_;
         index_t M01_;
         index_t N01_;
@@ -441,7 +448,7 @@ struct DeviceBatchedGemmXdl
                     AElementwiseOperation,
                     BElementwiseOperation,
                     CElementwiseOperation,
-                    ComputeBasePtrOfBatch,
+                    ComputeBasePtrOfStridedBatch,
                     remove_reference_t<Block2CTileMap>,
                     true>;
 
@@ -475,7 +482,7 @@ struct DeviceBatchedGemmXdl
                     AElementwiseOperation,
                     BElementwiseOperation,
                     CElementwiseOperation,
-                    ComputeBasePtrOfBatch,
+                    ComputeBasePtrOfStridedBatch,
                     remove_reference_t<Block2CTileMap>,
                     false>;
 
