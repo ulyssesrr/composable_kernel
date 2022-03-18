@@ -249,7 +249,9 @@ struct DeviceBatchedGemmXdl
 
     struct ComputeBasePtrOfStridedBatch
     {
-        ComputeBasePtrOfStridedBatch(index_t BatchStrideA, index_t BatchStrideB, index_t BatchStrideC)
+        ComputeBasePtrOfStridedBatch(index_t BatchStrideA,
+                                     index_t BatchStrideB,
+                                     index_t BatchStrideC)
             : BatchStrideA_(BatchStrideA), BatchStrideB_(BatchStrideB), BatchStrideC_(BatchStrideC)
         {
         }
