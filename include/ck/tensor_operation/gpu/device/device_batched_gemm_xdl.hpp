@@ -50,19 +50,12 @@ __global__ void
         __builtin_amdgcn_readfirstlane(get_grid_size() / num_batches);
     const index_t g_idx = __builtin_amdgcn_readfirstlane(get_block_1d_id() / num_blocks_per_batch);
 
-    // const long_index_t a_batch_offset = __builtin_amdgcn_readfirstlane(
-    //     static_cast<long_index_t>(compute_base_ptr_of_batch_.GetABasePtr(g_idx)));
-    // const long_index_t b_batch_offset = __builtin_amdgcn_readfirstlane(
-    //     static_cast<long_index_t>(compute_base_ptr_of_batch_.GetBBasePtr(g_idx)));
-    // const long_index_t c_batch_offset = __builtin_amdgcn_readfirstlane(
-    //     static_cast<long_index_t>(compute_base_ptr_of_batch_.GetCBasePtr(g_idx)));
-
-    const index_t a_batch_offset = __builtin_amdgcn_readfirstlane(
-        static_cast<index_t>(compute_base_ptr_of_batch_.GetABasePtr(g_idx)));
-    const index_t b_batch_offset = __builtin_amdgcn_readfirstlane(
-        static_cast<index_t>(compute_base_ptr_of_batch_.GetBBasePtr(g_idx)));
-    const index_t c_batch_offset = __builtin_amdgcn_readfirstlane(
-        static_cast<index_t>(compute_base_ptr_of_batch_.GetCBasePtr(g_idx)));
+    const long_index_t a_batch_offset = __builtin_amdgcn_readfirstlane(
+        static_cast<long_index_t>(compute_base_ptr_of_batch_.GetABasePtr(g_idx)));
+    const long_index_t b_batch_offset = __builtin_amdgcn_readfirstlane(
+        static_cast<long_index_t>(compute_base_ptr_of_batch_.GetBBasePtr(g_idx)));
+    const long_index_t c_batch_offset = __builtin_amdgcn_readfirstlane(
+        static_cast<long_index_t>(compute_base_ptr_of_batch_.GetCBasePtr(g_idx)));
 
     __shared__ char p_shared[GridwiseGemm::GetSharedMemoryNumberOfByte()];
 
@@ -319,8 +312,6 @@ struct DeviceBatchedGemmXdl
                                                 BBlockTransferDstScalarPerVector_K1,
                                                 false, // BThreadTransferSrcResetCoordinateAfterRun,
                                                 BBlockLdsAddExtraN,
-                                                // Sequence<0, 1, 3, 5, 6, 7, 2, 4, 8>, //
-                                                // CThreadTransferSrcDstAccessOrder,
                                                 Sequence<2, 3, 0, 1, 7, 5, 4, 6>,
                                                 CThreadTransferSrcDstVectorDim,
                                                 CThreadTransferDstScalarPerVector>;
