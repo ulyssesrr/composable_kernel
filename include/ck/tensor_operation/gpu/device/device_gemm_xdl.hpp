@@ -412,9 +412,17 @@ struct DeviceGemmXdl
     }
 
     // polymorphic
-    bool IsSupportedArgument(const BaseArgument* p_arg) override
+    bool IsSupportedArgument(const BaseArgument* p_base_arg) override
     {
-        return IsSupportedArgument(*dynamic_cast<const Argument*>(p_arg));
+        const Argument* p_arg = dynamic_cast<const Argument*>(p_base_arg);
+
+        // make sure p_base_arg can be downcasted
+        if(!p_arg)
+        {
+            return false;
+        }
+
+        return IsSupportedArgument(*p_arg);
     }
 
     static auto MakeArgument(const ADataType* p_a,
