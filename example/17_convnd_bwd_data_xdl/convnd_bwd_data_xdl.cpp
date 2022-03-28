@@ -17,7 +17,6 @@
 #include "device_convnd_bwd_data_xdl_ndhwc_kzyxc_ndhwk.hpp"
 #include "reference_conv_bwd_data.hpp"
 
-
 template <ck::index_t... Is>
 using S = ck::Sequence<Is...>;
 
@@ -28,13 +27,15 @@ using OutElementOp = ck::tensor_operation::element_wise::PassThrough;
 using DeviceConvBwdDataBasePtr =
     ck::tensor_operation::device::DeviceConvBwdDataPtr<InElementOp, WeiElementOp, OutElementOp>;
 
-#if 0  //rocm5.0 buffer store bug ?
+static constexpr auto ConvBwdDefault =
+    ck::tensor_operation::device::ConvolutionBackwardDataSpecialization_t::Default;
+
+#if 1 // fp16  rocm5.0 buffer store bug 
 using InDataType  = ck::half_t;
 using WeiDataType = ck::half_t;
 using OutDataType = ck::half_t;
 using AccDataType = float;
-static constexpr auto ConvBwdDefault =
-    ck::tensor_operation::device::ConvolutionBackwardDataSpecialization_t::Default;
+
 template <ck::index_t NumDimSpatial>
 using DeviceConvNDBwdDataInstance = ck::tensor_operation::device::
     DeviceConvndBwdDataXdl_Input_N_Di_Hi_Wi_C_Weight_K_Z_Y_X_C_Output_N_Do_Ho_Wo_K<
@@ -76,59 +77,109 @@ auto& get_parameter()
 {
     static ck::conv_util::ConvParams currentParam({2, 128, 128, 256, {1, 1}, {7, 7}, {2, 2}, {1, 1}, {0, 0}, {0, 0}});
     return currentParam;
-} 
+}
 
-#elif 1  //rocm5.0 using buffer store is right,but if remove it, will error
+#elif 1 // float32
 
-using InDataType  = ck::half_t;
-using WeiDataType = ck::half_t;
-using OutDataType = ck::half_t;
+using InDataType  = float;
+using WeiDataType = float;
+using OutDataType = float;
 using AccDataType = float;
-static constexpr auto ConvBwdFilter1x1Stride1Pad0 =
-    ck::tensor_operation::device::ConvolutionBackwardDataSpecialization_t::Filter1x1Stride1Pad0;
 
 template <ck::index_t NumDimSpatial>
 using DeviceConvNDBwdDataInstance = ck::tensor_operation::device::
     DeviceConvndBwdDataXdl_Input_N_Di_Hi_Wi_C_Weight_K_Z_Y_X_C_Output_N_Do_Ho_Wo_K<
-        InDataType,     // InDataType
-        WeiDataType,    // WeiDataType
-        OutDataType,    // OutDataType
-        AccDataType,    // AccDataType
-        InElementOp,    // InElementwiseOperation
-        WeiElementOp,   // WeiElementwiseOperation
-        OutElementOp,   // OutElementwiseOperation
-        ConvBwdFilter1x1Stride1Pad0, // ConvolutionBackwardDataSpecialization_t
-        NumDimSpatial,  // NumDimSpatial
-        256,            // BlockSize
-        128,            // MPerBlock
-        128,            // NPerBlock
-        4,              // K0PerBlock
-        8,              // K1
-        32,             // MPerXdl
-        32,             // NPerXdl
-        2,              // MXdlPerWave
-        2,              // NXdlPerWave
-        S<4, 64, 1>,    // ABlockTransferThreadClusterLengths_K0_M_K1
-        S<1, 0, 2>,     // ABlockTransferThreadClusterArrangeOrder
-        S<1, 0, 2>,     // ABlockTransferSrcAccessOrder
-        2,              // ABlockTransferSrcVectorDim
-        8,              // ABlockTransferSrcScalarPerVector
-        8,              // ABlockTransferDstScalarPerVector_K1
-        true,           // ABlockLdsAddExtraM
-        S<4, 64, 1>,    // BBlockTransferThreadClusterLengths_K0_N_K1
-        S<2, 0, 1>,     // BBlockTransferThreadClusterArrangeOrder
-        S<0, 2, 1>,     // BBlockTransferSrcAccessOrder
-        1,              // BBlockTransferSrcVectorDim
-        2,              // BBlockTransferSrcScalarPerVector
-        8,              // BBlockTransferDstScalarPerVector_K1
-        true,           // BBlockLdsAddExtraN
+        InDataType,   // InDataType
+        WeiDataType,  // WeiDataType
+        OutDataType,  // OutDataType
+        AccDataType,  // AccDataType
+        InElementOp,  // InElementwiseOperation
+        WeiElementOp, // WeiElementwiseOperation
+        OutElementOp, // OutElementwiseOperation
+        ConvBwdDefault,
+        NumDimSpatial, // NumDimSpatial
+        256,
+        128,
+        128,
+        4,
+        4,
+        32,
+        32,
+        2,
+        2,
+        S<4, 64, 1>,
+        S<1, 0, 2>,
+        S<1, 0, 2>,
+        2,
+        4,
+        4,
+        true,
+        S<4, 64, 1>,
+        S<2, 0, 1>,
+        S<0, 2, 1>,
+        1,
+        2,
+        4,
+        true,
         7,
         1>; // GemmCThreadTransferDstScalarPerVector
 auto& get_parameter()
 {
-    static ck::conv_util::ConvParams currentParam({2, 128, 128, 256, {1, 1}, {7, 7}, {1, 1}, {1, 1}, {0, 0}, {0, 0}});
+    static ck::conv_util::ConvParams currentParam(
+        {2, 128, 128, 256, {1, 1}, {7, 7}, {2, 2}, {1, 1}, {0, 0}, {0, 0}});
     return currentParam;
-} 
+}
+
+#elif 1 // int8
+
+using InDataType  = int8_t;
+using WeiDataType = int8_t;
+using OutDataType = int8_t;
+using AccDataType = int32_t;
+
+template <ck::index_t NumDimSpatial>
+using DeviceConvNDBwdDataInstance = ck::tensor_operation::device::
+    DeviceConvndBwdDataXdl_Input_N_Di_Hi_Wi_C_Weight_K_Z_Y_X_C_Output_N_Do_Ho_Wo_K<
+        InDataType,   // InDataType
+        WeiDataType,  // WeiDataType
+        OutDataType,  // OutDataType
+        AccDataType,  // AccDataType
+        InElementOp,  // InElementwiseOperation
+        WeiElementOp, // WeiElementwiseOperation
+        OutElementOp, // OutElementwiseOperation
+        ConvBwdDefault,
+        NumDimSpatial, // NumDimSpatial
+        128,
+        128,
+        128,
+        4,
+        16,
+        32,
+        32,
+        4,
+        2,
+        S<4, 32, 1>,
+        S<1, 0, 2>,
+        S<1, 0, 2>,
+        2,
+        16,
+        16,
+        true,
+        S<4, 32, 1>,
+        S<2, 0, 1>,
+        S<0, 2, 1>,
+        1,
+        2,
+        16,
+        true,
+        7,
+        1>; // GemmCThreadTransferDstScalarPerVector
+auto& get_parameter()
+{
+    static ck::conv_util::ConvParams currentParam(
+        {2, 128, 64, 256, {1, 1}, {7, 7}, {1, 1}, {1, 1}, {0, 0}, {0, 0}});
+    return currentParam;
+}
 
 #endif
 template <ck::index_t NumDimSpatial>
@@ -158,7 +209,6 @@ void PrintUseMsg()
               << " <right padding>, (ie RightPy, RightPx for 2D)\n"
               << std::endl;
 }
-
 
 HostTensorDescriptor GetInputHostTensorDescriptor(const std::vector<std::size_t>& dims,
                                                   int num_dim_spatial = 2)
@@ -276,8 +326,10 @@ int main()
         GetInputHostTensorDescriptor(input_dims, params.num_dim_spatial));
     Tensor<InDataType> in_n_c_hi_wi_device_result(
         GetInputHostTensorDescriptor(input_dims, params.num_dim_spatial));
-    Tensor<WeiDataType> wei_k_c_y_x(GetFiltersHostTensorDescriptor(filter_dims, params.num_dim_spatial));
-    Tensor<OutDataType> out_n_k_ho_wo(GetOutputHostTensorDescriptor(output_dims, params.num_dim_spatial));
+    Tensor<WeiDataType> wei_k_c_y_x(
+        GetFiltersHostTensorDescriptor(filter_dims, params.num_dim_spatial));
+    Tensor<OutDataType> out_n_k_ho_wo(
+        GetOutputHostTensorDescriptor(output_dims, params.num_dim_spatial));
 
     std::cout << "in_n_c_hi_wi: " << in_n_c_hi_wi_host_result.mDesc << std::endl;
     std::cout << "wei_k_c_y_x: " << wei_k_c_y_x.mDesc << std::endl;
