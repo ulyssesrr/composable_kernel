@@ -61,7 +61,7 @@ using DeviceConvBwdDataInstance = ck::tensor_operation::device::
         1,              // BBlockTransferSrcVectorDim
         2,              // BBlockTransferSrcScalarPerVector
         8,              // BBlockTransferDstScalarPerVector_K1
-        true,           // BBlockLdsAddExtraN
+        false,           // BBlockLdsAddExtraN
         7,
         1>; // GemmCThreadTransferDstScalarPerVector
 
@@ -165,7 +165,9 @@ int main(int argc, char* argv[])
     case 0: break;
     case 1:
         out_n_k_ho_wo.GenerateTensorValue(GeneratorTensor_2<OutDataType>{-5, 5});
+        //out_n_k_ho_wo.GenerateTensorValue(GeneratorTensor_1<OutDataType>{1});
         wei_k_c_y_x.GenerateTensorValue(GeneratorTensor_2<WeiDataType>{-5, 5});
+        //wei_k_c_y_x.GenerateTensorValue(GeneratorTensor_1<WeiDataType>{1});
         break;
     default:
         out_n_k_ho_wo.GenerateTensorValue(GeneratorTensor_1<OutDataType>{1});
@@ -243,5 +245,30 @@ int main(int argc, char* argv[])
         in_device_buf.FromDevice(in_n_c_hi_wi_device_result.mData.data());
 
         check_error(in_n_c_hi_wi_host_result, in_n_c_hi_wi_device_result);
+
+#if 0
+        int * in_ptr = (int *)(in_n_c_hi_wi_device_result.mData.data());
+
+        for(int i_check = 0; i_check < 256; i_check++)
+            std::cout << i_check << ":" << in_ptr[i_check] << std::endl;
+
+        for(int i_check = 0; i_check < 256; i_check++)
+        {
+            float res_ref = static_cast<float>(in_n_c_hi_wi_host_result.mData[i_check]);
+            float res_dev = static_cast<float>(in_n_c_hi_wi_device_result.mData[i_check]);
+            std::cout << i_check << ":res_ref=" << res_ref << ",res_dev=" << res_dev << std::endl;
+        }
+
+#endif
+
+#if 0
+        if(1)
+        {
+            LogRangeAsType<float>(std::cout << "out : ", out_n_k_ho_wo.mData, ",") << std::endl;
+            LogRangeAsType<float>(std::cout << "wei: ", wei_k_c_y_x.mData, ",") << std::endl;
+            LogRangeAsType<float>(std::cout << "in_host  : ", in_n_c_hi_wi_host_result.mData, ",") << std::endl;
+            LogRangeAsType<float>(std::cout << "in_device: ", in_n_c_hi_wi_device_result.mData, ",") << std::endl;
+        }
+#endif
     }
 }
