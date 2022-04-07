@@ -41,13 +41,13 @@ using DeviceConvBwdDataInstance = ck::tensor_operation::device::
         ConvBwdDefault, // ConvolutionBackwardDataSpecialization_t
         256,            // BlockSize
         128,            // MPerBlock
-        128,            // NPerBlock
+        256,            // NPerBlock
         4,              // K0PerBlock
         8,              // K1
         32,             // MPerXdl
         32,             // NPerXdl
         2,              // MXdlPerWave
-        2,              // NXdlPerWave
+        4,              // NXdlPerWave
         S<4, 64, 1>,    // ABlockTransferThreadClusterLengths_K0_M_K1
         S<1, 0, 2>,     // ABlockTransferThreadClusterArrangeOrder
         S<1, 0, 2>,     // ABlockTransferSrcAccessOrder
@@ -59,7 +59,7 @@ using DeviceConvBwdDataInstance = ck::tensor_operation::device::
         S<2, 0, 1>,     // BBlockTransferThreadClusterArrangeOrder
         S<0, 2, 1>,     // BBlockTransferSrcAccessOrder
         1,              // BBlockTransferSrcVectorDim
-        2,              // BBlockTransferSrcScalarPerVector
+        4,              // BBlockTransferSrcScalarPerVector
         8,              // BBlockTransferDstScalarPerVector_K1
         false,           // BBlockLdsAddExtraN
         7,
@@ -248,12 +248,10 @@ int main(int argc, char* argv[])
 
 #if 0
         int * in_ptr = (int *)(in_n_c_hi_wi_device_result.mData.data());
-
-        for(int i_check = 0; i_check < 256; i_check++)
-            std::cout << i_check << ":" << in_ptr[i_check] << std::endl;
-
+        
         for(int i_check = 0; i_check < 256; i_check++)
         {
+            std::cout << i_check << ":" << in_ptr[i_check] << std::endl;
             float res_ref = static_cast<float>(in_n_c_hi_wi_host_result.mData[i_check]);
             float res_dev = static_cast<float>(in_n_c_hi_wi_device_result.mData[i_check]);
             std::cout << i_check << ":res_ref=" << res_ref << ",res_dev=" << res_dev << std::endl;
