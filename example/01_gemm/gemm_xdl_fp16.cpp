@@ -38,9 +38,43 @@ using ALayout = ck::tensor_layout::gemm::RowMajor;
 using BLayout = ck::tensor_layout::gemm::ColumnMajor;
 using CLayout = ck::tensor_layout::gemm::RowMajor;
 
-using AElementOp = ck::tensor_operation::element_wise::PassThrough;
+struct Relu
+{
+    __host__ __device__ constexpr void operator()(float& y, const float& x) const
+    {
+        const float a = x;
+        y             = a > 0 ? a : 0;
+    }
+
+    __host__ __device__ constexpr void operator()(ck::half_t& y, const ck::half_t& x) const
+    {
+        const ck::half_t a = x;
+        y                  = a > 0 ? a : 0;
+    }
+};
+
+struct Hardswish
+{
+    __host__ __device__ constexpr void operator()(float& y, const float& x) const
+    {
+        float a = x;
+        float b = a + float{3};
+        float c = (b > 0) * (b > float{6} ? float{6} : b) * a * float{0.166667};
+        y       = c;
+    }
+
+    __host__ __device__ constexpr void operator()(ck::half_t& y, const ck::half_t& x) const
+    {
+        float a = x;
+        float b = a + float{3};
+        float c = (b > 0) * (b > float{6} ? float{6} : b) * a * float{0.166667};
+        y       = c;
+    }
+};
+
+using AElementOp = Relu;
 using BElementOp = ck::tensor_operation::element_wise::PassThrough;
-using CElementOp = ck::tensor_operation::element_wise::PassThrough;
+using CElementOp = Hardswish;
 
 static constexpr auto GemmDefault = ck::tensor_operation::device::GemmSpecialization::Default;
 

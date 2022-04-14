@@ -25,9 +25,43 @@ using AccDataType = float;
 template <ck::index_t... Is>
 using S = ck::Sequence<Is...>;
 
-using InElementOp  = ck::tensor_operation::element_wise::PassThrough;
+struct Relu
+{
+    __host__ __device__ constexpr void operator()(float& y, const float& x) const
+    {
+        const float a = x;
+        y             = a > 0 ? a : 0;
+    }
+
+    __host__ __device__ constexpr void operator()(ck::half_t& y, const ck::half_t& x) const
+    {
+        const ck::half_t a = x;
+        y                  = a > 0 ? a : 0;
+    }
+};
+
+struct Hardswish
+{
+    __host__ __device__ constexpr void operator()(float& y, const float& x) const
+    {
+        float a = x;
+        float b = a + float{3};
+        float c = (b > 0) * (b > float{6} ? float{6} : b) * a * float{0.166667};
+        y       = c;
+    }
+
+    __host__ __device__ constexpr void operator()(ck::half_t& y, const ck::half_t& x) const
+    {
+        float a = x;
+        float b = a + float{3};
+        float c = (b > 0) * (b > float{6} ? float{6} : b) * a * float{0.166667};
+        y       = c;
+    }
+};
+
+using InElementOp  = Relu;
 using WeiElementOp = ck::tensor_operation::element_wise::PassThrough;
-using OutElementOp = ck::tensor_operation::element_wise::PassThrough;
+using OutElementOp = Hardswish;
 
 static constexpr auto ConvFwdDefault =
     ck::tensor_operation::device::ConvolutionForwardSpecialization::Default;
