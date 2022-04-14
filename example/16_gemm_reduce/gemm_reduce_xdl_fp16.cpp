@@ -33,11 +33,25 @@ using ALayout = ck::tensor_layout::gemm::RowMajor;
 using BLayout = ck::tensor_layout::gemm::ColumnMajor;
 using CLayout = ck::tensor_layout::gemm::RowMajor;
 
+struct ReduceSum
+{
+    __host__ __device__ static constexpr float GetReduceZeroValue() { return float(0); }
+
+    __host__ __device__ void Reduce(float& acc, float v) const { acc += v; }
+};
+
+struct ReduceSquareSum
+{
+    __host__ __device__ static constexpr float GetReduceZeroValue() { return float(0); }
+
+    __host__ __device__ void Reduce(float& acc, float v) const { acc += v * v; }
+};
+
 using AElementOp = ck::tensor_operation::element_wise::PassThrough;
 using BElementOp = ck::tensor_operation::element_wise::PassThrough;
 using CElementOp = ck::tensor_operation::element_wise::PassThrough;
-using D0ReduceOp = ck::tensor_operation::element_wise::ReduceSum;
-using D1ReduceOp = ck::tensor_operation::element_wise::ReduceSquareSum;
+using D0ReduceOp = ReduceSum;
+using D1ReduceOp = ReduceSquareSum;
 
 static constexpr auto GemmSpecialization =
     ck::tensor_operation::device::GemmSpecialization::Default;
