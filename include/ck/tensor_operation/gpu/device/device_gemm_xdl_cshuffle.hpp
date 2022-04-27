@@ -521,55 +521,55 @@ struct DeviceGemm_Xdl_CShuffle
             }
             else
             {
-                const auto kernel = kernel_gemm_xdl_cshuffle_v1<
-                    GridwiseGemm,
-                    ADataType, // TODO: distiguish A/B datatype
-                    CDataType,
-                    AElementwiseOperation,
-                    BElementwiseOperation,
-                    CElementwiseOperation,
-                    DeviceOp::AGridDesc_AK0_M_AK1,
-                    DeviceOp::BGridDesc_BK0_N_BK1,
-                    typename GridwiseGemm::CGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock,
-                    typename GridwiseGemm::DefaultBlock2CTileMap,
-                    false>;
+                // const auto kernel = kernel_gemm_xdl_cshuffle_v1<
+                //     GridwiseGemm,
+                //     ADataType, // TODO: distiguish A/B datatype
+                //     CDataType,
+                //     AElementwiseOperation,
+                //     BElementwiseOperation,
+                //     CElementwiseOperation,
+                //     DeviceOp::AGridDesc_AK0_M_AK1,
+                //     DeviceOp::BGridDesc_BK0_N_BK1,
+                //     typename GridwiseGemm::CGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock,
+                //     typename GridwiseGemm::DefaultBlock2CTileMap,
+                //     false>;
 
-                if(nrepeat == 0)
-                {
-                    launch_kernel(kernel,
-                                  dim3(grid_size),
-                                  dim3(BlockSize),
-                                  0,
-                                  arg.p_a_grid_,
-                                  arg.p_b_grid_,
-                                  arg.p_c_grid_,
-                                  arg.a_element_op_,
-                                  arg.b_element_op_,
-                                  arg.c_element_op_,
-                                  arg.a_grid_desc_ak0_m_ak1_,
-                                  arg.b_grid_desc_bk0_n_bk1_,
-                                  arg.c_grid_desc_mblock_mperblock_nblock_nperblock_,
-                                  arg.block_2_ctile_map_);
-                }
-                else
-                {
-                    ave_time =
-                        launch_and_time_kernel(kernel,
-                                               nrepeat,
-                                               dim3(grid_size),
-                                               dim3(BlockSize),
-                                               0,
-                                               arg.p_a_grid_,
-                                               arg.p_b_grid_,
-                                               arg.p_c_grid_,
-                                               arg.a_element_op_,
-                                               arg.b_element_op_,
-                                               arg.c_element_op_,
-                                               arg.a_grid_desc_ak0_m_ak1_,
-                                               arg.b_grid_desc_bk0_n_bk1_,
-                                               arg.c_grid_desc_mblock_mperblock_nblock_nperblock_,
-                                               arg.block_2_ctile_map_);
-                }
+                // if(nrepeat == 0)
+                // {
+                //     launch_kernel(kernel,
+                //                   dim3(grid_size),
+                //                   dim3(BlockSize),
+                //                   0,
+                //                   arg.p_a_grid_,
+                //                   arg.p_b_grid_,
+                //                   arg.p_c_grid_,
+                //                   arg.a_element_op_,
+                //                   arg.b_element_op_,
+                //                   arg.c_element_op_,
+                //                   arg.a_grid_desc_ak0_m_ak1_,
+                //                   arg.b_grid_desc_bk0_n_bk1_,
+                //                   arg.c_grid_desc_mblock_mperblock_nblock_nperblock_,
+                //                   arg.block_2_ctile_map_);
+                // }
+                // else
+                // {
+                //     ave_time =
+                //         launch_and_time_kernel(kernel,
+                //                                nrepeat,
+                //                                dim3(grid_size),
+                //                                dim3(BlockSize),
+                //                                0,
+                //                                arg.p_a_grid_,
+                //                                arg.p_b_grid_,
+                //                                arg.p_c_grid_,
+                //                                arg.a_element_op_,
+                //                                arg.b_element_op_,
+                //                                arg.c_element_op_,
+                //                                arg.a_grid_desc_ak0_m_ak1_,
+                //                                arg.b_grid_desc_bk0_n_bk1_,
+                //                                arg.c_grid_desc_mblock_mperblock_nblock_nperblock_,
+                //                                arg.block_2_ctile_map_);
+                // }
             }
 
             return ave_time;
