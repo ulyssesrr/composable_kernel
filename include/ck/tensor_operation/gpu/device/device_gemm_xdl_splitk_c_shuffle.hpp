@@ -194,7 +194,9 @@ struct DeviceGemmXdlSplitKCShuffle
     template <>
     static auto MakeAGridDescriptor_AK0_M_AK1<false>(index_t MRaw, index_t K, index_t StrideA)
     {
-        // return MakeAGridDescriptor_AK0_M_AK1<true>(MRaw, K, StrideA);
+#if 1
+        return MakeAGridDescriptor_AK0_M_AK1<true>(MRaw, K, StrideA);
+#else
         assert(K % KPerBlock == 0);
         assert(K % AK1 == 0);
 
@@ -240,12 +242,15 @@ struct DeviceGemmXdlSplitKCShuffle
 
             return a_grid_desc_ak0_m_ak1;
         }
+#endif
     }
 
     template <>
     static auto MakeBGridDescriptor_BK0_N_BK1<false>(index_t K, index_t NRaw, index_t StrideB)
     {
-        // return MakeBGridDescriptor_BK0_N_BK1<true>(K, NRaw, StrideB);
+#if 1
+        return MakeBGridDescriptor_BK0_N_BK1<true>(K, NRaw, StrideB);
+#else
         assert(K % KPerBlock == 0);
         assert(K % BK1 == 0);
 
@@ -291,6 +296,7 @@ struct DeviceGemmXdlSplitKCShuffle
 
             return b_grid_desc_bk0_n_bk1;
         }
+#endif
     }
 
     template <>
