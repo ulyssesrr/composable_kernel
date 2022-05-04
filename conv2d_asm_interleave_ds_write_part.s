@@ -561,26 +561,26 @@ BB0_1:                                  ; %_ZZN2ck22move_tensor_coordinateINS_16
 	v_add_u32_e32 v48, s42, v48
 
 
-	;v_add_u32_e32 v9, s2, v48
-	;v_add_u32_e32 v13, s2, v9
+	;v_add_u32_e32 v9, s2, v48;-
+	;v_add_u32_e32 v13, s2, v9;-
 	v_cmp_le_i32_e32 vcc, s28, v36
 	v_cmp_gt_i32_e64 s[0:1], s27, v36
-	;v_lshlrev_b32_e32 v1, 1, v48
-	;v_add_u32_e32 v48, s2, v13
+	;v_lshlrev_b32_e32 v1, 1, v48;-
+	;v_add_u32_e32 v48, s2, v13;-
 	s_and_b64 s[44:45], vcc, s[0:1]
 	v_cmp_le_i32_e32 vcc, s25, v37
 	v_cmp_gt_i32_e64 s[0:1], s24, v37
-	;v_lshlrev_b32_e32 v5, 1, v9
-	;v_lshlrev_b32_e32 v9, 1, v13
-	;v_lshlrev_b32_e32 v13, 1, v48
+	;v_lshlrev_b32_e32 v5, 1, v9;-
+	;v_lshlrev_b32_e32 v9, 1, v13;-
+	;v_lshlrev_b32_e32 v13, 1, v48;-
 	s_and_b64 s[0:1], vcc, s[0:1]
-	;buffer_load_dwordx4 v[1:4], v1, s[12:15], 0 offen
+	;buffer_load_dwordx4 v[1:4], v1, s[12:15], 0 offen ;-
 	s_and_b64 s[0:1], s[0:1], s[44:45]
-	;buffer_load_dwordx4 v[5:8], v5, s[12:15], 0 offen
+	;buffer_load_dwordx4 v[5:8], v5, s[12:15], 0 offen ;-
 	v_add_u32_e32 v55, s39, v38
-	;buffer_load_dwordx4 v[9:12], v9, s[12:15], 0 offen
+	;buffer_load_dwordx4 v[9:12], v9, s[12:15], 0 offen ;-
 	v_add_u32_e32 v71, s29, v29
-	;buffer_load_dwordx4 v[21:24], v13, s[12:15], 0 offen
+	;buffer_load_dwordx4 v[21:24], v13, s[12:15], 0 offen ;-
 	;;#ASMSTART
 	    s_waitcnt lgkmcnt(0) 
      s_barrier     
@@ -597,6 +597,8 @@ BB0_1:                                  ; %_ZZN2ck22move_tensor_coordinateINS_16
 	buffer_load_dwordx4 v[13:16], v13, s[16:19], 0 offen
 	v_add_u32_e32 v63, s29, v31
 	buffer_load_dwordx4 v[17:20], v17, s[16:19], 0 offen
+
+	;s_setprio 1
 	;ds_read2_b64 v[55:58], v55 offset1:1
 	;ds_read2_b64 v[59:62], v31 offset1:1
 	;ds_read2_b64 v[67:70], v29 offset1:1
@@ -855,6 +857,7 @@ BB0_1:                                  ; %_ZZN2ck22move_tensor_coordinateINS_16
 	ds_write2_b32 v32, v7, v8 offset0:24 offset1:28
 	
 	v_mfma_f32_32x32x8f16 a[48:63], v[78:79], v[73:74], a[48:63]
+	;s_setprio 0
 	s_cbranch_scc1 BB0_1
 ; %bb.2:                                ; %_ZZN2ck23Merge_v2_magic_divisionINS_5TupleIJNS_17integral_constantIiLi4EEENS2_IiLi2EEEiiiEEEEC1ERKS5_ENKUlT_E_clIS4_EEDaS9_.exit.i.i.i.i.i.i.i.i
 	;;#ASMSTART
