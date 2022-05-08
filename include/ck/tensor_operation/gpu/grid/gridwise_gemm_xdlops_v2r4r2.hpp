@@ -671,13 +671,14 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4r2
         if constexpr(HasMainKBlockLoop)
         {
             index_t k0_block_data_begin = 0;
+            block_sync_lds();
 
             do
             {
                 
                 //a_blockwise_copy.RunRead(a_b_k0_m_k1_grid_desc, a_grid_buf);
 
-                block_sync_lds();
+                //block_sync_lds();
 
                 //b_blockwise_copy.RunRead(b_b_k0_n_k1_grid_desc, b_grid_buf);
 
@@ -692,6 +693,7 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4r2
                 b_blockwise_copy.RunWrite(b_b_k0_n_k1_block_desc, b_block_buf);
 
                 a_blockwise_copy.RunRead(a_b_k0_m_k1_grid_desc, a_grid_buf);
+                block_sync_lds();
                 b_blockwise_copy.RunRead(b_b_k0_n_k1_grid_desc, b_grid_buf);
 
                 k0_block_data_begin += K0PerBlock;
