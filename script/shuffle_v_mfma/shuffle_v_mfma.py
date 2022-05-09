@@ -1,5 +1,9 @@
 import re
 
+NOT_INTLEAVE_S_BARRIER = 0
+NOT_INTLEAVE_BUFFER_LOAD = 0
+NOT_INTLEAVE_DSWRITE = 0
+
 def read_example_asm_file(asm_file_path):
     with open(asm_file_path) as f:
         lines = f.readlines()
@@ -117,6 +121,8 @@ class asm_file_analyser:
         for line in core_loop_txt:
             if line.find("ds_write2_b64") != -1:
                 inst_weight_dict[line] = 30
+                if NOT_INTLEAVE_DSWRITE == 1:
+                    inst_weight_dict[line] = 20
             elif line.find("v_mul_lo_u32") != -1:
                 inst_weight_dict[line] = 8
             elif line.find("v_mul_hi_u32") != -1:
@@ -125,8 +131,12 @@ class asm_file_analyser:
                 inst_weight_dict[line] = 56
             elif line.find("buffer_load_dword") != -1:
                 inst_weight_dict[line] = 30
+                if NOT_INTLEAVE_BUFFER_LOAD == 1:
+                    inst_weight_dict[line] = 4
             elif line.find("s_barrier") != -1:
                 inst_weight_dict[line] = 52
+                if NOT_INTLEAVE_S_BARRIER == 1:
+                    inst_weight_dict[line] = 4
             elif line.find(";") != -1:
                 inst_weight_dict[line] = 0
             elif len(line.strip()) == 0:
