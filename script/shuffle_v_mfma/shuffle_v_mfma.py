@@ -19,7 +19,13 @@ class asm_file_analyser:
         self.core_loop_txt_bb0 = self.gen_core_loop_txt(".LBB0_1")
         self.core_loop_txt_bb1 = self.gen_core_loop_txt(".LBB1_1")
 
-        self.next_free_vgpr = self.find_next_free_vgpr(asm_txt)
+        self.next_free_vgpr = self.find_next_free_vgpr(self.asm_txt)
+
+        self.vgpr_limit_number = self.find_vgpr_limit(self.asm_txt)
+        self.asm_txt_max_vgpr = self.set_vgpr_to_max(self.asm_txt)
+
+        print(self.vgpr_limit_number)
+        #assert False
 
         self.core_loop_txt_bb0_enlarge_ds_read_vgpr_bb0 = self.enlarge_ds_read(self.core_loop_txt_bb0)
         self.core_loop_txt_bb0_enlarge_ds_read_vgpr_bb1 = self.enlarge_ds_read(self.core_loop_txt_bb1)
@@ -33,10 +39,10 @@ class asm_file_analyser:
         self.reshuffle_inst_slot_bb0 = self.mfma_shuffle(self.interleave_vmfma_bb0, self.interleave_other_bb0, self.inst_weight_dict_bb0)
         self.reshuffle_inst_slot_bb1 = self.mfma_shuffle(self.interleave_vmfma_bb1, self.interleave_other_bb1, self.inst_weight_dict_bb1)
 
-        self.new_asm_txt_bb0 = self.gen_new_asm_txt(self.interleave_vmfma_bb0, self.interleave_other_bb0, self.reshuffle_inst_slot_bb0, self.asm_txt, self.core_loop_txt_bb0_enlarge_ds_read_vgpr_bb0)
+        self.new_asm_txt_bb0 = self.gen_new_asm_txt(self.interleave_vmfma_bb0, self.interleave_other_bb0, self.reshuffle_inst_slot_bb0, self.asm_txt_max_vgpr, self.core_loop_txt_bb0_enlarge_ds_read_vgpr_bb0)
         
-        for line in self.new_asm_txt_bb0:
-            print(line)
+        #for line in self.new_asm_txt_bb0:
+        #    print(line)
         
         self.new_asm_txt_bb1 = self.gen_new_asm_txt(self.interleave_vmfma_bb1, self.interleave_other_bb1, self.reshuffle_inst_slot_bb1, self.new_asm_txt_bb0, self.core_loop_txt_bb0_enlarge_ds_read_vgpr_bb1)
 
@@ -58,8 +64,37 @@ class asm_file_analyser:
             numvpgr_str = re.findall(r'(?<=; NumVgprs: )\d*', line)
             if len(numvpgr_str) != 0:
                 next_free_vgpr = int(numvpgr_str[0])
-                print(next_free_vgpr)
+                #print(next_free_vgpr)
                 return next_free_vgpr
+
+    def find_vgpr_limit(self, asm_txt):
+        for line in asm_txt:
+            lds_size_re = re.search(r'(?<=; LDSByteSize: )\d*', line)
+            if lds_size_re:
+                lds_size_str = lds_size_re.group()
+                lds_size = int(lds_size_str)
+            
+            agpr_size_re = re.search(r'(?<=; NumAgprs: )\d*', line)
+            if agpr_size_re:
+                agpr_size_str = agpr_size_re.group()
+                agpr_size = int(agpr_size_str)
+
+        vgpr_limit_number = 256//(min(64*1024 // lds_size, 256 // agpr_size))
+        return vgpr_limit_number
+
+    def set_vgpr_to_max(self, asm_txt):
+        asm_max_vgpr = []
+        for line in asm_txt:
+            if line.find(".vgpr_count:") != -1:
+                col = line.find(".vgpr_count:")
+                print(col)
+                asm_max_vgpr.append(f"{line[:col]}.vgpr_count: {self.vgpr_limit_number}\n")
+            elif line.find(".amdhsa_next_free_vgpr") != -1:
+                col_hsa = line.find(".amdhsa_next_free_vgpr")
+                asm_max_vgpr.append(f"{line[:col_hsa]}.amdhsa_next_free_vgpr {self.vgpr_limit_number}\n")
+            else:
+                asm_max_vgpr.append(line)
+        return asm_max_vgpr
 
     def enlarge_ds_read(self, core_loop_txt):
         new_core_loop = []
@@ -97,20 +132,25 @@ class asm_file_analyser:
                 v_pair = re.findall(r'v\[\d*:\d*]', line)
                 #print(i, v_pair)
                 new_line = line
+                replace_dict = {}
                 for i_rep in vgpr_replacement_list:
+                    
                     if i > i_rep[0]:
                         if v_pair[0] in i_rep[1].keys():
-                            new_line = new_line.replace(v_pair[0], i_rep[1][v_pair[0]])
+                            #new_line = new_line.replace(v_pair[0], i_rep[1][v_pair[0]])
+                            replace_dict[v_pair[0]] = i_rep[1][v_pair[0]]
                         if v_pair[1] in i_rep[1].keys():
-                            new_line = new_line.replace(v_pair[1], i_rep[1][v_pair[1]])
+                            #new_line = new_line.replace(v_pair[1], i_rep[1][v_pair[1]])
+                            replace_dict[v_pair[1]] = i_rep[1][v_pair[1]]
 
-                        #print(new_line)
-                
+                #print(replace_dict)
+                for v_rep in replace_dict:
+                    new_line = new_line.replace(v_rep, replace_dict[v_rep])
+
                 core_loop_suf_vgpr.append(new_line)
             else:
                 core_loop_suf_vgpr.append(line)
 
-        #print(vgpr_replacement_list)
         #for i in core_loop_suf_vgpr:
         #    print(i)
         return core_loop_suf_vgpr

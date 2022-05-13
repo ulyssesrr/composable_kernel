@@ -673,15 +673,27 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4r2
             index_t k0_block_data_begin = 0;
             block_sync_lds();
 
+            //do
+            //{
+            //    blockwise_gemm.Run();
+//
+            //    block_sync_lds();
+//
+            //    a_blockwise_copy.MoveSrcSliceWindow();
+            //    b_blockwise_copy.MoveSrcSliceWindow();
+//
+            //    a_blockwise_copy.RunWrite();
+            //    b_blockwise_copy.RunWrite();
+//
+            //    a_blockwise_copy.RunRead();
+            //    block_sync_lds();
+            //    b_blockwise_copy.RunRead();
+//
+            //    k0 += K0PerBlock;
+            //} while(k0 < (K0 - K0PerBlock));
+
             do
             {
-                
-                //a_blockwise_copy.RunRead(a_b_k0_m_k1_grid_desc, a_grid_buf);
-
-                //block_sync_lds();
-
-                //b_blockwise_copy.RunRead(b_b_k0_n_k1_grid_desc, b_grid_buf);
-
                 blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
 
                 block_sync_lds();

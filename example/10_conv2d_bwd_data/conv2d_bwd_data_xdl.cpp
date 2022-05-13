@@ -42,14 +42,14 @@ using DeviceConvBwdDataInstance = ck::tensor_operation::device::
         OutElementOp,   // OutElementwiseOperation
         ConvBwdDefault, // ConvolutionBackwardDataSpecialization
         256,            // BlockSize
-        128,            // MPerBlock
-        128,            // NPerBlock
+        256,            // MPerBlock
+        256,            // NPerBlock
         4,              // K0PerBlock
         8,              // K1
         32,             // MPerXdl
         32,             // NPerXdl
-        2,              // MXdlPerWave
-        2,              // NXdlPerWave
+        4,              // MXdlPerWave
+        4,              // NXdlPerWave
         S<4, 64, 1>,    // ABlockTransferThreadClusterLengths_K0_M_K1
         S<1, 0, 2>,     // ABlockTransferThreadClusterArrangeOrder
         S<1, 0, 2>,     // ABlockTransferSrcAccessOrder
@@ -61,7 +61,7 @@ using DeviceConvBwdDataInstance = ck::tensor_operation::device::
         S<2, 0, 1>,     // BBlockTransferThreadClusterArrangeOrder
         S<0, 2, 1>,     // BBlockTransferSrcAccessOrder
         1,              // BBlockTransferSrcVectorDim
-        2,              // BBlockTransferSrcScalarPerVector
+        4,              // BBlockTransferSrcScalarPerVector
         8,              // BBlockTransferDstScalarPerVector_K1
         true,           // BBlockLdsAddExtraN
         7,

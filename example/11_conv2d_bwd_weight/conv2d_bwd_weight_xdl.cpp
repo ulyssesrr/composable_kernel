@@ -44,22 +44,22 @@ using DeviceConvBwdWeightInstance = ck::tensor_operation::device::
         WeiElementOp,                     // WeiElementwiseOperation
         OutElementOp,                     // OutElementwiseOperation
         256,                              // BlockSize
-        256,                              // MPerBlock
-        256,                              // NPerBlock
-        4,                                // K0PerBlock
+        64,                              // MPerBlock
+        128,                              // NPerBlock
+        8,                                // K0PerBlock
         8,                                // K1
         32,                               // MPerXdl
         32,                               // NPerXdl
-        4,                                // MXdlPerWave
-        4,                                // NXdlPerWave
-        S<1, 4, 32, 2>,                   // ABlockTransferThreadClusterLengths_K0_M_K1
+        1,                                // MXdlPerWave
+        2,                                // NXdlPerWave
+        S<1, 8, 8, 4>,                   // ABlockTransferThreadClusterLengths_K0_M_K1
         S<0, 3, 1, 2>,                    // ABlockTransferThreadClusterArrangeOrder
         S<0, 2, 1, 3>,                    // ABlockTransferSrcAccessOrder
         2,                                // ABlockTransferSrcVectorDim
         8,                                // ABlockTransferSrcScalarPerVector
-        4,                                // ABlockTransferDstScalarPerVector_K1
+        2,                                // ABlockTransferDstScalarPerVector_K1
         true,                             // ABlockLdsAddExtraM
-        S<1, 4, 32, 2>,                   // BBlockTransferThreadClusterLengths_K0_N_K1
+        S<1, 8, 16, 2>,                   // BBlockTransferThreadClusterLengths_K0_N_K1
         S<0, 3, 1, 2>,                    // BBlockTransferThreadClusterArrangeOrder
         S<0, 2, 1, 3>,                    // BBlockTransferSrcAccessOrder
         2,                                // BBlockTransferSrcVectorDim

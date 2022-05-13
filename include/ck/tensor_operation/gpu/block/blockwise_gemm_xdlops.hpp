@@ -279,6 +279,24 @@ struct BlockwiseGemmXdlops_k0mk1_k0nk1_m0n0m1n1m2m3m4n2_v1
         //    });
         //});
 
+        //static_for<0, KPerThread, KPack>{}([&](auto k) {
+        //    static_for<0, MRepeat, 1>{}([&](auto m0) {
+        //        //read from lds for A
+        //        a_thread_copy_.Run();
+        //    });
+        //    static_for<0, NRepeat, 1>{}([&](auto n0) {
+        //        //read from lds for B
+        //        b_thread_copy_.Run();
+        //    });
+//
+        //    static_for<0, MRepeat, 1>{}([&](auto m0) {
+        //        static_for<0, NRepeat, 1>{}([&](auto n0) {
+        //            // do mfma within k
+        //            xdlops_gemm.template Run();
+        //        });
+        //    });
+        //});
+
         static_for<0, KPerThread, KPack>{}([&](auto k) {
             static_for<0, MRepeat, 1>{}([&](auto m0) {
                 // read A
@@ -299,34 +317,34 @@ struct BlockwiseGemmXdlops_k0mk1_k0nk1_m0n0m1n1m2m3m4n2_v1
                                    b_thread_buf);
             });
 
-                static_for<0, MRepeat, 1>{}([&](auto m0) {
-                    static_for<0, NRepeat, 1>{}([&](auto n0) {
-                        vector_type<FloatAB, KPack> a_thread_vec;
-                        vector_type<FloatAB, KPack> b_thread_vec;
+            static_for<0, MRepeat, 1>{}([&](auto m0) {
+                static_for<0, NRepeat, 1>{}([&](auto n0) {
+                    vector_type<FloatAB, KPack> a_thread_vec;
+                    vector_type<FloatAB, KPack> b_thread_vec;
 
-                        static_for<0, KPack, 1>{}([&](auto i) {
-                            a_thread_vec.template AsType<FloatAB>()(i) =
-                                a_thread_buf[Number<a_thread_desc_.CalculateOffset(
-                                    make_tuple(m0, 0, 0, k+i))>{}];
-                            b_thread_vec.template AsType<FloatAB>()(i) =
-                                b_thread_buf[Number<b_thread_desc_.CalculateOffset(
-                                    make_tuple(n0, 0, 0, k+i))>{}];
-                        });
-
-                        using mfma_input_type =
-                            typename vector_type<FloatAB, xdlops_gemm.K1PerXdlops>::type;
-
-                        constexpr index_t c_offset =
-                            c_thread_desc_.CalculateOffset(make_tuple(m0, n0, 0));
-
-                        // TODO: insert setprio in more precise manner since we
-                        // could have more than >1 MFMA instructions in single call
-                        xdlops_gemm.template Run(
-                            a_thread_vec.template AsType<mfma_input_type>(),
-                            b_thread_vec.template AsType<mfma_input_type>(),
-                            c_thread_buf.GetVectorTypeReference(Number<c_offset>{}));
+                    static_for<0, KPack, 1>{}([&](auto i) {
+                        a_thread_vec.template AsType<FloatAB>()(i) =
+                            a_thread_buf[Number<a_thread_desc_.CalculateOffset(
+                                make_tuple(m0, 0, 0, k+i))>{}];
+                        b_thread_vec.template AsType<FloatAB>()(i) =
+                            b_thread_buf[Number<b_thread_desc_.CalculateOffset(
+                                make_tuple(n0, 0, 0, k+i))>{}];
                     });
+
+                    using mfma_input_type =
+                        typename vector_type<FloatAB, xdlops_gemm.K1PerXdlops>::type;
+
+                    constexpr index_t c_offset =
+                        c_thread_desc_.CalculateOffset(make_tuple(m0, n0, 0));
+
+                    // TODO: insert setprio in more precise manner since we
+                    // could have more than >1 MFMA instructions in single call
+                    xdlops_gemm.template Run(
+                        a_thread_vec.template AsType<mfma_input_type>(),
+                        b_thread_vec.template AsType<mfma_input_type>(),
+                        c_thread_buf.GetVectorTypeReference(Number<c_offset>{}));
                 });
+            });
 
         });
 
