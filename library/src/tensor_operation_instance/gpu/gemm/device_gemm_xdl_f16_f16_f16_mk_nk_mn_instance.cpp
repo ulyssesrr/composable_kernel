@@ -20,7 +20,7 @@ using S = ck::Sequence<Is...>;
 
 using PassThrough = ck::tensor_operation::element_wise::PassThrough;
 
-static constexpr auto GemmDefault   = ck::tensor_operation::device::GemmSpecialization::Default;
+static constexpr auto GemmDefault   = ck::tensor_operation::device::GemmSpecialization::KPadding;
 static constexpr auto GemmMNPadding = ck::tensor_operation::device::GemmSpecialization::MNPadding;
 
 // Compilation parameters for a[m, k] * b[n, k] = c[m, n]
@@ -61,11 +61,11 @@ using device_gemm_xdl_f16_f16_f16_mk_nk_mn_irregular_tile_instances =
         >;
 
 void add_device_gemm_xdl_f16_f16_f16_mk_nk_mn_instances(
-    std::vector<DeviceGemmPtr<PassThrough, PassThrough, PassThrough>>& instances)
+    std::vector<DeviceGemmPtr<PassThrough, PassThrough, element_wise::FastGelu>>& instances)
 {
     add_device_operation_instances(instances, device_gemm_xdl_f16_f16_f16_mk_nk_mn_instances{});
-    add_device_operation_instances(instances,
-                                   device_gemm_xdl_f16_f16_f16_mk_nk_mn_irregular_tile_instances{});
+    // add_device_operation_instances(instances,
+    //                                device_gemm_xdl_f16_f16_f16_mk_nk_mn_irregular_tile_instances{});
 }
 
 } // namespace device_gemm_instance
