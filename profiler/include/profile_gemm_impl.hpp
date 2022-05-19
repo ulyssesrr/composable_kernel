@@ -21,7 +21,7 @@ namespace device_gemm_instance {
 using DeviceGemmNoOpPtr =
     ck::tensor_operation::device::DeviceGemmPtr<ck::tensor_operation::element_wise::PassThrough,
                                                 ck::tensor_operation::element_wise::PassThrough,
-                                                ck::tensor_operation::element_wise::PassThrough>;
+                                                ck::tensor_operation::element_wise::FastGelu>;
 
 // void add_device_gemm_xdl_f16_f16_f16_mk_kn_mn_instances(std::vector<DeviceGemmNoOpPtr>&);
 // void add_device_gemm_xdl_f16_f16_f16_mk_nk_mn_instances(std::vector<DeviceGemmNoOpPtr>&);
@@ -140,7 +140,7 @@ void profile_gemm_impl(int do_verification,
 
     using AElementOp = ck::tensor_operation::element_wise::PassThrough;
     using BElementOp = ck::tensor_operation::element_wise::PassThrough;
-    using CElementOp = ck::tensor_operation::element_wise::PassThrough;
+    using CElementOp = ck::tensor_operation::element_wise::FastGelu;
 
     const auto a_element_op = AElementOp{};
     const auto b_element_op = BElementOp{};
