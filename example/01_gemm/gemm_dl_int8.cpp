@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
 
     if(argc == 1)
     {
-        // do nothing
+        // use default case
     }
     else if(argc == 4)
     {
