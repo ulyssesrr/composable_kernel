@@ -111,7 +111,6 @@ int main(int argc, char* argv[])
         };
 
     std::vector<Tensor<ADataType>> a_tensors;
-    ;
     std::vector<Tensor<BDataType>> b_tensors;
     std::vector<Tensor<CDataType>> c_host_tensors;
     std::vector<Tensor<CDataType>> c_device_tensors;
