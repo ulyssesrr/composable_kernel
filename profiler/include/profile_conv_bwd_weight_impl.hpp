@@ -97,8 +97,8 @@ bool profile_conv_bwd_weight_impl(int do_verification,
     {
     case 0: break;
     case 1:
-        out_n_k_ho_wo.GenerateTensorValue(GeneratorTensor_2<OutDataType>{-5, 5});
-        in_n_c_hi_wi.GenerateTensorValue(GeneratorTensor_2<InDataType>{-5, 5});
+        out_n_k_ho_wo.GenerateTensorValue(GeneratorTensor_2<OutDataType>{-2, 2});
+        in_n_c_hi_wi.GenerateTensorValue(GeneratorTensor_2<InDataType>{-2, 2});
         break;
     default:
         out_n_k_ho_wo.GenerateTensorValue(GeneratorTensor_1<OutDataType>{1});
