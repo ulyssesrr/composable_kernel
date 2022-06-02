@@ -107,7 +107,7 @@ struct BlockToCTileMap_M00_N0_M01
 
 // Rows of column-vectors
 // This C-tile map dynamically adjusts M01 when C-tile index is out of range
-template <index_t MPerBlock, index_t NPerBlock, typename CGridDesc_M_N>
+template <index_t MPerBlock, index_t NPerBlock, typename CGridDesc_M_N, index_t M01 = 1>
 struct BlockToCTileMap_M00_N0_M01Adapt
 {
     static constexpr auto I0 = Number<0>{};
@@ -117,8 +117,7 @@ struct BlockToCTileMap_M00_N0_M01Adapt
 
     __host__ __device__ BlockToCTileMap_M00_N0_M01Adapt() = default;
 
-    __host__ __device__ BlockToCTileMap_M00_N0_M01Adapt(const CGridDesc_M_N& c_grid_desc_m_n,
-                                                        index_t M01 = 1)
+    __host__ __device__ BlockToCTileMap_M00_N0_M01Adapt(const CGridDesc_M_N& c_grid_desc_m_n)
         : M01_(M01), c_grid_desc_m_n_(c_grid_desc_m_n)
     {
     }
@@ -172,7 +171,7 @@ struct BlockToCTileMap_M00_N0_M01Adapt
 
 // 2D slices of column-vectors in 3D space
 // This C-tile map dynamically adjusts M01 when C-tile index is out of range
-template <index_t MPerBlock, index_t NPerBlock, typename CGridDesc_M_N>
+template <index_t MPerBlock, index_t NPerBlock, typename CGridDesc_M_N, index_t M01 = 1>
 struct BlockToCTileMap_KSplit_M00_N0_M01Adapt
 {
     static constexpr auto I0 = Number<0>{};
@@ -183,7 +182,6 @@ struct BlockToCTileMap_KSplit_M00_N0_M01Adapt
     __host__ __device__ BlockToCTileMap_KSplit_M00_N0_M01Adapt() = default;
 
     __host__ __device__ BlockToCTileMap_KSplit_M00_N0_M01Adapt(const CGridDesc_M_N& c_grid_desc_m_n,
-                                                               index_t M01    = 8,
                                                                index_t KSplit = 1)
         : M01_(M01), KSplit_(KSplit), c_grid_desc_m_n_(c_grid_desc_m_n)
     {

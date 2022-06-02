@@ -242,7 +242,7 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4r2
         const CMNGridDesc& c_m_n_grid_desc, index_t /* M01 */, index_t /* N01 */, index_t KBatch)
     {
         return BlockToCTileMap_KSplit_M00_N0_M01Adapt<MPerBlock, NPerBlock, CMNGridDesc>(
-            c_m_n_grid_desc, 1, KBatch);
+            c_m_n_grid_desc, KBatch);
     }
 
     __host__ __device__ static constexpr auto
