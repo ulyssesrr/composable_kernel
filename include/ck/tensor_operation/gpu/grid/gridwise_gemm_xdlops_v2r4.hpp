@@ -268,7 +268,7 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4
         const CMNGridDesc& c_m_n_grid_desc, index_t /* M01 */, index_t /* N01 */, index_t KBatch)
     {
         return BlockToCTileMap_KSplit_M00_N0_M01Adapt<MPerBlock, NPerBlock, CMNGridDesc>(
-            c_m_n_grid_desc, 8, KBatch);
+            c_m_n_grid_desc, 1, KBatch);
     }
 
     using CM0N0M1N1M2M3M4N2GridDesc = decltype(MakeCM0N0M1N1M2M3M4N2GridDescriptor(CMNGridDesc{}));

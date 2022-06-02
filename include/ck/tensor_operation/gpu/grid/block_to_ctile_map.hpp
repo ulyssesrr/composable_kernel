@@ -118,7 +118,7 @@ struct BlockToCTileMap_M00_N0_M01Adapt
     __host__ __device__ BlockToCTileMap_M00_N0_M01Adapt() = default;
 
     __host__ __device__ BlockToCTileMap_M00_N0_M01Adapt(const CGridDesc_M_N& c_grid_desc_m_n,
-                                                        index_t M01 = 8)
+                                                        index_t M01 = 1)
         : M01_(M01), c_grid_desc_m_n_(c_grid_desc_m_n)
     {
     }
