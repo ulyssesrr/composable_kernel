@@ -1,5 +1,6 @@
 #pragma once
 #include "data_type.hpp"
+#include "math_v2.hpp"
 
 namespace ck {
 namespace tensor_operation {
@@ -143,35 +144,22 @@ struct AddHardswishAdd
     }
 };
 
-struct RequantReluRequant
+struct Normalize
 {
-    // FIXME: We just need one scale for Relu / Leaky Relu / PRelu
-    RequantReluRequant(float scaleGemm, float scaleRelu)
-        : scaleGemm_(scaleGemm), scaleRelu_(scaleRelu)
+    Normalize(float epsilon = 1e-4) : epsilon_(epsilon) {}
+
+    __host__ __device__ constexpr void operator()(float& y,
+                                                  const float& x,
+                                                  const float& mean,
+                                                  const float& mean_square,
+                                                  const float& gamma,
+                                                  const float& beta) const
     {
+        float variance = mean_square - (mean * mean);
+        y              = ((x - mean) / sqrtf(variance + epsilon_)) * gamma + beta;
     }
 
-    __host__ __device__ constexpr void operator()(int8_t& y, const int& x) const
-    {
-        float gemm_requant = scaleGemm_ * static_cast<float>(x);
-        float relu         = gemm_requant > 0 ? gemm_requant : 0;
-        float relu_requant = scaleRelu_ * relu;
-        y                  = static_cast<int8_t>(relu_requant > 127 ? 127
-                                                   : relu_requant < -128 ? -128 : relu_requant);
-    }
-
-    // for reference_gemm
-    __host__ __device__ constexpr void operator()(float& y, const float& x) const
-    {
-        float gemm_requant = scaleGemm_ * x;
-        float relu         = gemm_requant > 0 ? gemm_requant : 0;
-        float relu_requant = scaleRelu_ * relu;
-        y                  = static_cast<float>(relu_requant > 127 ? 127
-                                                  : relu_requant < -128 ? -128 : relu_requant);
-    }
-
-    float scaleGemm_;
-    float scaleRelu_;
+    float epsilon_;
 };
 
 // Unary operators are usually called element-wisely before/after the reduction is executed on the
@@ -309,7 +297,7 @@ struct UnaryAbs<float, float>
 {
     __host__ __device__ UnaryAbs(const int32_t divider = 1) { (void)divider; };
 
-    __host__ __device__ void operator()(float& y, const float& x) const { y = abs(x); };
+    __host__ __device__ void operator()(float& y, const float& x) const { y = ck::math::abs(x); };
 };
 
 template <>
@@ -317,7 +305,7 @@ struct UnaryAbs<half_t, half_t>
 {
     __host__ __device__ UnaryAbs(const int32_t divider = 1) { (void)divider; };
 
-    __host__ __device__ void operator()(half_t& y, const half_t& x) const { y = __habs(x); };
+    __host__ __device__ void operator()(half_t& y, const half_t& x) const { y = ck::math::abs(x); };
 };
 
 template <>
@@ -325,7 +313,7 @@ struct UnaryAbs<double, double>
 {
     __host__ __device__ UnaryAbs(const int32_t divider = 1) { (void)divider; };
 
-    __host__ __device__ void operator()(double& y, const double& x) const { y = abs(x); };
+    __host__ __device__ void operator()(double& y, const double& x) const { y = ck::math::abs(x); };
 };
 
 template <>
@@ -333,12 +321,7 @@ struct UnaryAbs<int8_t, int8_t>
 {
     __host__ __device__ UnaryAbs(const int32_t divider = 1) { (void)divider; };
 
-    __host__ __device__ void operator()(int8_t& y, const int8_t& x) const
-    {
-        int8_t sgn = x >> (8 - 1);
-
-        y = (x ^ sgn) - sgn;
-    };
+    __host__ __device__ void operator()(int8_t& y, const int8_t& x) const { y = ck::math::abs(x); };
 };
 
 template <typename Y, typename X>
@@ -349,7 +332,7 @@ struct UnarySqrt<float, float>
 {
     __host__ __device__ UnarySqrt(const int32_t divider = 1) { (void)divider; };
 
-    __host__ __device__ void operator()(float& y, const float& x) const { y = sqrtf(x); };
+    __host__ __device__ void operator()(float& y, const float& x) const { y = ck::math::sqrt(x); };
 };
 
 template <>
@@ -357,7 +340,10 @@ struct UnarySqrt<double, double>
 {
     __host__ __device__ UnarySqrt(const int32_t divider = 1) { (void)divider; };
 
-    __host__ __device__ void operator()(double& y, const double& x) const { y = sqrt(x); };
+    __host__ __device__ void operator()(double& y, const double& x) const
+    {
+        y = ck::math::sqrt(x);
+    };
 };
 
 } // namespace element_wise
