@@ -5,10 +5,10 @@ namespace ck {
 
 struct GridwiseGemmPipeline_v3
 {
-    __host__ __device__ static constexpr bool IsSupported(index_t num_loop)
+    __host__ __device__ static constexpr bool IsSupported(index_t /*num_loop*/)
     {
         // TODO: improve applicability
-        return num_loop % 2 == 0;
+        return true; // num_loop % 2 == 0;
     }
 
     __host__ __device__ static constexpr bool CalculateHasMainLoop(index_t num_loop)
