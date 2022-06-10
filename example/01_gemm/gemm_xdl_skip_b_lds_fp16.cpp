@@ -117,12 +117,12 @@ int main(int argc, char* argv[])
     ck::index_t StrideC = N;
 #else
     ck::index_t M = 16;
-    ck::index_t N = 16;
-    ck::index_t K = 32;
+    ck::index_t N = 32;
+    ck::index_t K = 16;
 
-    ck::index_t StrideA = 8;
-    ck::index_t StrideB = 8;
-    ck::index_t StrideC = 16;
+    ck::index_t StrideA = K;
+    ck::index_t StrideB = K;
+    ck::index_t StrideC = N;
 #endif
 
     if(argc == 4)
@@ -189,7 +189,7 @@ int main(int argc, char* argv[])
         b_k_n.GenerateTensorValue(GeneratorTensor_3<BDataType>{-0.5, 0.5});
         break;
     default:
-        // a_m_k.GenerateTensorValue(GeneratorTensor_1<ADataType>{1});
+        //a_m_k.GenerateTensorValue(GeneratorTensor_1<ADataType>{1});
         a_m_k.GenerateTensorValue(GeneratorTensor_2<ADataType>{-5, 5});
         b_k_n.GenerateTensorValue(GeneratorTensor_1<ADataType>{1});
     }
