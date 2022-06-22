@@ -32,7 +32,7 @@ inline void hip_check_error(hipError_t x)
 
 struct DeviceMem
 {
-    DeviceMem() = delete;
+    DeviceMem() = default;
     DeviceMem(std::size_t mem_size);
     void* GetDeviceBuffer();
     std::size_t GetBufferSize();
