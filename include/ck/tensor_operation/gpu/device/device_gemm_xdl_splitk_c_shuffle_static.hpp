@@ -37,7 +37,6 @@ template <typename ALayout,
           index_t MPerBlock,
           index_t NPerBlock,
           index_t KPerBlock,
-          index_t KBatch,
           index_t AK1,
           index_t BK1,
           index_t MPerXDL,
@@ -71,13 +70,16 @@ struct DeviceGemmXdlSplitKCShuffleStatic
     static constexpr auto I2 = Number<2>{};
     static constexpr auto I3 = Number<3>{};
 
+    static constexpr auto I4 = Number<4>{};
+    static constexpr auto I8 = Number<8>{};
+
+    static constexpr auto I20 = Number<20>{};
+
     static constexpr auto I16 = Number<16>{};
     static constexpr auto I384 = Number<384>{};
     static constexpr auto I1152 = Number<1152>{};
     static constexpr auto I1280 = Number<1280>{};
     static constexpr auto I5120 = Number<5120>{};
-
-    static constexpr auto IKBatch = Number<KBatch>{};
 
     static auto
     MakeAGridDescriptor_KBatch_K0_M_K1(index_t M, index_t K, index_t StrideA, int KBatch, int KPad)
@@ -331,12 +333,12 @@ struct DeviceGemmXdlSplitKCShuffleStatic
         Argument(const ADataType* p_a_grid,
                  const BDataType* p_b_grid,
                  CDataType* p_c_grid,
-                 index_t M,
-                 index_t N,
-                 index_t K,
-                 index_t StrideA,
-                 index_t StrideB,
-                 index_t StrideC,
+                 index_t,
+                 index_t,
+                 index_t,
+                 index_t,
+                 index_t,
+                 index_t,
                  index_t M01,
                  index_t N01,
                  AElementwiseOperation a_element_op,
@@ -358,18 +360,18 @@ struct DeviceGemmXdlSplitKCShuffleStatic
               c_element_op_{c_element_op},
               k_batch_{k_batch}
         {
-            int KPad = DeviceGemmXdlSplitKCShuffleStatic::GetKPad(K, k_batch_);
+            //int KPad = DeviceGemmXdlSplitKCShuffleStatic::GetKPad(K, k_batch_);
 
             a_grid_desc_kbatch_k0_m_k1_ =
                 DeviceGemmXdlSplitKCShuffleStatic::MakeAGridDescriptor_KBatch_K0_M_K1(
-                    M, K, StrideA, k_batch_, KPad);
+                    I16, I5120, I5120, I20, I5120);
             b_grid_desc_kbatch_k0_n_k1_ =
                 DeviceGemmXdlSplitKCShuffleStatic::MakeBGridDescriptor_KBatch_K0_N_K1(
-                    K, N, StrideB, k_batch_, KPad);
-            c_grid_desc_m_n_ = DeviceGemmXdlSplitKCShuffleStatic::MakeCGridDescriptor_M_N(M, N, StrideC);
+                    I5120, I1152, I1152, I20, I5120);
+            c_grid_desc_m_n_ = DeviceGemmXdlSplitKCShuffleStatic::MakeCGridDescriptor_M_N(I16, I1152, I1152);
 
             block_2_ctile_map_ =
-                GridwiseGemm::MakeCBlockClusterAdaptor(c_grid_desc_m_n_, M01, N01, k_batch_);
+                GridwiseGemm::MakeCBlockClusterAdaptor(c_grid_desc_m_n_, M01, N01, I20);
 
             if(GridwiseGemm::CheckValidity(a_grid_desc_kbatch_k0_m_k1_,
                                            b_grid_desc_kbatch_k0_n_k1_,
