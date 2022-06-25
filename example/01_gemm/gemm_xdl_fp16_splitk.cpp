@@ -52,7 +52,8 @@ using DeviceGemmInstance = ck::tensor_operation::device::DeviceGemmXdlSplitKCShu
 //######|        |        |        |      |      |      |        |         |            |            |            |               |         |      |      |      |      |    |    |     |     |     |     |                |               |               |               |               |               |          |                |               |               |              |               |               |          |            |            |                             |                |
             <Row,      Row,     Row,   F16,   F16,   F16,     F32,      F16,  AElementOp,  BElementOp,  CElementOp,    GemmDefault,        3,   256,    16,   128,    32,   8,   2,   16,   16,    1,    2,  S<1, 4, 16, 4>,  S<0, 2, 1, 3>,  S<0, 2, 1, 3>,              3,              2,              2,         1,  S<1, 8, 32, 1>,  S<0, 1, 3, 2>,  S<0, 1, 3, 2>,             2,              4,              2,         8,           1,           1,              S<1, 16, 1, 16>,               2>;
             //<Row,      Row,     Row,   F16,   F16,   F16,     F32,      F16,  AElementOp,  BElementOp,  CElementOp,    GemmDefault,        4,   256,    16,   128,    32,   8,   2,   16,   16,    1,    2,  S<1, 4, 16, 4>,  S<0, 2, 1, 3>,  S<0, 2, 1, 3>,              3,              2,              2,         1,  S<1, 8, 32, 1>,  S<0, 1, 3, 2>,  S<0, 1, 3, 2>,             2,              4,              2,         8,           1,           1,              S<1, 16, 1, 16>,               2>;
-                           
+
+                      
 // clang-format on
 
 using ReferenceGemmInstance = ck::tensor_operation::host::
