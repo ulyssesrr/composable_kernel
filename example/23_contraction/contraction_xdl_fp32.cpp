@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <numeric>
 #include <initializer_list>
 #include <cstdlib>
@@ -37,7 +38,8 @@ using AElementOp = ck::tensor_operation::element_wise::PassThrough;
 using BElementOp = ck::tensor_operation::element_wise::PassThrough;
 using CElementOp = ck::tensor_operation::element_wise::PassThrough;
 
-static constexpr auto GemmDefault = ck::tensor_operation::device::GemmSpecialization::Default;
+//static constexpr auto GemmDefault = ck::tensor_operation::device::GemmSpecialization::Default;
+static constexpr auto GemmDefault = ck::tensor_operation::device::GemmSpecialization::MNKPadding;
 
 // clang-format off
 using DeviceOpInstance = ck::tensor_operation::device::
@@ -47,6 +49,23 @@ using DeviceOpInstance = ck::tensor_operation::device::
         //############################|        |        |        |      |      |      |        |         |            |            |            |               |         |      |      |      |      |    |    |     |     |     |     |                |               |               |               |               |               |          |                |               |               |              |               |               |          |            |            |                             |                |
         DeviceContraction_Xdl_CShuffle< NumDimM, NumDimN, NumDimK,   F32,   F32,   F32,     F32,      F32, PassThrough, PassThrough, PassThrough,    GemmDefault,        1,   256,   256,   128,    16,   4,   4,   32,   32,    4,    2,     S<4, 64, 1>,     S<1, 0, 2>,     S<1, 0, 2>,              2,              4,              4,         1,     S<4, 64, 1>,     S<1, 0, 2>,     S<1, 0, 2>,             2,              4,              4,         1,           1,           1,              S<1, 16, 1, 16>,              4>;
 // clang-format on
+
+
+template <typename T, typename Range>
+void LogRangeToFile(std::ofstream& fs, Range&& range, std::string delim)
+{
+    bool first = true;
+    for(auto&& v : range)
+    {
+        if(first)
+            first = false;
+        else
+            fs << delim;
+        fs << static_cast<T>(v);
+    }
+    return;
+}
+
 
 // hardcoded for NumDimM == NumDimN == NumDimK == 2
 template <ck::index_t NumDimM,
@@ -197,7 +216,7 @@ using ReferenceOpInstance = ReferenceContraction_M2_N2_K2<NumDimM,
 int main(int argc, char* argv[])
 {
     bool do_verification = true;
-    int init_method      = 1;
+    int init_method      = 3;
     bool time_kernel     = false;
 
     if(argc == 4)
@@ -209,21 +228,42 @@ int main(int argc, char* argv[])
     else
     {
         printf("arg1: verification (0=no, 1=yes)\n");
-        printf("arg2: initialization (0=no init, 1=integer value, 2=decimal value)\n");
+        printf("arg2: initialization (0=no init, 1=integer value, 2=decimal value, 3=cutensor_style_init)\n");
         printf("arg3: time kernel (0=no, 1=yes)\n");
         exit(0);
     }
 
-    // A[M0, M1, K0, K1]
-    std::vector<ck::index_t> a_ms_ks_lengths{30, 128, 32, 64};
-    std::vector<ck::index_t> a_ms_ks_strides{524288, 4096, 128, 1};
-    // B[K0, K1, N0, N1]
-    std::vector<ck::index_t> b_ks_ns_lengths{32, 64, 32, 64};
-    std::vector<ck::index_t> b_ks_ns_strides{128, 1, 524288, 4096};
-    // C[M0, M1, N0, N1]
-    std::vector<ck::index_t> c_ms_ns_lengths{30, 128, 32, 64};
-    std::vector<ck::index_t> c_ms_ns_strides{524288, 4096, 128, 1};
+    std::ofstream tensorA;
+    std::ofstream tensorB;
+    std::ofstream tensorC;
+    std::ofstream tensorC_d;
+    std::cout << "RAND_MAX value is " << RAND_MAX << std::endl;
 
+    
+
+#if 0
+    // a[m0, m1, k0, k1]
+    std::vector<ck::index_t> a_ms_ks_lengths{30, 128, 32, 64};
+    //std::vector<ck::index_t> a_ms_ks_strides{524288, 4096, 128, 1};
+    // b[k0, k1, n0, n1]
+    std::vector<ck::index_t> b_ks_ns_lengths{32, 64, 32, 64};
+    //std::vector<ck::index_t> b_ks_ns_strides{128, 1, 524288, 4096};
+    // c[m0, m1, n0, n1]
+    std::vector<ck::index_t> c_ms_ns_lengths{30, 128, 32, 64};
+    //std::vector<ck::index_t> c_ms_ns_strides{524288, 4096, 128, 1};
+#else  
+    // a[m0, m1, k0, k1]
+    std::vector<ck::index_t> a_ms_ks_lengths{5,6,3,4};
+    //std::vector<ck::index_t> a_ms_ks_strides{108,20,16,1};
+    // b[k0, k1, n0, n1]
+    std::vector<ck::index_t> b_ks_ns_lengths{3,4,3,4};
+    //std::vector<ck::index_t> b_ks_ns_strides{16,1,108,20};
+    // c[m0, m1, n0, n1]
+    std::vector<ck::index_t> c_ms_ns_lengths{5,6,3,4};
+    //std::vector<ck::index_t> c_ms_ns_strides{108,20,16,1};
+#endif
+
+#if 0
     Tensor<ADataType> a_ms_ks(
         std::vector<std::size_t>(a_ms_ks_lengths.begin(), a_ms_ks_lengths.end()),
         std::vector<std::size_t>(a_ms_ks_strides.begin(), a_ms_ks_strides.end()));
@@ -236,6 +276,16 @@ int main(int argc, char* argv[])
     Tensor<CDataType> c_ms_ns_device_result(
         std::vector<std::size_t>(c_ms_ns_lengths.begin(), c_ms_ns_lengths.end()),
         std::vector<std::size_t>(c_ms_ns_strides.begin(), c_ms_ns_strides.end()));
+#else
+    Tensor<ADataType> a_ms_ks(
+        std::vector<std::size_t>(a_ms_ks_lengths.begin(), a_ms_ks_lengths.end()));
+    Tensor<BDataType> b_ks_ns(
+        std::vector<std::size_t>(b_ks_ns_lengths.begin(), b_ks_ns_lengths.end()));
+    Tensor<CDataType> c_ms_ns_host_result(
+        std::vector<std::size_t>(c_ms_ns_lengths.begin(), c_ms_ns_lengths.end()));
+    Tensor<CDataType> c_ms_ns_device_result(
+        std::vector<std::size_t>(c_ms_ns_lengths.begin(), c_ms_ns_lengths.end()));
+#endif
 
     std::cout << "a_ms_ks: " << a_ms_ks.mDesc << std::endl;
     std::cout << "b_ks_ns: " << b_ks_ns.mDesc << std::endl;
@@ -252,6 +302,10 @@ int main(int argc, char* argv[])
         a_ms_ks.GenerateTensorValue(GeneratorTensor_3<ADataType>{0.0, 1.0});
         b_ks_ns.GenerateTensorValue(GeneratorTensor_3<BDataType>{-0.5, 0.5});
         break;
+    case 3:
+        a_ms_ks.GenerateTensorValue(GeneratorTensor_cuTensor<ADataType>{});
+        b_ks_ns.GenerateTensorValue(GeneratorTensor_cuTensor<BDataType>{});
+        break;
     default:
         a_ms_ks.GenerateTensorValue(GeneratorTensor_Sequential<0>{});
         b_ks_ns.GenerateTensorValue(GeneratorTensor_Sequential<1>{});
@@ -260,6 +314,10 @@ int main(int argc, char* argv[])
     DeviceMem a_ms_ks_device_buf(sizeof(ADataType) * a_ms_ks.mDesc.GetElementSpace());
     DeviceMem b_ks_ns_device_buf(sizeof(BDataType) * b_ks_ns.mDesc.GetElementSpace());
     DeviceMem c_ms_ns_device_buf(sizeof(CDataType) * c_ms_ns_device_result.mDesc.GetElementSpace());
+
+    std::cout << "Tensor A element space: " << a_ms_ks.mDesc.GetElementSpace() << std::endl;
+    std::cout << "Tensor B element space: " << b_ks_ns.mDesc.GetElementSpace() << std::endl;
+    std::cout << "Tensor C element space: " <<  c_ms_ns_device_result.mDesc.GetElementSpace() << std::endl;
 
     a_ms_ks_device_buf.ToDevice(a_ms_ks.mData.data());
     b_ks_ns_device_buf.ToDevice(b_ks_ns.mData.data());
@@ -278,11 +336,11 @@ int main(int argc, char* argv[])
                                     static_cast<BDataType*>(b_ks_ns_device_buf.GetDeviceBuffer()),
                                     static_cast<CDataType*>(c_ms_ns_device_buf.GetDeviceBuffer()),
                                     a_ms_ks_lengths,
-                                    a_ms_ks_strides,
+                                    std::vector<ck::index_t>(a_ms_ks.mDesc.mStrides.begin(), a_ms_ks.mDesc.mStrides.end()),
                                     b_ks_ns_lengths,
-                                    b_ks_ns_strides,
+				    std::vector<ck::index_t>(b_ks_ns.mDesc.mStrides.begin(), b_ks_ns.mDesc.mStrides.end()),
                                     c_ms_ns_lengths,
-                                    c_ms_ns_strides,
+                                    std::vector<ck::index_t>(c_ms_ns_host_result.mDesc.mStrides.begin(), c_ms_ns_host_result.mDesc.mStrides.end()),
                                     a_element_op,
                                     b_element_op,
                                     c_element_op);
@@ -324,6 +382,17 @@ int main(int argc, char* argv[])
 
     c_ms_ns_device_buf.FromDevice(c_ms_ns_device_result.mData.data());
 
+    tensorA.open("tensor_A.txt");
+    LogRangeToFile<ADataType>(tensorA, a_ms_ks.mData, ","); 
+    LogRangeAsType<ADataType>(std::cout<<"Tensor A elements:\n", a_ms_ks.mData,",");
+    std::cout<<std::endl;
+    tensorA.close();
+    tensorB.open("tensor_B.txt");
+    LogRangeToFile<BDataType>(tensorB, b_ks_ns.mData, ","); 
+    LogRangeAsType<BDataType>(std::cout<<"Tensor B elements:\n", b_ks_ns.mData,",");
+    std::cout<<std::endl;
+    tensorB.close();
+
     if(do_verification)
     {
         auto ref_gemm    = ReferenceOpInstance{};
@@ -333,6 +402,19 @@ int main(int argc, char* argv[])
             a_ms_ks, b_ks_ns, c_ms_ns_host_result, a_element_op, b_element_op, c_element_op);
 
         ref_invoker.Run(ref_argument);
+
+	    tensorC.open("tensor_C_contraction_host_results.txt");
+    	LogRangeToFile<CDataType>(tensorC, c_ms_ns_host_result.mData, ","); 
+    	LogRangeAsType<CDataType>(std::cout<<"Tensor C_host elements:\n", c_ms_ns_host_result.mData, ",");
+    	std::cout<<std::endl;
+	    tensorC.close();
+
+	    tensorC.open("tensor_C_contraction_device_results.txt");
+    	LogRangeToFile<CDataType>(tensorC_d, c_ms_ns_device_result.mData, ","); 
+    	LogRangeAsType<CDataType>(std::cout<<"Tensor C_device elements:\n", c_ms_ns_device_result.mData, ",");
+    	std::cout<<std::endl;
+	    tensorC.close();
+
 
         return ck::utils::check_err(c_ms_ns_device_result.mData, c_ms_ns_host_result.mData) ? 0 : 1;
     }

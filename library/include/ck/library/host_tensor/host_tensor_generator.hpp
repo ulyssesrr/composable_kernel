@@ -74,6 +74,7 @@ struct GeneratorTensor_2<ck::bhalf_t>
     ck::bhalf_t operator()(Is...)
     {
         float tmp = (std::rand() % (max_value - min_value)) + min_value;
+	std::cout << tmp << ",";
         return ck::type_convert<ck::bhalf_t>(tmp);
     }
 };
@@ -120,6 +121,35 @@ struct GeneratorTensor_3<ck::bhalf_t>
         float fp32_tmp = min_value + tmp * (max_value - min_value);
 
         return ck::type_convert<ck::bhalf_t>(fp32_tmp);
+    }
+};
+
+
+template <typename T>
+struct GeneratorTensor_cuTensor
+{
+    //int min_value = 0;
+    //int max_value = 1;
+
+    template <typename... Is>
+    T operator()(Is...)
+    {
+        float tmp = ((float(std::rand()))/RAND_MAX - 0.5)*100;
+        return static_cast<T>(tmp);
+    }
+};
+
+template <>
+struct GeneratorTensor_cuTensor<ck::bhalf_t>
+{
+    //int min_value = 0;
+    //int max_value = 1;
+
+    template <typename... Is>
+    ck::bhalf_t operator()(Is...)
+    {
+        float tmp = ((float(std::rand()))/RAND_MAX - 0.5)*100;
+        return ck::type_convert<ck::bhalf_t>(tmp);
     }
 };
 

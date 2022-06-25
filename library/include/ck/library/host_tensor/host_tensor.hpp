@@ -109,7 +109,7 @@ struct HostTensorDescriptor
 
     friend std::ostream& operator<<(std::ostream& os, const HostTensorDescriptor& desc);
 
-    private:
+    //private:
     std::vector<std::size_t> mLens;
     std::vector<std::size_t> mStrides;
 };
