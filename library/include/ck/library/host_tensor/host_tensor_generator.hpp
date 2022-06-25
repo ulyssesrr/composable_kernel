@@ -134,7 +134,7 @@ struct GeneratorTensor_cuTensor
     template <typename... Is>
     T operator()(Is...)
     {
-        float tmp = ((float(std::rand()))/RAND_MAX - 0.5)*100;
+        float tmp = (float(std::rand())/float(RAND_MAX) - 0.5)*100;
         return static_cast<T>(tmp);
     }
 };
@@ -148,7 +148,7 @@ struct GeneratorTensor_cuTensor<ck::bhalf_t>
     template <typename... Is>
     ck::bhalf_t operator()(Is...)
     {
-        float tmp = ((float(std::rand()))/RAND_MAX - 0.5)*100;
+        float tmp = (float(std::rand())/float(RAND_MAX) - 0.5)*100;
         return ck::type_convert<ck::bhalf_t>(tmp);
     }
 };
