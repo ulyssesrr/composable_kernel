@@ -41,6 +41,13 @@ using CElementOp = ck::tensor_operation::element_wise::PassThrough;
 //static constexpr auto GemmDefault = ck::tensor_operation::device::GemmSpecialization::Default;
 static constexpr auto GemmDefault = ck::tensor_operation::device::GemmSpecialization::MNKPadding;
 
+
+// (M0 * M1 ...) % MPerBlock == 0
+// (N0 * N1 ...) % NPerBlock == 0
+// (K0 * K1 ...) % KPerBlock == 0
+//
+//
+//
 // clang-format off
 // Fast changing dimension in A/B/C are K/N/N dimensions
 using ContractionInstanceKNN = ck::tensor_operation::device::
@@ -75,7 +82,7 @@ using ContractionInstanceMKN = ck::tensor_operation::device::
         DeviceContraction_Xdl_CShuffle< NumDimM, NumDimN, NumDimK,   F32,   F32,   F32,     F32,      F32, PassThrough, PassThrough, PassThrough,    GemmDefault,        1,   256,   256,   128,    16,   1,   4,   32,   32,    4,    2,     S<4, 64, 1>,     S<0, 2, 1>,     S<0, 2, 1>,              1,              4,              1,         0,     S<4, 64, 1>,     S<1, 0, 2>,     S<1, 0, 2>,             2,              4,              4,         1,           1,           1,               S<1, 16, 1, 16>,              4>;
 // clang-format on
 
-using ContractionInstance = ContractionInstanceMKN;
+using ContractionInstance = ContractionInstanceKKN;
 
 template <typename T, typename Range>
 void LogRangeToFile(std::ofstream& fs, Range&& range, std::string delim)
@@ -266,18 +273,26 @@ int main(int argc, char* argv[])
     std::cout << "RAND_MAX value is " << RAND_MAX << std::endl;
 
     
+    // Physical layout
+    // A[m0, k0, m1, k1]   : leng [5, 6, 3, 4], stride  [108, 20, 16, 1]
+    // B[k0, n0, k1, n1]
+    // C[m0, m1, n0, n1]
 
-#if 0
+
+    // logic layout
+    // A[m0, m1, k0, k1]   : leng [5, 3, 6, 4], stride [108, 16, 20, 1]  K is fast changing
+    // C[k0, k1, n0, n1]
+#if 1
     // fast changing dimension: K/K/N
     // a[m0, m1, k0, k1]
     std::vector<ck::index_t> a_ms_ks_lengths{30, 128, 32, 64};
-    //std::vector<ck::index_t> a_ms_ks_strides{524288, 4096, 128, 1};
+    std::vector<ck::index_t> a_ms_ks_strides{524288, 4096, 128, 1};
     // b[k0, k1, n0, n1]
     std::vector<ck::index_t> b_ks_ns_lengths{32, 64, 32, 64};
-    //std::vector<ck::index_t> b_ks_ns_strides{128, 1, 524288, 4096};
+    std::vector<ck::index_t> b_ks_ns_strides{128, 1, 524288, 4096};
     // c[m0, m1, n0, n1]
     std::vector<ck::index_t> c_ms_ns_lengths{30, 128, 32, 64};
-    //std::vector<ck::index_t> c_ms_ns_strides{524288, 4096, 128, 1};
+    std::vector<ck::index_t> c_ms_ns_strides{524288, 4096, 128, 1};
 #elif 0
     // fast changing dimension: K/N/N
     // a[m0, m1, k0, k1]
@@ -289,7 +304,7 @@ int main(int argc, char* argv[])
     // c[m0, m1, n0, n1]
     std::vector<ck::index_t> c_ms_ns_lengths{5,6,3,4};
     std::vector<ck::index_t> c_ms_ns_strides{108,20,16,1};
-#elif 0
+#elif 1
     // fast changing dimension: K/K/N
     // a[m0, m1, k0, k1]
     std::vector<ck::index_t> a_ms_ks_lengths{5,6,3,4};
@@ -432,6 +447,7 @@ int main(int argc, char* argv[])
 
     c_ms_ns_device_buf.FromDevice(c_ms_ns_device_result.mData.data());
 
+#if 0
     tensorA.open("tensor_A.txt");
     LogRangeToFile<ADataType>(tensorA, a_ms_ks.mData, ","); 
     LogRangeAsType<ADataType>(std::cout<<"Tensor A elements:\n", a_ms_ks.mData,",");
@@ -442,6 +458,7 @@ int main(int argc, char* argv[])
     LogRangeAsType<BDataType>(std::cout<<"Tensor B elements:\n", b_ks_ns.mData,",");
     std::cout<<std::endl;
     tensorB.close();
+#endif
 
     if(do_verification)
     {
@@ -453,6 +470,7 @@ int main(int argc, char* argv[])
 
         ref_invoker.Run(ref_argument);
 
+#if 0
 	    tensorC.open("tensor_C_contraction_host_results.txt");
     	LogRangeToFile<CDataType>(tensorC, c_ms_ns_host_result.mData, ","); 
     	LogRangeAsType<CDataType>(std::cout<<"Tensor C_host elements:\n", c_ms_ns_host_result.mData, ",");
@@ -464,6 +482,7 @@ int main(int argc, char* argv[])
     	LogRangeAsType<CDataType>(std::cout<<"Tensor C_device elements:\n", c_ms_ns_device_result.mData, ",");
     	std::cout<<std::endl;
 	    tensorC.close();
+#endif
 
 
         return ck::utils::check_err(c_ms_ns_device_result.mData, c_ms_ns_host_result.mData) ? 0 : 1;
