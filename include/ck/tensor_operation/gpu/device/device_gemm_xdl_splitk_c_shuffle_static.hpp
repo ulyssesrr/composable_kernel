@@ -82,8 +82,14 @@ struct DeviceGemmXdlSplitKCShuffleStatic
     static constexpr auto I5120 = Number<5120>{};
 
     static auto
-    MakeAGridDescriptor_KBatch_K0_M_K1(index_t M, index_t K, index_t StrideA, int KBatch, int KPad)
+    MakeAGridDescriptor_KBatch_K0_M_K1()
     {
+        static constexpr auto KPad = I5120;
+        static constexpr auto K = I5120;
+        static constexpr auto KBatch = I20;
+        static constexpr auto M = I16;
+        static constexpr auto StrideA = I5120;
+
         assert(KPad % (AK1 * KBatch) == 0);
 
         const index_t AK0 = KPad / (AK1 * KBatch);
@@ -136,8 +142,14 @@ struct DeviceGemmXdlSplitKCShuffleStatic
     }
 
     static auto
-    MakeBGridDescriptor_KBatch_K0_N_K1(index_t K, index_t N, index_t StrideB, int KBatch, int KPad)
+    MakeBGridDescriptor_KBatch_K0_N_K1()
     {
+        static constexpr auto KPad = I5120;
+        static constexpr auto K = I5120;
+        static constexpr auto KBatch = I20;
+        static constexpr auto N = I1152;
+        static constexpr auto StrideB = I1152;
+
         assert(KPad % (BK1 * KBatch) == 0);
 
         const index_t BK0 = KPad / (BK1 * KBatch);
@@ -189,8 +201,12 @@ struct DeviceGemmXdlSplitKCShuffleStatic
         }
     }
 
-    static auto MakeCGridDescriptor_M_N(index_t M, index_t N, index_t StrideC)
+    static auto MakeCGridDescriptor_M_N()
     {
+        static constexpr auto M = I16;
+        static constexpr auto N = I1152;
+        static constexpr auto StrideC = I1152;
+
         const auto c_grid_desc_m_n = [&]() {
             if constexpr(is_same<tensor_layout::gemm::RowMajor, CLayout>::value)
             {
@@ -230,9 +246,9 @@ struct DeviceGemmXdlSplitKCShuffleStatic
         return KPad;
     }
 
-    using AGridDesc_K0_M_K1 = decltype(MakeAGridDescriptor_KBatch_K0_M_K1(1, 1, 1, 1, 1));
-    using BGridDesc_K0_N_K1 = decltype(MakeBGridDescriptor_KBatch_K0_N_K1(1, 1, 1, 1, 1));
-    using CGridDesc_M_N     = decltype(MakeCGridDescriptor_M_N(1, 1, 1));
+    using AGridDesc_K0_M_K1 = decltype(MakeAGridDescriptor_KBatch_K0_M_K1());
+    using BGridDesc_K0_N_K1 = decltype(MakeBGridDescriptor_KBatch_K0_N_K1());
+    using CGridDesc_M_N     = decltype(MakeCGridDescriptor_M_N());
 
     // GridwiseGemm
     using GridwiseGemm = GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4r2<
@@ -363,12 +379,10 @@ struct DeviceGemmXdlSplitKCShuffleStatic
             //int KPad = DeviceGemmXdlSplitKCShuffleStatic::GetKPad(K, k_batch_);
 
             a_grid_desc_kbatch_k0_m_k1_ =
-                DeviceGemmXdlSplitKCShuffleStatic::MakeAGridDescriptor_KBatch_K0_M_K1(
-                    I16, I5120, I5120, I20, I5120);
+                DeviceGemmXdlSplitKCShuffleStatic::MakeAGridDescriptor_KBatch_K0_M_K1();
             b_grid_desc_kbatch_k0_n_k1_ =
-                DeviceGemmXdlSplitKCShuffleStatic::MakeBGridDescriptor_KBatch_K0_N_K1(
-                    I5120, I1152, I1152, I20, I5120);
-            c_grid_desc_m_n_ = DeviceGemmXdlSplitKCShuffleStatic::MakeCGridDescriptor_M_N(I16, I1152, I1152);
+                DeviceGemmXdlSplitKCShuffleStatic::MakeBGridDescriptor_KBatch_K0_N_K1();
+            c_grid_desc_m_n_ = DeviceGemmXdlSplitKCShuffleStatic::MakeCGridDescriptor_M_N();
 
             block_2_ctile_map_ =
                 GridwiseGemm::MakeCBlockClusterAdaptor(c_grid_desc_m_n_, M01, N01, I20);
@@ -462,13 +476,14 @@ struct DeviceGemmXdlSplitKCShuffleStatic
                                        arg.p_a_grid_,
                                        arg.p_b_grid_,
                                        arg.p_c_grid_,
+                                       arg.block_2_ctile_map_,
                                        arg.a_grid_desc_kbatch_k0_m_k1_,
                                        arg.b_grid_desc_kbatch_k0_n_k1_,
                                        arg.c_grid_desc_mblock_mperblock_nblock_nperblock_,
                                        arg.a_element_op_,
                                        arg.b_element_op_,
-                                       arg.c_element_op_,
-                                       arg.block_2_ctile_map_);
+                                       arg.c_element_op_
+                                       );
             };
 
             if(has_main_k0_block_loop)

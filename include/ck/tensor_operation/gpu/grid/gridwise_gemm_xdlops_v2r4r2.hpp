@@ -32,14 +32,14 @@ __global__ void
         kernel_gemm_xdlops_v2r4r2(const FloatAB* __restrict__ p_a_grid,
                                   const FloatAB* __restrict__ p_b_grid,
                                   FloatC* __restrict__ p_c_grid,
+                                  const CBlockClusterAdaptor c_block_cluster_adaptor,
                                   const AGridDesc_B_K0_M_K1 a_b_k0_m_k1_grid_desc,
                                   const BGridDesc_B_K0_N_K1 b_b_k0_n_k1_grid_desc,
                                   const CGridDesc_MBlock_MPerBlock_NBlock_NPerBlock
                                       c_grid_desc_mblock_mperblock_nblock_nperblock,
                                   const AElementwiseOperation a_element_op,
                                   const BElementwiseOperation b_element_op,
-                                  const CElementwiseOperation c_element_op,
-                                  const CBlockClusterAdaptor c_block_cluster_adaptor)
+                                  const CElementwiseOperation c_element_op)
 {
 #if(!defined(__HIP_DEVICE_COMPILE__) || defined(__gfx908__) || defined(__gfx90a__))
     constexpr index_t shared_block_size =
