@@ -73,7 +73,7 @@ struct DeviceGemmXdlSplitKCShuffleStatic
     static constexpr auto I4 = Number<4>{};
     static constexpr auto I8 = Number<8>{};
 
-    static constexpr auto I20 = Number<20>{};
+    static constexpr auto I20 = Number<8>{};
 
     static constexpr auto I16 = Number<16>{};
     static constexpr auto I384 = Number<384>{};

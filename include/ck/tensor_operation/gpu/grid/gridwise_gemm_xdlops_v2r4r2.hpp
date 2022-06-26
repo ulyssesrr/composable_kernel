@@ -267,44 +267,12 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4r2
             make_tuple(Sequence<0, 1>{}, Sequence<2, 3>{}));
     }
 
-    __host__ __device__ static constexpr auto
-    MakeCGridDesc_MBlock_MPerBlock_NBlock_NPerBlock_Static()
-    {
-        constexpr auto M = I16;
-        constexpr auto N = I1152;
-        constexpr auto StrideC = I1152;
-
-        constexpr auto MBlock = Number<M / MPerBlock>{};
-        constexpr auto NBlock = Number<N / NPerBlock>{};
-
-        constexpr auto c_m_n_grid_desc = make_naive_tensor_descriptor(make_tuple(M, N), make_tuple(StrideC, I1));
-
-        return transform_tensor_descriptor(
-            c_m_n_grid_desc,
-            make_tuple(make_unmerge_transform(make_tuple(MBlock, Number<MPerBlock>{})),
-                       make_unmerge_transform(make_tuple(NBlock, Number<NPerBlock>{}))),
-            make_tuple(Sequence<0>{}, Sequence<1>{}),
-            make_tuple(Sequence<0, 1>{}, Sequence<2, 3>{}));
-    }
-
     // return block_id to C matrix tile idx (m0, n0) mapping
     __host__ __device__ static constexpr auto MakeCBlockClusterAdaptor(
         const CMNGridDesc& c_m_n_grid_desc, index_t /* M01 */, index_t /* N01 */, index_t KBatch)
     {
         return BlockToCTileMap_KSplit_M00_N0_M01Adapt<MPerBlock, NPerBlock, CMNGridDesc>(
             c_m_n_grid_desc, 8, KBatch);
-    }
-
-    // return block_id to C matrix tile idx (m0, n0) mapping
-    __host__ __device__ static constexpr auto MakeCBlockClusterAdaptorStatic(
-        const CMNGridDesc& /*c_m_n_grid_desc*/, index_t /* M01 */, index_t /* N01 */, index_t /*KBatch*/)
-    {
-        //constexpr auto KBatch = I20;
-        //constexpr auto M = I16;
-        //constexpr auto N = I1152;
-        //constexpr auto StrideC = I1152;
-        //constexpr auto c_m_n_grid_desc = make_naive_tensor_descriptor(make_tuple(M, N), make_tuple(StrideC, I1));
-        return BlockToCTileMap_KSplit_M00_N0_M01Adapt<MPerBlock, NPerBlock, CMNGridDesc>();
     }
 
     __host__ __device__ static constexpr auto
