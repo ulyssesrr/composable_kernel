@@ -180,7 +180,25 @@ struct BlockToCTileMap_KSplit_M00_N0_M01Adapt
     static constexpr auto I2 = Number<2>{};
     static constexpr auto I3 = Number<3>{};
 
+    static constexpr auto I8 = Number<8>{};
+    static constexpr auto I20 = Number<20>{};
+    static constexpr auto I16 = Number<16>{};
+    static constexpr auto I1152 = Number<1152>{};
+
     __host__ __device__ BlockToCTileMap_KSplit_M00_N0_M01Adapt() = default;
+
+#if 0
+    __host__ __device__ BlockToCTileMap_KSplit_M00_N0_M01Adapt()
+    {
+        M01_ = I8;
+        KSplit_ = I20;
+        constexpr auto M = I16;
+        constexpr auto N = I1152;
+        constexpr auto StrideC = I1152;
+        c_grid_desc_m_n_ = make_naive_tensor_descriptor(make_tuple(M, N), make_tuple(StrideC, I1));
+    }
+
+#endif
 
     __host__ __device__ BlockToCTileMap_KSplit_M00_N0_M01Adapt(const CGridDesc_M_N& c_grid_desc_m_n,
                                                                index_t M01    = 8,

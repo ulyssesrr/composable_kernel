@@ -32,14 +32,14 @@ __global__ void
         kernel_gemm_xdlops_v2r4r2(const FloatAB* __restrict__ p_a_grid,
                                   const FloatAB* __restrict__ p_b_grid,
                                   FloatC* __restrict__ p_c_grid,
-                                  const CBlockClusterAdaptor c_block_cluster_adaptor,
                                   const AGridDesc_B_K0_M_K1 a_b_k0_m_k1_grid_desc,
                                   const BGridDesc_B_K0_N_K1 b_b_k0_n_k1_grid_desc,
                                   const CGridDesc_MBlock_MPerBlock_NBlock_NPerBlock
                                       c_grid_desc_mblock_mperblock_nblock_nperblock,
                                   const AElementwiseOperation a_element_op,
                                   const BElementwiseOperation b_element_op,
-                                  const CElementwiseOperation c_element_op)
+                                  const CElementwiseOperation c_element_op,
+                                  const CBlockClusterAdaptor c_block_cluster_adaptor)
 {
 #if(!defined(__HIP_DEVICE_COMPILE__) || defined(__gfx908__) || defined(__gfx90a__))
     constexpr index_t shared_block_size =
@@ -123,6 +123,16 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4r2
     static constexpr auto I5 = Number<5>{};
     static constexpr auto I6 = Number<6>{};
     static constexpr auto I7 = Number<7>{};
+
+    static constexpr auto I8 = Number<8>{};
+
+    static constexpr auto I20 = Number<20>{};
+
+    static constexpr auto I16 = Number<16>{};
+    static constexpr auto I384 = Number<384>{};
+    static constexpr auto I1152 = Number<1152>{};
+    static constexpr auto I1280 = Number<1280>{};
+    static constexpr auto I5120 = Number<5120>{};
 
     // K1 should be Number<...>
     static constexpr auto AK0 = Number<KPerBlock / AK1Value>{};
@@ -257,12 +267,44 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4r2
             make_tuple(Sequence<0, 1>{}, Sequence<2, 3>{}));
     }
 
+    __host__ __device__ static constexpr auto
+    MakeCGridDesc_MBlock_MPerBlock_NBlock_NPerBlock_Static()
+    {
+        constexpr auto M = I16;
+        constexpr auto N = I1152;
+        constexpr auto StrideC = I1152;
+
+        constexpr auto MBlock = Number<M / MPerBlock>{};
+        constexpr auto NBlock = Number<N / NPerBlock>{};
+
+        constexpr auto c_m_n_grid_desc = make_naive_tensor_descriptor(make_tuple(M, N), make_tuple(StrideC, I1));
+
+        return transform_tensor_descriptor(
+            c_m_n_grid_desc,
+            make_tuple(make_unmerge_transform(make_tuple(MBlock, Number<MPerBlock>{})),
+                       make_unmerge_transform(make_tuple(NBlock, Number<NPerBlock>{}))),
+            make_tuple(Sequence<0>{}, Sequence<1>{}),
+            make_tuple(Sequence<0, 1>{}, Sequence<2, 3>{}));
+    }
+
     // return block_id to C matrix tile idx (m0, n0) mapping
     __host__ __device__ static constexpr auto MakeCBlockClusterAdaptor(
         const CMNGridDesc& c_m_n_grid_desc, index_t /* M01 */, index_t /* N01 */, index_t KBatch)
     {
         return BlockToCTileMap_KSplit_M00_N0_M01Adapt<MPerBlock, NPerBlock, CMNGridDesc>(
             c_m_n_grid_desc, 8, KBatch);
+    }
+
+    // return block_id to C matrix tile idx (m0, n0) mapping
+    __host__ __device__ static constexpr auto MakeCBlockClusterAdaptorStatic(
+        const CMNGridDesc& /*c_m_n_grid_desc*/, index_t /* M01 */, index_t /* N01 */, index_t /*KBatch*/)
+    {
+        //constexpr auto KBatch = I20;
+        //constexpr auto M = I16;
+        //constexpr auto N = I1152;
+        //constexpr auto StrideC = I1152;
+        //constexpr auto c_m_n_grid_desc = make_naive_tensor_descriptor(make_tuple(M, N), make_tuple(StrideC, I1));
+        return BlockToCTileMap_KSplit_M00_N0_M01Adapt<MPerBlock, NPerBlock, CMNGridDesc>();
     }
 
     __host__ __device__ static constexpr auto
