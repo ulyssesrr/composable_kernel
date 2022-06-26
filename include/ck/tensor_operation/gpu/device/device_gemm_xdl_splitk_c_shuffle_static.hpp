@@ -92,7 +92,7 @@ struct DeviceGemmXdlSplitKCShuffleStatic
 
         assert(KPad % (AK1 * KBatch) == 0);
 
-        const index_t AK0 = KPad / (AK1 * KBatch);
+        static constexpr auto AK0 = Number<KPad / (AK1 * KBatch)>{};
 
         const auto a_grid_desc_m_k = [&]() {
             if constexpr(is_same<tensor_layout::gemm::RowMajor, ALayout>::value)
@@ -134,7 +134,7 @@ struct DeviceGemmXdlSplitKCShuffleStatic
         {
             return transform_tensor_descriptor(
                 a_grid_desc_m_k,
-                make_tuple(make_unmerge_transform(make_tuple(KBatch, AK0, AK1)),
+                make_tuple(make_unmerge_transform(make_tuple(KBatch, AK0, Number<AK1>{})),
                            make_pass_through_transform(M)),
                 make_tuple(Sequence<1>{}, Sequence<0>{}),
                 make_tuple(Sequence<0, 1, 3>{}, Sequence<2>{}));
@@ -152,7 +152,7 @@ struct DeviceGemmXdlSplitKCShuffleStatic
 
         assert(KPad % (BK1 * KBatch) == 0);
 
-        const index_t BK0 = KPad / (BK1 * KBatch);
+        constexpr auto BK0 = Number<KPad / (BK1 * KBatch)>{};
 
         const auto b_grid_desc_k_n = [&]() {
             if constexpr(is_same<tensor_layout::gemm::RowMajor, BLayout>::value)
@@ -194,7 +194,7 @@ struct DeviceGemmXdlSplitKCShuffleStatic
         {
             return transform_tensor_descriptor(
                 b_grid_desc_k_n,
-                make_tuple(make_unmerge_transform(make_tuple(KBatch, BK0, BK1)),
+                make_tuple(make_unmerge_transform(make_tuple(KBatch, BK0, Number<BK1>{})),
                            make_pass_through_transform(N)),
                 make_tuple(Sequence<0>{}, Sequence<1>{}),
                 make_tuple(Sequence<0, 1, 3>{}, Sequence<2>{}));
@@ -218,6 +218,9 @@ struct DeviceGemmXdlSplitKCShuffleStatic
             }
         }();
 
+        if(c_grid_desc_m_n.IsKnownAtCompileTime())
+            printf("c_grid_desc_m_n yes\n");
+
         if constexpr(GemmSpec == GemmSpecialization::MNPadding)
         {
             const auto PadM = (MPerBlock - M % MPerBlock) % MPerBlock;
@@ -232,11 +235,7 @@ struct DeviceGemmXdlSplitKCShuffleStatic
         else
         {
 
-            return transform_tensor_descriptor(
-                c_grid_desc_m_n,
-                make_tuple(make_pass_through_transform(M), make_pass_through_transform(N)),
-                make_tuple(Sequence<0>{}, Sequence<1>{}),
-                make_tuple(Sequence<0>{}, Sequence<1>{}));
+            return make_naive_tensor_descriptor(make_tuple(M, N), make_tuple(StrideC, I1));
         }
     }
 
@@ -339,7 +338,7 @@ struct DeviceGemmXdlSplitKCShuffleStatic
         CShuffleBlockTransferClusterLengths_MBlock_MPerBlock_NBlock_NPerBlock>;
 
     using CGridDesc_MBlock_MPerBlock_NBlock_NPerBlock =
-        decltype(GridwiseGemm::MakeCGridDesc_MBlock_MPerBlock_NBlock_NPerBlock(CGridDesc_M_N{}));
+        decltype(GridwiseGemm::MakeCGridDesc_MBlock_MPerBlock_NBlock_NPerBlock_Static(CGridDesc_M_N{}));
 
     using Block2CTileMap = typename GridwiseGemm::CBlockClusterAdaptor;
 
@@ -393,7 +392,7 @@ struct DeviceGemmXdlSplitKCShuffleStatic
                                            block_2_ctile_map_))
             {
                 c_grid_desc_mblock_mperblock_nblock_nperblock_ =
-                    GridwiseGemm::MakeCGridDesc_MBlock_MPerBlock_NBlock_NPerBlock(c_grid_desc_m_n_);
+                    GridwiseGemm::MakeCGridDesc_MBlock_MPerBlock_NBlock_NPerBlock_Static(c_grid_desc_m_n_);
             }
         }
 
@@ -467,6 +466,18 @@ struct DeviceGemmXdlSplitKCShuffleStatic
                     0,
                     arg.c_grid_desc_mblock_mperblock_nblock_nperblock_.GetElementSpaceSize() *
                         sizeof(CDataType)));
+
+                if(arg.a_grid_desc_kbatch_k0_m_k1_.IsKnownAtCompileTime())
+                    printf("a_grid_desc_kbatch_k0_m_k1_ known at compile time\n");
+
+                if(arg.b_grid_desc_kbatch_k0_n_k1_.IsKnownAtCompileTime())
+                    printf("b_grid_desc_kbatch_k0_n_k1_ known at compile time\n");
+
+                if(arg.c_grid_desc_mblock_mperblock_nblock_nperblock_.IsKnownAtCompileTime())
+                    printf("c_grid_desc_mblock_mperblock_nblock_nperblock_ known at compile time\n");
+
+                //if(arg.block_2_ctile_map_.IsKnownAtCompileTime())
+                //    printf("block_2_ctile_map_ known at compile time\n");
 
                 ave_time = launch_and_time_kernel(stream_config,
                                        kernel,

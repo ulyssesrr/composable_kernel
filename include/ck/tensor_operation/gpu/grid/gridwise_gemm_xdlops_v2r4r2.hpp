@@ -267,6 +267,18 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4r2
             make_tuple(Sequence<0, 1>{}, Sequence<2, 3>{}));
     }
 
+    __host__ __device__ static constexpr auto
+    MakeCGridDesc_MBlock_MPerBlock_NBlock_NPerBlock_Static(const CMNGridDesc& )
+    {
+        const auto M = I16;
+        const auto N = I1152;
+
+        const auto MBlock = Number<M / MPerBlock>{};
+        const auto NBlock = Number<N / NPerBlock>{};
+
+        return make_naive_tensor_descriptor_packed(make_tuple(MBlock, Number<MPerBlock>{}, NBlock, Number<NPerBlock>{}));
+    }
+
     // return block_id to C matrix tile idx (m0, n0) mapping
     __host__ __device__ static constexpr auto MakeCBlockClusterAdaptor(
         const CMNGridDesc& c_m_n_grid_desc, index_t /* M01 */, index_t /* N01 */, index_t KBatch)
@@ -289,7 +301,7 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4r2
     }
 
     using CGridDesc_MBlock_MPerBlock_NBlock_NPerBlock =
-        decltype(MakeCGridDesc_MBlock_MPerBlock_NBlock_NPerBlock(CMNGridDesc{}));
+        decltype(MakeCGridDesc_MBlock_MPerBlock_NBlock_NPerBlock_Static(CMNGridDesc{}));
     using CBlockClusterAdaptor = decltype(MakeCBlockClusterAdaptor(CMNGridDesc{}, 1, 1, 1));
 
     template <bool HasMainKBlockLoop>
