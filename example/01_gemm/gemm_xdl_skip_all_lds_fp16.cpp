@@ -43,14 +43,14 @@ static constexpr auto GemmDefault = ck::tensor_operation::device::GemmSpecializa
 
 // clang-format off
 using DeviceGemmInstance = ck::tensor_operation::device::DeviceGemmXdlSkipAllLds
-        //###########| AData| BData| CData| AccData| ALayout| BLayout| CLayout|           A|           B|           C|          GEMM| Block|  MPer|  NPer| K0Per|MultiK0| K1| MPer| NPer| MXdl| NXdl|  ABlockTransfer| ABlockTransfer| ABlockTransfer| ABlockTransfer| ABlockTransfer| ABlockTransfer| ABlockLds| BThreadTransfer| CThreadTransfer| CThreadTransfer|
-        //###########|  Type|  Type|  Type|    Type|        |        |        | Elementwise| Elementwise| Elementwise|Spacialization|  Size| Block| Block| Block|       |   |  XDL|  XDL|  Per|  Per|   ThreadCluster|  ThreadCluster| SrcAccessOrder|   SrcVectorDim|      SrcScalar|      DstScalar| AddExtraM|       SrcScalar| SrcDstVectorDim|       DstScalar|
-        //###########|      |      |      |        |        |        |        |   Operation|   Operation|   Operation|              |      |      |      |      |       |   |     |     | Wave| Wave| Lengths_K0_M_K1|   ArrangeOrder|               |               |      PerVector|   PerVector_K1|          |       PerVector|                |       PerVector|
-        //###########|      |      |      |        |        |        |        |            |            |            |              |      |      |      |      |       |   |     |     |     |     |                |               |               |               |               |               |          |                |                |                |
+        //###########| AData| BData| CData| AccData| ALayout| BLayout| CLayout|           A|           B|           C|          GEMM| Block|  MPer|  NPer| K0Per|MultiK0| K1| MPer| NPer| MXdl| NXdl|  ABlockTransfer| ABlockTransfer| ABlockTransfer| ABlockTransfer| ABlockTransfer| ABlockTransfer| ABlockLds| BThreadTransfer|    CShuffle|     CShuffle| CBlockTransferClusterLengths|  CBlockTransfer|
+        //###########|  Type|  Type|  Type|    Type|        |        |        | Elementwise| Elementwise| Elementwise|Spacialization|  Size| Block| Block| Block|       |   |  XDL|  XDL|  Per|  Per|   ThreadCluster|  ThreadCluster| SrcAccessOrder|   SrcVectorDim|      SrcScalar|      DstScalar| AddExtraM|       SrcScalar| MXdlPerWave|  NXdlPerWave|         _MBlock_MWaveMPerXdl| ScalarPerVector|
+        //###########|      |      |      |        |        |        |        |   Operation|   Operation|   Operation|              |      |      |      |      |       |   |     |     | Wave| Wave| Lengths_K0_M_K1|   ArrangeOrder|               |               |      PerVector|   PerVector_K1|          |       PerVector|  PerShuffle|   PerShuffle|         _NBlock_NWaveNPerXdl|   _NWaveNPerXdl|
+        //###########|      |      |      |        |        |        |        |            |            |            |              |      |      |      |      |       |   |     |     |     |     |                |               |               |               |               |               |          |                |            |             |                             |                |
     
                     //<   F16,   F16,   F16,     F32,     Row,     Col,     Row, PassThrough, PassThrough, PassThrough,   GemmDefault,   256,    16,   64,      4,     4,   8,   16,   16,    1,    1,     S<4, 16, 1>,     S<1, 0, 2>,     S<1, 0, 2>,              2,              1,              8,      true,            8,               7,               1>;
                      //<   F16,   F16,   F16,     F32,     Row,     Col,     Row, PassThrough, PassThrough, PassThrough,   GemmDefault,   64,    16,   16,     4,     4,   8,   16,   16,    1,    1,     S<4, 16, 1>,     S<1, 0, 2>,     S<1, 0, 2>,              2,              8,              8,      true,            8,               7,               1>;
-                     <   F16,   F16,   F16,     F32,     Row,     Col,     Row, PassThrough, PassThrough, PassThrough,   GemmDefault,   64,    16,   16,     4,       8,   8,   16,   16,    1,    1,     S<4, 16, 1>,     S<1, 0, 2>,     S<1, 0, 2>,              2,              8,              8,      true,            8,               7,               1>;
+                     <   F16,   F16,   F16,     F32,     Row,     Col,     Row, PassThrough, PassThrough, PassThrough,   GemmDefault,   64,    16,   16,     4,       4,   8,   16,   16,    1,    1,     S<4, 16, 1>,     S<1, 0, 2>,     S<1, 0, 2>,              2,              8,              8,      true,            8,               1,           1,              S<1, 8, 1,  8>,               2>;
 using ADataType   = ck::half_t;
 using BDataType   = ck::half_t;
 using CDataType   = ck::half_t;
@@ -92,6 +92,7 @@ int main(int argc, char* argv[])
     ck::index_t StrideA = 4096;
     ck::index_t StrideB = 4096;
     ck::index_t StrideC = N;
+    ck::index_t KBatch = 1;
 #else
     ck::index_t M = 16;
     ck::index_t N = 16;
@@ -108,7 +109,7 @@ int main(int argc, char* argv[])
         init_method     = std::stoi(argv[2]);
         time_kernel     = std::stoi(argv[3]);
     }
-    else if(argc == 10)
+    else if(argc == 11)
     {
         do_verification = std::stoi(argv[1]);
         init_method     = std::stoi(argv[2]);
@@ -121,13 +122,15 @@ int main(int argc, char* argv[])
         StrideA = std::stoi(argv[7]);
         StrideB = std::stoi(argv[8]);
         StrideC = std::stoi(argv[9]);
+
+        KBatch = std::stoi(argv[10]);
     }
     else
     {
         printf("arg1: verification (0=no, 1=yes)\n");
         printf("arg2: initialization (0=no init, 1=integer value, 2=decimal value)\n");
         printf("arg3: time kernel (0=n0, 1=yes)\n");
-        printf("arg4 to 9: M (256x), N(128x), K(32x), StrideA, StrideB, StrideC\n");
+        printf("arg4 to 10: M (256x), N(128x), K(32x), StrideA, StrideB, StrideC, Splitk\n");
         exit(0);
     }
 
@@ -161,8 +164,8 @@ int main(int argc, char* argv[])
         //a_m_k.GenerateTensorValue(GeneratorTensor_2<ADataType>{-5, 5});
         //a_m_k.GenerateTensorValue(GeneratorTensor_1<ADataType>{1});
         a_m_k.GenerateTensorValue(GeneratorTensor_2<BDataType>{0, 2});
-        b_k_n.GenerateTensorValue(GeneratorTensor_2<BDataType>{0, 2});
-        //b_k_n.GenerateTensorValue(GeneratorTensor_1<ADataType>{1});
+        //b_k_n.GenerateTensorValue(GeneratorTensor_2<BDataType>{0, 2});
+        b_k_n.GenerateTensorValue(GeneratorTensor_1<ADataType>{1});
         break;
     case 2:
         a_m_k.GenerateTensorValue(GeneratorTensor_3<ADataType>{0.0, 1.0});
@@ -199,7 +202,8 @@ int main(int argc, char* argv[])
                                       StrideC,
                                       a_element_op,
                                       b_element_op,
-                                      c_element_op);
+                                      c_element_op,
+                                      KBatch);
 
     if(!gemm.IsSupportedArgument(argument))
     {
