@@ -1,1 +1,0 @@
-add_example_executable(example_contraction_xdl_fp32 contraction_xdl_fp32.cpp)
