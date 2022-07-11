@@ -298,6 +298,13 @@ struct GridwiseLayernorm_mk_to_mk
 
         static_for<0, MThreadSliceSize, 1>{}([&](auto I) {
             BlockwiseSumReduce::Reduce(reduce_work_buf, mean_thread_buf(I));
+
+// #define COMPILER_BUG
+#ifdef COMPILER_BUG
+            if(mean_thread_buf(I) < 1)
+                printf("%f %d\n", mean_thread_buf(I), reduce_length);
+#endif
+
             mean_thread_buf(I) = mean_thread_buf(I) / reduce_length;
 
             BlockwiseSumReduce::Reduce(reduce_work_buf, mean_square_thread_buf(I));

@@ -38,8 +38,8 @@ using DeviceInstance = ck::tensor_operation::device::DeviceLayernorm<XDataType,
                                                                      Rank,
                                                                      NumReduceDim,
                                                                      256, // BlockSize
-                                                                     8,   // ClusterM
-                                                                     32,  // ClusterK
+                                                                     1,   // ClusterM
+                                                                     256,  // ClusterK
                                                                      1,   // SliceM
                                                                      8,   // SliceK
                                                                      1,   // SrcVecDim (0=M, 1=K)
