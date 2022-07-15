@@ -252,7 +252,8 @@ struct GridwiseSoftmax_mk_to_mk
 
         static_for<0, MThreadSliceSize, 1>{}([&](auto I) {
             BlockwiseMaxReduce::Reduce(reduce_work_buf, max_value_buf(I));
-            block_sync_lds();
+            if(I < MThreadSliceSize - 1)
+                block_sync_lds(); // wait for reading being complete before writing to LDS
         });
 
         threadwise_src_load.MoveSrcSliceWindow(in_grid_desc_m_k, in_thread_copy_bwd_step);
@@ -305,10 +306,9 @@ struct GridwiseSoftmax_mk_to_mk
             reducedTiles++;
         } while(reducedTiles < num_k_block_tile_iteration);
 
-        block_sync_lds(); // wait for reading being complete before writing to LDS
         static_for<0, MThreadSliceSize, 1>{}([&](auto I) {
+            block_sync_lds(); // wait for reading being complete before writing to LDS
             BlockwiseSumReduce::Reduce(reduce_work_buf, accu_value_buf(I));
-            block_sync_lds();
         });
 
         threadwise_src_load.MoveSrcSliceWindow(in_grid_desc_m_k, in_thread_copy_fwd_step);
