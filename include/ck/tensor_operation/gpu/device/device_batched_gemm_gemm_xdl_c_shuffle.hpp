@@ -246,6 +246,7 @@ struct DeviceBatchedGemmGemmCShuffleXdl : public DeviceBatchedGemmGemmCShuffle<A
         VElementwiseOperation,
         PElementwiseOperation
         OElementwiseOperation,
+        NumPrefetch,
         QKMPerBlock,
         QKNPerBlock,
         QKMPerXDL,
