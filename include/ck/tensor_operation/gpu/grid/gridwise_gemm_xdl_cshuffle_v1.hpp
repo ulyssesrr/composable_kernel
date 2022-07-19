@@ -468,7 +468,8 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
             // TODO: hacky, fix it!
             constexpr auto c_thread_desc_m0_n0_m1_n1_m2_m3_m4_n2 =
                 blockwise_gemm.GetCThreadDescriptor_M0_N0_M1_N1_M2_M3_M4_N2();
-
+            constexpr auto c_thread_desc_m0_n0_m1_n1_m2_n2_n3_n4 =
+                blockwise_gemm.GetCThreadDescriptor_M0_N0_M1_N1_M2_N2_N3_N4();
             // TODO: hacky, fix it!
             // c_block_desc_m0_n0_m1_n1_m2_m3_m4_n2_tmp is only used to get lengths
             constexpr auto c_block_desc_m0_n0_m1_n1_m2_m3_m4_n2_tmp =
@@ -482,6 +483,23 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
             constexpr auto M3 = c_block_desc_m0_n0_m1_n1_m2_m3_m4_n2_tmp.GetLength(I5);
             constexpr auto M4 = c_block_desc_m0_n0_m1_n1_m2_m3_m4_n2_tmp.GetLength(I6);
             constexpr auto N2 = c_block_desc_m0_n0_m1_n1_m2_m3_m4_n2_tmp.GetLength(I7);
+
+            constexpr auto m0 = c_thread_desc_m0_n0_m1_n1_m2_n2_n3_n4.GetLength(I0);
+            constexpr auto n0 = c_thread_desc_m0_n0_m1_n1_m2_n2_n3_n4.GetLength(I1);
+            constexpr auto m1 = c_thread_desc_m0_n0_m1_n1_m2_n2_n3_n4.GetLength(I2);
+            constexpr auto n1 = c_thread_desc_m0_n0_m1_n1_m2_n2_n3_n4.GetLength(I3);
+            constexpr auto m2 = c_thread_desc_m0_n0_m1_n1_m2_n2_n3_n4.GetLength(I4);
+            constexpr auto n2 = c_thread_desc_m0_n0_m1_n1_m2_n2_n3_n4.GetLength(I5);
+            constexpr auto n3 = c_thread_desc_m0_n0_m1_n1_m2_n2_n3_n4.GetLength(I6);
+            constexpr auto n4 = c_thread_desc_m0_n0_m1_n1_m2_n2_n3_n4.GetLength(I7);
+            constexpr auto acc_thread_desc_k0_m_k1 = transform_tensor_descriptor(
+                c_thread_desc_m0_n0_m1_n1_m2_n2_n3_n4,
+                make_tuple(make_merge_transform(make_tuple(n0, n1, n2, n3)),
+                        make_merge_transform(make_tuple(m0, m1, m2)),
+                        make_pass_through_transform(n4)),
+                make_tuple(Sequence<1, 3, 5, 6>{}, Sequence<0, 2, 4>{}, Sequence<7>{}),
+                make_tuple(Sequence<0>{}, Sequence<1>{}, Sequence<2>{}));
+            constexpr auto offset = acc_thread_desc_k0_m_k1.CalculateOffset(make_tuple(I0, I0, I0)); // FIXME: this goes BOOM!
 
             constexpr auto c_shuffle_block_desc_mblock_mperblock_nblock_nperblock =
                 GetCShuffleBlockDescriptor_MBlock_MPerBlock_NBlock_NPerBlock();
