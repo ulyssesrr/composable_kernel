@@ -85,6 +85,7 @@ struct GridwiseGemmGemmXdlopsSkipLdsV1
 
     // gemm1 K1
     static constexpr auto AccK1 = I4;
+    static constexpr auto Gemm1K0PerBlock = Number<KPerBlock / AccK1>{};
 
     static constexpr index_t WaveSize = 64;
     static constexpr index_t M0Waves   = M0PerBlock / (M0XdlPerWave * M0PerXDL);
@@ -101,7 +102,8 @@ struct GridwiseGemmGemmXdlopsSkipLdsV1
 
     using ThisThreadBlock = ThisThreadBlock<BlockSize>;
 
-    using GridwiseGemmPipe = GridwiseGemmPipelineSkipLds;
+    using GridwiseGemmPipe0 = GridwiseGemmPipelineSkipBLds;
+    using GridwiseGemmPipe1 = GridwiseGemmPipelineAInVgpr;
 
     __host__ __device__ static constexpr auto GetABlockDescriptor_K0PerBlock_MPerBlock_K1()
     {
@@ -358,23 +360,22 @@ struct GridwiseGemmGemmXdlopsSkipLdsV1
     using CGridDesc_M0_N0_M1_N1_M2_M3_M4_N2 =
         decltype(MakeCGridDescriptor_M0_N0_M1_N1_M2_M3_M4_N2(CGridDesc_M_N{}));
     using DefaultBlock2CTileMap = decltype(MakeDefaultBlock2CTileMap(CGridDesc_M_N{}, 1, 1));
-    using BGridDesc_K0_K1_K2_N0_N1_N2_N3_K3 =
-        decltype(MakeB0GridDescriptor_K0_K1_K2_N0_N1_N2_N3_K3(BGridDesc_K0_N_K1{}));
+    using B0GridDesc_K0_K1_K2_N0_N1_N2_N3_K3 =
+        decltype(MakeB0GridDescriptor_K0_K1_K2_N0_N1_N2_N3_K3(B0GridDesc_K0_N_K1{}));
 
-    __host__ __device__ static constexpr auto
-    MakeB1GridDescriptor_K0_K1_K2_N0_N1_N2_N3_K3(const CGridDesc_M0_N0_M1_N1_M2_M3_M4_N2&)
-    {
-
-    }
+    using TypeConvertFp32ToFp16Functor =
+        ck::tensor_operation::element_wise::UnaryTypeConvert<ck::half_t, float>;
 
     template <bool HasMainK0BlockLoop, typename Block2CTileMap = DefaultBlock2CTileMap>
     __device__ static void
     Run(const FloatAB* __restrict__ p_a_grid,
-        const FloatAB* __restrict__ p_b_grid,
+        const FloatAB* __restrict__ p_b0_grid,
+        const FloatAB* __restrict__ p_b1_grid,
         FloatC* __restrict__ p_c_grid,
         void* __restrict__ p_shared,
         const AGridDesc_K0_M_K1& a_grid_desc_k0_m_k1,
-        const BGridDesc_K0_K1_K2_N0_N1_N2_N3_K3 b_grid_desc_k0_k1_k2_n0_n1_n2_n3_k3,
+        const B0GridDesc_K0_K1_K2_N0_N1_N2_N3_K3 b0_grid_desc_k0_k1_k2_n0_n1_n2_n3_k3,
+        const B1GridDesc_K0_N_K1& b1_grid_desc_k0_n_k1, 
         const CGridDesc_M0_N0_M1_N1_M2_M3_M4_N2& c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2,
         const AElementwiseOperation& a_element_op,
         const BElementwiseOperation& b_element_op,
@@ -383,12 +384,14 @@ struct GridwiseGemmGemmXdlopsSkipLdsV1
     {
         const auto a_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
             p_a_grid, a_grid_desc_k0_m_k1.GetElementSpaceSize());
-        const auto b_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
-            p_b_grid, b_grid_desc_k0_k1_k2_n0_n1_n2_n3_k3.GetElementSpaceSize());
+        const auto b0_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+            p_b0_grid, b0_grid_desc_k0_k1_k2_n0_n1_n2_n3_k3.GetElementSpaceSize());
+        const auto b1_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+            p_b1_grid, b1_grid_desc_k0_n_k1.GetElementSpaceSize());
         auto c_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
             p_c_grid, c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2.GetElementSpaceSize());
 
-        const auto K0 = a_grid_desc_k0_m_k1.GetLength(I0);
+        const auto Gemm0K0 = a_grid_desc_k0_m_k1.GetLength(I0);
 
         // divide block work by [M, N]
         const auto block_work_idx =
@@ -474,13 +477,13 @@ struct GridwiseGemmGemmXdlopsSkipLdsV1
                wave_k_n_id[I0],
                wave_k_n_id[I1]);
         printf("mfma thread k per xdlops: %d K0PerThread: %d HasMainK0BlockLoop: %d K0: %d  \t", 
-                xdlops_gemm.K0PerXdlops, K0PerThread, HasMainK0BlockLoop, b_grid_desc_k0_k1_k2_n0_n1_n2_n3_k3.GetLength(I0));
+                xdlops_gemm.K0PerXdlops, K0PerThread, HasMainK0BlockLoop, b0_grid_desc_k0_k1_k2_n0_n1_n2_n3_k3.GetLength(I0));
 #endif
 
         auto b_threadwise_copy =
             ThreadwiseTensorSliceTransfer_v2<FloatAB,
                                              FloatAB,
-                                             decltype(b_grid_desc_k0_k1_k2_n0_n1_n2_n3_k3),
+                                             decltype(b0_grid_desc_k0_k1_k2_n0_n1_n2_n3_k3),
                                              decltype(b_thread_desc_k0_k1_k2_n0_n1_n2_n3_k3),
                                              Sequence<I1,
                                                       I1,
@@ -495,16 +498,14 @@ struct GridwiseGemmGemmXdlopsSkipLdsV1
                                              BBlockTransferSrcScalarPerVector,
                                              BThreadTransferSrcResetCoordinateAfterRun,
                                              true>(
-                b_grid_desc_k0_k1_k2_n0_n1_n2_n3_k3,
+                b0_grid_desc_k0_k1_k2_n0_n1_n2_n3_k3,
                 make_multi_index(
                     0, wave_k_n_id[I0], 0, block_work_idx[I1], 0, wave_id[I1], wave_k_n_id[I1], 0));
 
-        // GEMM definition
-        //   c_mtx += transpose(a_mtx) * b_mtx
-        //     a_mtx[K0PerBlock, MPerBlock] is in LDS
-        //     b_mtx[K0PerBlock, NPerBlock] is in LDS
-        //     c_mtx[MPerBlock, NPerBlock] is distributed among threads, and saved in
-        //       register
+        // GEMM0 definition
+        //   c_mtx += b_mtx * a_mtx
+        //   c_mtx[MPerBlock, NPerBlock] is distributed among threads, and saved in
+        //   register
         // sanity check
         auto blockwise_gemm = BlockwiseGemmXdlops_k0mk1_k0nk1_m0n0m1n1m2m3m4n2_v1r1<
             BlockSize,
@@ -530,27 +531,27 @@ struct GridwiseGemmGemmXdlopsSkipLdsV1
         constexpr auto a_block_slice_copy_step  = make_multi_index(K0PerBlock * MultiK0, 0, 0);
         constexpr auto b_thread_slice_copy_step = make_multi_index(1, 0, 0, 0, 0, 0, 0, 0);
 
-        // gridwise GEMM pipeline
-        static_assert(std::is_default_constructible_v<GridwiseGemmPipe>);
-        const auto gridwise_gemm_pipeline = GridwiseGemmPipe{};
+        // gridwise GEMM 0 pipeline
+        static_assert(std::is_default_constructible_v<GridwiseGemmPipe0>);
+        const auto gridwise_gemm_pipeline0 = GridwiseGemmPipe0{};
 
         const index_t num_k_block_main_loop = __builtin_amdgcn_readfirstlane(
             (a_grid_desc_k0_m_k1.GetLength(I0) * a_grid_desc_k0_m_k1.GetLength(I2)) /
             KPerBlock);
 
-        gridwise_gemm_pipeline.template Run<HasMainKBlockLoop,
-                                            >
+        gridwise_gemm_pipeline0.template Run<HasMainKBlockLoop,
+                                            MultiK0>
             (a_grid_desc_k0_m_k1,
              a_block_desc_k0_m_k1,
              a_blockwise_copy,
              a_grid_buf,
              a_block_buf,
              a_block_slice_copy_step,
-             b_grid_desc_k0_k1_k2_n0_n1_n2_n3_k3,
+             b0_grid_desc_k0_k1_k2_n0_n1_n2_n3_k3,
              b_thread_desc_k0_k1_k2_n0_n1_n2_n3_k3,
              b_threadwise_copy,
              b_grid_buf,
-
+             b_thread_buf,
              b_thread_slice_copy_step,
              blockwise_gemm,
              c_thread_buf,
@@ -589,35 +590,7 @@ struct GridwiseGemmGemmXdlopsSkipLdsV1
             make_tuple(Sequence<0, 2, 4, 5>{}, Sequence<1, 3, 7>{}, Sequence<6>{}),
             make_tuple(Sequence<0>{}, Sequence<1>{}, Sequence<2>{}));
 
-        // A1 matrix blockwise copy
-        // actually a threadwise copy. this variant needs to support RunRead() and RunWrite()
-        // TODO ANT: real blockwise copy from c_block_desc to c_thread_desc
-        auto a1_blockwise_copy = ThreadwiseTensorSliceTransfer_v3r1<
-            Sequence<m0 * m1 * m2 * m3, n0 * n1 * n2, m4>{}, // ThreadSliceLengths
-            tensor_operation::element_wise::PassThrough,     // SrcElementwiseOperation
-            tensor_operation::element_wise::PassThrough,     // DstElementwiseOperation
-            InMemoryDataOperationEnum::Set,                  // DstInMemOp
-            FloatGemmAcc,                                    // SrcData
-            FloatAB,                                         // DstData
-            a1_thread_desc_k0_m_k1,                          // SrcDesc
-            a1_thread_desc_k0_m_k1,                          // DstDesc
-            Sequence<1, 0, 2>,                               // SrcDimAccessOrder
-            Sequence<1, 0, 2>,                               // DstDimAccessOrder
-            2,                                               // SrcVectorDim
-            2,                                               // DstVectorDim
-            m4,                                              // SrcScalarPerVector
-            m4,                                              // DstScalarPerVector
-            1,                                               // SrcScalarStrideInVector
-            1,                                               // DstScalarStrideInVector
-            false, // ThreadTransferSrcResetCoordinateAfterRun
-            true,  // ThreadTransferDstResetCoordinateAfterRun
-            NumGemmKPrefetchStage>(a1_thread_desc_k0_m_k1,
-                                   make_multi_index(0, 0, 0),
-                                   tensor_operation::element_wise::PassThrough{},
-                                   a1_thread_desc_k0_m_k1,
-                                   make_multi_index(0, 0, 0),
-                                   tensor_operation::element_wise::PassThrough{});
-
+        
         // B1 matrix blockwise copy
         auto b1_blockwise_copy =
             ThreadGroupTensorSliceTransfer_v4r1<ThisThreadBlock,
@@ -649,14 +622,62 @@ struct GridwiseGemmGemmXdlopsSkipLdsV1
                 make_multi_index(0, 0, 0),
                 tensor_operation::element_wise::PassThrough{});
 
-        auto a1_block_buf = make_static_buffer<AddressSpaceEnum::Vgpr, FloatAB>(
-            acc_thread_desc_m0_n0_m1_n1_m2_n2_n3_n4.GetElementSpaceSize());
+        auto a1_thread_buf = make_static_buffer<AddressSpaceEnum::Vgpr, FloatAB>(
+            acc_thread_desc_m0_n0_m1_n1_m2_m3_m4_n2.GetElementSpaceSize());
 
         // reuse LDS space for gemm0's a_block_buf
         auto b1_block_buf = make_dynamic_buffer<AddressSpaceEnum::Lds>(
             static_cast<FloatAB*>(p_shared),
             b1_block_desc_bk0_n_bk1.GetElementSpaceSize());
 
+
+        constexpr auto a1_thread_slice_copy_step  = make_multi_index(Gemm1K0PerBlock, 0, 0, 0, 0, 0, 0, 0);
+        constexpr auto b1_block_slice_copy_step = make_multi_index(Gemm1K0PerBlock, 0, 0);
+
+        // GEMM1 definition
+        //   c_mtx += a_mtx * b_mtx
+        //   c_mtx[MPerBlock, NPerBlock] is distributed among threads, and saved in
+        //   register
+        // sanity check
+        auto blockwise_gemm1 = BlockwiseGemmXdlops_k0mk1_k0nk1_m0n0m1n1m2m3m4n2_skip_a_lds<
+            BlockSize,
+            FloatAB,
+            FloatAcc,
+            decltype(b1_block_desc_bk0_n_bk1),
+            MPerBlock,
+            NPerBlock,
+            Gemm1K0PerBlock,
+            MPerXDL,
+            NPerXDL,
+            MXdlPerWave,
+            NXdlPerWave,
+            K1>{};
+
+        auto c1_thread_buf = blockwise_gemm1.GetCThreadBuffer();
+
+        // gridwise GEMM 0 pipeline
+        static_assert(std::is_default_constructible_v<GridwiseGemmPipe1>);
+        const auto gridwise_gemm_pipeline1 = GridwiseGemmPipe1{};
+
+        const index_t num_k_block_main_loop_1 = __builtin_amdgcn_readfirstlane(
+            (a_grid_desc_k0_m_k1.GetLength(I0) * a_grid_desc_k0_m_k1.GetLength(I2)) /
+            KPerBlock);
+
+        gridwise_gemm_pipeline1.template Run<TypeConvertFp32ToFp16Functor,
+                                             MultiK0>
+            (a1_thread_desc_k0_m_k1,
+             c_thread_buf,
+             a1_thread_buf,
+             a1_thread_slice_copy_step,
+             b1_grid_desc_bk0_n_bk1,
+             b1_block_desc_bk0_n_bk1,
+             b1_blockwise_copy,
+             b1_grid_buf,
+             b1_block_buf,
+             b1_block_slice_copy_step,
+             blockwise_gemm,
+             c1_thread_buf,
+             num_k_block_main_loop);
         
 
         // output: register to global memory

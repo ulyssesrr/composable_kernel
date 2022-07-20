@@ -201,6 +201,15 @@ struct UnaryTypeConvert<ck::bhalf_t, float>
     }
 };
 
+template <>
+struct UnaryTypeConvert<ck::half_t, float>
+{
+    __host__ __device__ void operator()(ck::half_t& y, float& x) const
+    {
+        y = ck::type_convert<ck::half_t, float>(x);
+    }
+};
+
 } // namespace element_wise
 } // namespace tensor_operation
 } // namespace ck
