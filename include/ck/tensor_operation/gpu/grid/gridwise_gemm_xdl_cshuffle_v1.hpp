@@ -494,8 +494,8 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
             constexpr auto n4 = c_thread_desc_m0_n0_m1_n1_m2_n2_n3_n4.GetLength(I7);
             constexpr auto acc_thread_desc_k0_m_k1 = transform_tensor_descriptor(
                 c_thread_desc_m0_n0_m1_n1_m2_n2_n3_n4,
-                make_tuple(make_merge_transform(make_tuple(n0, n1, n2, n3)),
-                        make_merge_transform(make_tuple(m0, m1, m2)),
+                make_tuple(make_merge_transform_v3_division_mod(make_tuple(n0, n1, n2, n3)), // workaround
+                        make_merge_transform_v3_division_mod(make_tuple(m0, m1, m2)),
                         make_pass_through_transform(n4)),
                 make_tuple(Sequence<1, 3, 5, 6>{}, Sequence<0, 2, 4>{}, Sequence<7>{}),
                 make_tuple(Sequence<0>{}, Sequence<1>{}, Sequence<2>{}));
