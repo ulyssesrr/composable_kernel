@@ -77,7 +77,7 @@ std::ostream& show_2d_matrix(std::ostream& os, Tensor<DataType>& matrix)
         os << "[";
         for(size_t y = 0; y < matrix.mDesc.GetLengths()[1]; y++)
         {
-            os << std::setw(5) << static_cast<float>(matrix(x, y));
+            os << std::setw(6) << std::setprecision(4) << static_cast<float>(matrix(x, y));
         }
         os << "]" << std::endl;
     }
