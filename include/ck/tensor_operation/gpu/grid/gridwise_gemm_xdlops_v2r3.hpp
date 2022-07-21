@@ -13,12 +13,7 @@
 #include "ck/tensor_operation/gpu/block/thread_group_tensor_slice_transfer_v4r1.hpp"
 #include "ck/tensor_operation/gpu/thread/threadwise_tensor_slice_transfer.hpp"
 #include "ck/tensor_operation/gpu/element/element_wise_operation.hpp"
-#include "ck/utility/data_type.hpp"
-#include "ck/utility/reduction_common.hpp"
-#include "ck/utility/reduction_operator.hpp"
-#include "ck/utility/reduction_functions_accumulate.hpp"
-#include "ck/tensor_operation/gpu/block/reduction_functions_blockwise.hpp"
-#include "ck/tensor_operation/gpu/thread/reduction_functions_threadwise.hpp"
+#include "ck/tensor_operation/gpu/block/blockwise_softmax_v1.hpp"
 
 namespace ck {
 
@@ -478,90 +473,16 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
                                                           c_thread_buf,
                                                           num_k_block_main_loop);
         {
-            // LDS
-            __shared__ AccDataType p_reduce_work_buffer[BlockSize];
-
-            StaticBuffer<AddressSpaceEnum::Vgpr, AccDataType, 1, true> max_value_buf;
-            static_for<0, 1, 1>{}([&](auto I) {
-                max_value_buf(I) = reduce::Max::template GetIdentityValue<AccDataType>();
-            });
-
-            StaticBuffer<AddressSpaceEnum::Vgpr, AccDataType, 1, true> accu_value_buf;
-            static_for<0, 1, 1>{}([&](auto I) {
-                accu_value_buf(I) = reduce::Add::template GetIdentityValue<AccDataType>();
-            });
-
-            constexpr auto c_thread_desc = blockwise_gemm.GetCThreadDesc();
-            // printf("c_thread_desc: {%d, %d, %d}", c_thread_desc.GetLength(I0).value,
-            // c_thread_desc.GetLength(I1).value, c_thread_desc.GetLength(I2));
-            constexpr index_t c_offset = c_thread_desc.CalculateOffset(make_tuple(0, 0, 0));
-
-            auto& xdlops_out = c_thread_buf.GetVectorTypeReference(Number<c_offset>{});
-
-            using ThreadReduceSrcDesc_M_K = decltype(make_naive_tensor_descriptor_packed(
-                make_tuple(Number<1>{}, Number<c_thread_desc.GetLength(I2)>{})));
-            using ThreadReduceDstDesc_M =
-                decltype(make_naive_tensor_descriptor_packed(make_tuple(Number<1>{})));
-
-            using ThreadwiseMaxReduce =
-                ThreadwiseReduction<AccDataType,
-                                    ThreadReduceSrcDesc_M_K,
-                                    ThreadReduceDstDesc_M,
-                                    reduce::Max,
-                                    false, // param ignored
-                                    detail::AccumulateWithNanIgnore<reduce::Max, AccDataType>>;
-            ThreadwiseMaxReduce::Reduce(xdlops_out.template AsType<float>(), max_value_buf);
-            // const index_t thread_local_id = get_thread_local_1d_id();
-            // printf("thread id: %d, Max: %f\t\t",thread_local_id,max_value_buf[I0]);
-
-            using ThreadClusterLengths_M_K  = Sequence<32, 2>;
-            using ThreadClusterArrangeOrder = Sequence<1, 0>;
-            using BlockwiseMaxReduce        = PartitionedBlockwiseReduction<
-                AccDataType,
-                BlockSize,
-                ThreadClusterLengths_M_K,
-                ThreadClusterArrangeOrder,
-                reduce::Max,
-                false, // param ignored
-                detail::AccumulateWithNanIgnore<reduce::Max, AccDataType>>;
-
-            auto reduce_work_buf =
-                make_dynamic_buffer<AddressSpaceEnum::Lds>(p_reduce_work_buffer, BlockSize);
-            block_sync_lds();
-            BlockwiseMaxReduce::Reduce(reduce_work_buf, max_value_buf(I0));
-            block_sync_lds();
-
-            // printf("\n");
-            // printf("thread id: %d, Max: %f\t\t",thread_local_id,max_value_buf[I0]);
-            // softmax
-            using BlockwiseSumReduce = PartitionedBlockwiseReduction<
-                AccDataType,
-                BlockSize,
-                ThreadClusterLengths_M_K,
-                ThreadClusterArrangeOrder,
-                reduce::Add,
-                false, // ignored
-                detail::AccumulateWithNanIgnore<reduce::Add, AccDataType>>;
-
-            using ThreadwiseSumReduce =
-                ThreadwiseReduction<AccDataType,
-                                    ThreadReduceSrcDesc_M_K,
-                                    ThreadReduceDstDesc_M,
-                                    reduce::Add,
-                                    false, // ignored
-                                    detail::AccumulateWithNanIgnore<reduce::Add, AccDataType>>;
-            static_for<0, c_thread_desc.GetLength(I2), 1>{}([&](auto iK) {
-                xdlops_out.template AsType<float>()(iK) =
-                    math::exp(xdlops_out.template AsType<float>()[iK] - max_value_buf(I0));
-            });
-            ThreadwiseSumReduce::Reduce(xdlops_out.template AsType<float>(), accu_value_buf);
-            block_sync_lds();
-            BlockwiseSumReduce::Reduce(reduce_work_buf, accu_value_buf(I0));
-            block_sync_lds();
-            static_for<0, c_thread_desc.GetLength(I2), 1>{}([&](auto iK) {
-                xdlops_out.template AsType<float>()(iK) =
-                    xdlops_out.template AsType<float>()[iK] / accu_value_buf(I0);
-            });
+            using BlockwiseSoftmax = BlockwiseSoftmax_V1<BlockSize,
+                                                         FloatAcc,
+                                                         MPerXDL,
+                                                         NPerXDL,
+                                                         blockwise_gemm.GetRegSizePerXdlops(),
+                                                         MXdlPerWave,
+                                                         NXdlPerWave,
+                                                         1,
+                                                         1>;
+            BlockwiseSoftmax::Run(c_thread_buf);
         }
 
         // output: register to global memory

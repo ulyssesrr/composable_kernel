@@ -263,7 +263,10 @@ struct BlockwiseGemmXdlops_k0mk1_k0nk1_m0n0m1n1m2m3m4n2_v1
             make_tuple(Sequence<3>{}, Sequence<0, 1, 2>{}));
     }
 
-    __host__ __device__ static constexpr auto GetCThreadDesc() { return c_thread_desc_; }
+    __host__ __device__ static constexpr index_t GetRegSizePerXdlops()
+    {
+        return xdlops_gemm.GetRegSizePerXdlops();
+    }
 
     static constexpr auto a_block_desc_m0_m1_m2_k = MakeABlockDescriptor_M0_M1_M2_K();
     static constexpr auto b_block_desc_n0_n1_n2_k = MakeBBlockDescriptor_N0_N1_N2_K();
