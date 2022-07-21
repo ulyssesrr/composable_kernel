@@ -473,6 +473,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
                                                           c_thread_buf,
                                                           num_k_block_main_loop);
         {
+            __shared__ AccDataType p_reduce_work_buffer[BlockSize];
             using BlockwiseSoftmax = BlockwiseSoftmax_V1<BlockSize,
                                                          FloatAcc,
                                                          MPerXDL,
@@ -482,7 +483,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
                                                          NXdlPerWave,
                                                          1,
                                                          1>;
-            BlockwiseSoftmax::Run(c_thread_buf);
+            BlockwiseSoftmax::Run(c_thread_buf, p_reduce_work_buffer);
         }
 
         // output: register to global memory

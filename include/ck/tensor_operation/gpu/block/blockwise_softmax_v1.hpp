@@ -27,13 +27,13 @@ struct BlockwiseSoftmax_V1
     static constexpr auto I2            = Number<2>{};
     constexpr static auto c_thread_desc = make_naive_tensor_descriptor_packed(
         make_tuple(Number<MRepeat>{}, Number<NRepeat>{}, Number<RegSizePerXdlops>{}));
+
     template <typename CThreadBuffer>
-    __host__ __device__ static void Run(CThreadBuffer& c_thread_buf)
+    __host__ __device__ static void Run(CThreadBuffer& c_thread_buf, void* __restrict__ p_shared)
     {
         // printf("c_thread_desc: {%d, %d, %d}", c_thread_desc.GetLength(I0).value,
         //    c_thread_desc.GetLength(I1).value, c_thread_desc.GetLength(I2).value);
-        __shared__ AccDataType p_reduce_work_buffer[BlockSize];
-
+        auto p_reduce_work_buffer = static_cast<AccDataType*>(p_shared);
         StaticBuffer<AddressSpaceEnum::Vgpr, AccDataType, MThreadSliceSize, true> max_value_buf;
         static_for<0, MThreadSliceSize, 1>{}([&](auto I) {
             max_value_buf(I) = reduce::Max::template GetIdentityValue<AccDataType>();
