@@ -480,9 +480,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
                                                          NPerXDL,
                                                          blockwise_gemm.GetRegSizePerXdlops(),
                                                          MXdlPerWave,
-                                                         NXdlPerWave,
-                                                         1,
-                                                         1>;
+                                                         NXdlPerWave>;
             BlockwiseSoftmax::Run(c_thread_buf, p_reduce_work_buffer);
         }
 
