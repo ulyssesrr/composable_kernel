@@ -16,26 +16,32 @@ struct BatchedGemmCPermuteDesc
 
 template <typename ALayout,
           typename BLayout,
-          typename DELayout,
+          typename DLayout,
           typename ADataType,
           typename BDataType,
+          typename DsDataType,
           typename EDataType,
           typename AElementwiseOperation,
           typename BElementwiseOperation,
           typename CDEElementwiseOperation>
 struct DeviceBatchedGemmCPermute : public BaseOperator
 {
+    static constexpr index_t NumDTensor = DsDataType::Size();
+
     virtual std::unique_ptr<BaseArgument>
     MakeArgumentPointer(const void* p_a,
                         const void* p_b,
+                        std::array<const void*, NumDTensor> p_ds,
                         void* p_c,
                         index_t M,
                         index_t N,
                         index_t K,
                         index_t stride_A,
                         index_t stride_B,
+                        std::array<index_t, NumDTensor> stride_Ds,
                         index_t batch_stride_A,
                         index_t batch_stride_B,
+                        std::array<index_t, NumDTensor> batch_stride_Ds,
                         BatchedGemmCPermuteDesc batched_gemm_c_permute_desc,
                         index_t BatchCount,
                         AElementwiseOperation a_element_op,
@@ -44,26 +50,6 @@ struct DeviceBatchedGemmCPermute : public BaseOperator
 
     virtual std::unique_ptr<BaseInvoker> MakeInvokerPointer() = 0;
 };
-
-template <typename ALayout,
-          typename BLayout,
-          typename DELayout,
-          typename ADataType,
-          typename BDataType,
-          typename EDataType,
-          typename AElementwiseOperation,
-          typename BElementwiseOperation,
-          typename CDEElementwiseOperation>
-using DeviceBatchedGemmCPermutePtr =
-    std::unique_ptr<DeviceBatchedGemmCPermute<ALayout,
-                                              BLayout,
-                                              DELayout,
-                                              ADataType,
-                                              BDataType,
-                                              EDataType,
-                                              AElementwiseOperation,
-                                              BElementwiseOperation,
-                                              CDEElementwiseOperation>>;
 
 } // namespace device
 } // namespace tensor_operation
