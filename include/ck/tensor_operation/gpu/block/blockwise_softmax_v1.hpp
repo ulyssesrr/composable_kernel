@@ -22,6 +22,15 @@ struct BlockwiseSoftmax_V1
 {
     static_assert(MRepeat == 1, "Now MRepeat must equal 1");
 
+    struct BlockToMKMap_M0_K_M1Adapt{
+        __host__ __device__ BlockToMKMap_M0_K_M1Adapt() = default;
+        __host__ __device__ constexpr auto CalculateBottomIndex(const index_t& idx_top) const{
+              using ThreadClusterLengths_M_K  = Sequence<MPerXDL, WaveSize / MPerXDL>;
+    using ThreadClusterArrangeOrder = Sequence<1, 0>;
+    static constexpr auto thread_cluster_desc =
+        make_cluster_descriptor(ThreadClusterLengths_M_K{}, ThreadClusterArrangeOrder{});
+        }
+    }
     static constexpr auto I0                  = Number<0>{};
     static constexpr auto I1                  = Number<1>{};
     static constexpr auto I2                  = Number<2>{};
@@ -46,20 +55,23 @@ struct BlockwiseSoftmax_V1
 
     using ThreadClusterLengths_M_K  = Sequence<MPerXDL, WaveSize / MPerXDL>;
     using ThreadClusterArrangeOrder = Sequence<1, 0>;
+    static constexpr auto thread_cluster_desc =
+        make_cluster_descriptor(ThreadClusterLengths_M_K{}, ThreadClusterArrangeOrder{});
+
     using BlockwiseMaxReduce =
-        PartitionedBlockwiseReduction<AccDataType,
+        PartitionedBlockwiseReduction2<AccDataType,
                                       BlockSize,
                                       ThreadClusterLengths_M_K,
-                                      ThreadClusterArrangeOrder,
+                                      decltype(thread_cluster_desc),
                                       reduce::Max,
                                       false, // param ignored
                                       detail::AccumulateWithNanIgnore<reduce::Max, AccDataType>>;
 
     using BlockwiseSumReduce =
-        PartitionedBlockwiseReduction<AccDataType,
+        PartitionedBlockwiseReduction2<AccDataType,
                                       BlockSize,
                                       ThreadClusterLengths_M_K,
-                                      ThreadClusterArrangeOrder,
+                                      decltype(thread_cluster_desc),
                                       reduce::Add,
                                       false, // ignored
                                       detail::AccumulateWithNanIgnore<reduce::Add, AccDataType>>;
