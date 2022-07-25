@@ -26,7 +26,7 @@ struct BlockwiseSoftmax_V1
     static constexpr auto I1                  = Number<1>{};
     static constexpr auto I2                  = Number<2>{};
     static constexpr index_t MThreadSliceSize = 1;
-    static constexpr index_t WaveSize = 64;
+    static constexpr index_t WaveSize         = 64;
 
     struct BlockToMKMap_M0_K_M1Adapt
     {
