@@ -26,16 +26,14 @@ struct BlockwiseSoftmax_V1
 
     struct BlockToMKMap_M0_K_M1Adapt
     {
-        using ThreadClusterLengths_M_K                  = Sequence<MPerXDL, WaveSize / MPerXDL>;
-        using ThreadClusterArrangeOrder                 = Sequence<1, 0>;
         __host__ __device__ BlockToMKMap_M0_K_M1Adapt() = default;
         template <typename TopIdx>
         __host__ __device__ constexpr auto CalculateBottomIndex(const TopIdx& idx_top) const
         {
-
-            constexpr auto thread_cluster_desc =
-                make_cluster_descriptor(ThreadClusterLengths_M_K{}, ThreadClusterArrangeOrder{});
-            return thread_cluster_desc.CalculateBottomIndex(idx_top);
+            const auto index = idx_top[I0];
+            const auto m     = (index / WaveSize) * MPerXDL + index % MPerXDL;
+            const auto k     = (index % WaveSize) / MPerXDL;
+            return make_tuple(m, k);
         }
     };
     static constexpr auto I0                  = Number<0>{};
@@ -59,7 +57,7 @@ struct BlockwiseSoftmax_V1
                             false, // param ignored
                             detail::AccumulateWithNanIgnore<reduce::Max, AccDataType>>;
 
-    using ThreadClusterLengths_M_K = Sequence<MPerXDL, WaveSize / MPerXDL>;
+    using ThreadClusterLengths_M_K = Sequence<MPerXDL * BlockSize / WaveSize, WaveSize / MPerXDL>;
 
     using BlockwiseMaxReduce =
         PartitionedBlockwiseReduction2<AccDataType,
