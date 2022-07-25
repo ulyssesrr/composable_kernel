@@ -28,7 +28,7 @@ struct BlockwiseSoftmax_V1
     static constexpr index_t MThreadSliceSize = 1;
     static constexpr index_t WaveSize         = 64;
 
-    constexpr static auto c_thread_desc = make_naive_tensor_descriptor_packed(
+    constexpr static auto in_thread_desc = make_naive_tensor_descriptor_packed(
         make_tuple(Number<MRepeat>{}, Number<NRepeat>{}, Number<RegSizePerXdlops>{}));
 
     using ThreadReduceSrcDesc_M_K = decltype(
@@ -72,10 +72,10 @@ struct BlockwiseSoftmax_V1
                             false, // ignored
                             detail::AccumulateWithNanIgnore<reduce::Add, AccDataType>>;
     template <typename CThreadBuffer>
-    __host__ __device__ static void Run(CThreadBuffer& c_thread_buf, void* __restrict__ p_shared)
+    __host__ __device__ static void Run(CThreadBuffer& in_thread_buf, void* __restrict__ p_shared)
     {
-        // printf("c_thread_desc: {%d, %d, %d}", c_thread_desc.GetLength(I0).value,
-        //    c_thread_desc.GetLength(I1).value, c_thread_desc.GetLength(I2).value);
+        // printf("in_thread_desc: {%d, %d, %d}", in_thread_desc.GetLength(I0).value,
+        //    in_thread_desc.GetLength(I1).value, in_thread_desc.GetLength(I2).value);
         auto reduce_work_buf = make_dynamic_buffer<AddressSpaceEnum::Lds>(
             static_cast<AccDataType*>(p_shared), BlockSize);
 
@@ -89,8 +89,8 @@ struct BlockwiseSoftmax_V1
 
         // max value for one thread
         static_for<0, NRepeat, 1>{}([&](auto n) {
-            constexpr index_t c_offset = c_thread_desc.CalculateOffset(make_tuple(0, n, 0));
-            auto& xdlops_out           = c_thread_buf.GetVectorTypeReference(Number<c_offset>{});
+            constexpr index_t in_offset = in_thread_desc.CalculateOffset(make_tuple(0, n, 0));
+            auto& xdlops_out            = in_thread_buf.GetVectorTypeReference(Number<in_offset>{});
 
             ThreadwiseMaxReduce::Reduce(xdlops_out.template AsType<float>(), max_value_buf);
         });
@@ -115,8 +115,8 @@ struct BlockwiseSoftmax_V1
         });
         // calculate exp for elements
         static_for<0, NRepeat, 1>{}([&](auto n) {
-            constexpr index_t c_offset = c_thread_desc.CalculateOffset(make_tuple(0, n, 0));
-            auto& xdlops_out           = c_thread_buf.GetVectorTypeReference(Number<c_offset>{});
+            constexpr index_t in_offset = in_thread_desc.CalculateOffset(make_tuple(0, n, 0));
+            auto& xdlops_out            = in_thread_buf.GetVectorTypeReference(Number<in_offset>{});
 
             static_for<0, RegSizePerXdlops, 1>{}([&](auto iK) {
                 xdlops_out.template AsType<float>()(iK) =
@@ -125,8 +125,8 @@ struct BlockwiseSoftmax_V1
         });
         // sum data
         static_for<0, NRepeat, 1>{}([&](auto n) {
-            constexpr index_t c_offset = c_thread_desc.CalculateOffset(make_tuple(0, n, 0));
-            auto& xdlops_out           = c_thread_buf.GetVectorTypeReference(Number<c_offset>{});
+            constexpr index_t in_offset = in_thread_desc.CalculateOffset(make_tuple(0, n, 0));
+            auto& xdlops_out            = in_thread_buf.GetVectorTypeReference(Number<in_offset>{});
             ThreadwiseSumReduce::Reduce(xdlops_out.template AsType<float>(), accu_value_buf);
             block_sync_lds();
         });
@@ -135,10 +135,10 @@ struct BlockwiseSoftmax_V1
 
         // change elements
         static_for<0, NRepeat, 1>{}([&](auto n) {
-            constexpr index_t c_offset = c_thread_desc.CalculateOffset(make_tuple(0, n, 0));
-            auto& xdlops_out           = c_thread_buf.GetVectorTypeReference(Number<c_offset>{});
+            constexpr index_t in_offset = in_thread_desc.CalculateOffset(make_tuple(0, n, 0));
+            auto& xdlops_out            = in_thread_buf.GetVectorTypeReference(Number<in_offset>{});
 
-            static_for<0, c_thread_desc.GetLength(I2), 1>{}([&](auto iK) {
+            static_for<0, in_thread_desc.GetLength(I2), 1>{}([&](auto iK) {
                 xdlops_out.template AsType<float>()(iK) =
                     xdlops_out.template AsType<float>()[iK] / accu_value_buf(I0);
             });
