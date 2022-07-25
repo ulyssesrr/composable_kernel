@@ -13,6 +13,7 @@
 namespace ck {
 template <index_t BlockSize,
           typename AccDataType,
+          index_t MPerBlock,
           index_t MPerXDL,
           index_t NPerXDL,
           index_t RegSizePerXdlops,
@@ -22,11 +23,14 @@ struct BlockwiseSoftmax_V1
 {
     static_assert(MRepeat == 1, "Now MRepeat must equal 1");
 
+    static __shared__ AccDataType p_lex[MPerBlock];
     static constexpr auto I0                  = Number<0>{};
     static constexpr auto I1                  = Number<1>{};
     static constexpr auto I2                  = Number<2>{};
     static constexpr index_t MThreadSliceSize = 1;
     static constexpr index_t WaveSize         = 64;
+
+    static_assert(MPerBlock == MPerXDL * BlockSize / WaveSize, "wave is only m direction");
 
     struct BlockToMKMap_M0_K_M1Adapt
     {
@@ -57,7 +61,7 @@ struct BlockwiseSoftmax_V1
                             false, // param ignored
                             detail::AccumulateWithNanIgnore<reduce::Max, AccDataType>>;
 
-    using ThreadClusterLengths_M_K = Sequence<MPerXDL * BlockSize / WaveSize, WaveSize / MPerXDL>;
+    using ThreadClusterLengths_M_K = Sequence<MPerBlock, WaveSize / MPerXDL>;
 
     using BlockwiseMaxReduce =
         PartitionedBlockwiseReduction2<AccDataType,

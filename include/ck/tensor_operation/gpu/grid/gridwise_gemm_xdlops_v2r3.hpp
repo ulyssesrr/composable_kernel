@@ -476,6 +476,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
             __shared__ AccDataType p_reduce_work_buffer[BlockSize];
             using BlockwiseSoftmax = BlockwiseSoftmax_V1<BlockSize,
                                                          FloatAcc,
+                                                         MPerBlock,
                                                          MPerXDL,
                                                          NPerXDL,
                                                          blockwise_gemm.GetRegSizePerXdlops(),
