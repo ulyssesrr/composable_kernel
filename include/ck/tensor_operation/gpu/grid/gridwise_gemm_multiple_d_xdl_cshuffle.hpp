@@ -210,8 +210,9 @@ struct GridwiseGemmMultipleD_k0mk1_k0nk1_mn_xdl_cshuffle
         return GridwiseGemmPipe::CalculateHasMainLoop(num_loop);
     }
 
+    template <typename DEGridDesc_M_N>
     __host__ __device__ static constexpr auto
-    MakeEGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock(const EGridDesc_M_N& e_grid_desc_m_n)
+    MakeEGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock(const DEGridDesc_M_N& e_grid_desc_m_n)
     {
         const auto M = e_grid_desc_m_n.GetLength(I0);
         const auto N = e_grid_desc_m_n.GetLength(I1);

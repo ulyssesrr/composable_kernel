@@ -96,12 +96,12 @@ namespace device {
 // E = cde_op(C, D0, D1, ...)
 template <typename ALayout,
           typename BLayout,
-          typename CDELayout,
+          typename DLayout,
           typename ADataType,
           typename BDataType,
           typename GemmAccDataType,
           typename CShuffleDataType,
-          typename DDataType,
+          typename DsDataType,
           typename EDataType,
           typename AElementwiseOperation,
           typename BElementwiseOperation,
@@ -137,18 +137,25 @@ template <typename ALayout,
           typename CDEBlockTransferClusterLengths_MBlock_MPerBlock_NBlock_NPerBlock,
           index_t CDEBlockTransferScalarPerVector_NPerBlock,
           LoopScheduler LoopSched = make_default_loop_scheduler()>
-struct DeviceGemmBiasCPermute_Xdl : public DeviceGemmBiasCPermute<AElementwiseOperation,
+struct DeviceGemmBiasCPermute_Xdl : public DeviceGemmBiasCPermute<ALayout,
+                                                                  BLayout,
+                                                                  DLayout,
+                                                                  ADataType,
+                                                                  BDataType,
+                                                                  DsDataType,
+                                                                  EDataType,
+                                                                  AElementwiseOperation,
                                                                   BElementwiseOperation,
                                                                   CDEElementwiseOperation>
 {
     using DeviceOp = DeviceGemmBiasCPermute_Xdl;
 
+    static constexpr index_t NumDTensor = DsDataType::Size();
+
     static constexpr auto I0 = Number<0>{};
     static constexpr auto I1 = Number<1>{};
     static constexpr auto I2 = Number<2>{};
     static constexpr auto I3 = Number<3>{};
-
-    static constexpr index_t NumDTensor = I1;
 
     static auto MakeAGridDescriptor_AK0_M_AK1(index_t MRaw, index_t KRaw, index_t StrideA)
     {
@@ -356,19 +363,19 @@ struct DeviceGemmBiasCPermute_Xdl : public DeviceGemmBiasCPermute<AElementwiseOp
         }
     }
 
-    static auto MakeEGridDescriptor_M_N(DEGridDesc_M0_M1_M2_N0_N1 d_e_grid_desc)
+    static auto MakeEGridDescriptor_M_N(EGridDesc_M0_M1_M2_N0_N1 e_grid_desc)
     {
-        index_t M0 = d_e_grid_desc.M0_;
-        index_t M1 = d_e_grid_desc.M1_;
-        index_t M2 = d_e_grid_desc.M2_;
-        index_t N0 = d_e_grid_desc.N0_;
-        index_t N1 = d_e_grid_desc.N1_;
+        index_t M0 = e_grid_desc.M0_;
+        index_t M1 = e_grid_desc.M1_;
+        index_t M2 = e_grid_desc.M2_;
+        index_t N0 = e_grid_desc.N0_;
+        index_t N1 = e_grid_desc.N1_;
 
-        index_t stride_M0 = d_e_grid_desc.stride_M0_;
-        index_t stride_M1 = d_e_grid_desc.stride_M1_;
-        index_t stride_M2 = d_e_grid_desc.stride_M2_;
-        index_t stride_N0 = d_e_grid_desc.stride_N0_;
-        index_t stride_N1 = d_e_grid_desc.stride_N1_;
+        index_t stride_M0 = e_grid_desc.stride_M0_;
+        index_t stride_M1 = e_grid_desc.stride_M1_;
+        index_t stride_M2 = e_grid_desc.stride_M2_;
+        index_t stride_N0 = e_grid_desc.stride_N0_;
+        index_t stride_N1 = e_grid_desc.stride_N1_;
 
         const auto MRaw = M0 * M1 * M2;
         const auto NRaw = N0 * N1;
@@ -429,16 +436,74 @@ struct DeviceGemmBiasCPermute_Xdl : public DeviceGemmBiasCPermute<AElementwiseOp
         }
     }
 
+    static auto MakeDGridDescriptor_M_N(index_t MRaw, index_t NRaw, index_t StrideD)
+    {
+        const auto d_grid_desc_mraw_nraw = [&]() {
+            if constexpr(is_same<tensor_layout::gemm::RowMajor, DLayout>::value)
+            {
+                return make_naive_tensor_descriptor(make_tuple(MRaw, NRaw),
+                                                    make_tuple(StrideD, I1));
+            }
+            else if constexpr(is_same<tensor_layout::gemm::ColumnMajor, DLayout>::value)
+            {
+                return make_naive_tensor_descriptor(make_tuple(MRaw, NRaw),
+                                                    make_tuple(I1, StrideD));
+            }
+        }();
+
+        const auto M = math::integer_divide_ceil(MRaw, MPerBlock) * MPerBlock;
+        const auto N = math::integer_divide_ceil(NRaw, NPerBlock) * NPerBlock;
+
+        const auto MPad = M - MRaw;
+        const auto NPad = N - NRaw;
+
+        if constexpr(GemmSpec == GemmSpecialization::MNPadding ||
+                     GemmSpec == GemmSpecialization::MNKPadding)
+        {
+            // pad M and N
+            return transform_tensor_descriptor(d_grid_desc_mraw_nraw,
+                                               make_tuple(make_right_pad_transform(MRaw, MPad),
+                                                          make_right_pad_transform(NRaw, NPad)),
+                                               make_tuple(Sequence<0>{}, Sequence<1>{}),
+                                               make_tuple(Sequence<0>{}, Sequence<1>{}));
+        }
+        else if constexpr(GemmSpec == GemmSpecialization::MPadding ||
+                          GemmSpec == GemmSpecialization::MKPadding)
+        {
+            // pad M, but not N
+            return transform_tensor_descriptor(
+                d_grid_desc_mraw_nraw,
+                make_tuple(make_right_pad_transform(MRaw, MPad), make_pass_through_transform(NRaw)),
+                make_tuple(Sequence<0>{}, Sequence<1>{}),
+                make_tuple(Sequence<0>{}, Sequence<1>{}));
+        }
+        else if constexpr(GemmSpec == GemmSpecialization::NPadding ||
+                          GemmSpec == GemmSpecialization::NKPadding)
+        {
+            // pad N, but not M
+            return transform_tensor_descriptor(
+                d_grid_desc_mraw_nraw,
+                make_tuple(make_pass_through_transform(MRaw), make_right_pad_transform(NRaw, NPad)),
+                make_tuple(Sequence<0>{}, Sequence<1>{}),
+                make_tuple(Sequence<0>{}, Sequence<1>{}));
+        }
+        else
+        {
+            // not pad M or N
+            return d_grid_desc_mraw_nraw;
+        }
+    }
+
     using AGridDesc_AK0_M_AK1 = decltype(MakeAGridDescriptor_AK0_M_AK1(1, 1, 1));
     using BGridDesc_BK0_N_BK1 = decltype(MakeBGridDescriptor_BK0_N_BK1(1, 1, 1));
-    using EGridDesc_M_N       = decltype(MakeEGridDescriptor_M_N(DEGridDesc_M0_M1_M2_N0_N1{}));
+    using EGridDesc_M_N       = decltype(MakeEGridDescriptor_M_N(EGridDesc_M0_M1_M2_N0_N1{}));
 
     // GridwiseGemm
     using GridwiseGemm = GridwiseGemmMultipleD_k0mk1_k0nk1_mn_xdl_cshuffle<
         ADataType, // TODO: distinguish A/B datatype
         GemmAccDataType,
         CShuffleDataType,
-        ck::Tuple<DDataType>,
+        DsDataType,
         EDataType,
         AElementwiseOperation,
         BElementwiseOperation,
@@ -480,20 +545,24 @@ struct DeviceGemmBiasCPermute_Xdl : public DeviceGemmBiasCPermute<AElementwiseOp
         CDEBlockTransferScalarPerVector_NPerBlock,
         LoopSched>;
 
+    using DGridDesc_M_N = decltype(MakeDGridDescriptor_M_N(1, 1, 1));
+    using DGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock = decltype(
+        GridwiseGemm::MakeEGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock(DGridDesc_M_N{}));
+
     // Argument
     struct Argument : public BaseArgument
     {
         Argument(const void* p_a_grid,
                  const void* p_b_grid,
-                 const void* p_d_grid,
+                 std::array<const void*, NumDTensor> p_ds_grid,
                  void* p_e_grid,
                  index_t MRaw,
                  index_t NRaw,
                  index_t KRaw,
                  index_t StrideA,
                  index_t StrideB,
-                 DEGridDesc_M0_M1_M2_N0_N1 d_grid_desc,
-                 DEGridDesc_M0_M1_M2_N0_N1 e_grid_desc,
+                 std::array<index_t, NumDTensor> StrideDs,
+                 EGridDesc_M0_M1_M2_N0_N1 e_grid_desc,
                  AElementwiseOperation a_element_op,
                  BElementwiseOperation b_element_op,
                  CDEElementwiseOperation cde_element_op)
@@ -512,16 +581,6 @@ struct DeviceGemmBiasCPermute_Xdl : public DeviceGemmBiasCPermute<AElementwiseOp
               cde_element_op_{cde_element_op}
         {
 
-            if(MRaw != d_grid_desc.M0_ * d_grid_desc.M1_ * d_grid_desc.M2_)
-            {
-                throw std::runtime_error("wrong! GridwiseGemm has invalid setting");
-            }
-
-            if(NRaw != d_grid_desc.N0_ * d_grid_desc.N1_)
-            {
-                throw std::runtime_error("wrong! GridwiseGemm has invalid setting");
-            }
-
             if(GridwiseGemm::CheckValidity(a_grid_desc_ak0_m_ak1_,
                                            b_grid_desc_bk0_n_bk1_,
                                            e_grid_desc_m_n_,
@@ -531,13 +590,18 @@ struct DeviceGemmBiasCPermute_Xdl : public DeviceGemmBiasCPermute<AElementwiseOp
                     GridwiseGemm::MakeEGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock(
                         e_grid_desc_m_n_);
 
-                p_ds_grid_(I0) = static_cast<const DDataType*>(p_d_grid);
+                static_for<0, NumDTensor, 1>{}([&](auto i) {
+                    using DDataType = remove_cvref_t<tuple_element_t<i.value, DsDataType>>;
 
-                const auto d_grid_desc_m_n = DeviceOp::MakeEGridDescriptor_M_N(d_grid_desc);
+                    p_ds_grid_(i) = static_cast<const DDataType*>(p_ds_grid[i]);
 
-                ds_grid_desc_mblock_mperblock_nblock_nperblock_(I0) =
-                    GridwiseGemm::MakeEGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock(
-                        d_grid_desc_m_n);
+                    const auto d_grid_desc_m_n =
+                        DeviceOp::MakeDGridDescriptor_M_N(MRaw, NRaw, StrideDs[i]);
+
+                    ds_grid_desc_mblock_mperblock_nblock_nperblock_(i) =
+                        GridwiseGemm::MakeEGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock(
+                            d_grid_desc_m_n);
+                });
             }
         }
 
@@ -546,17 +610,19 @@ struct DeviceGemmBiasCPermute_Xdl : public DeviceGemmBiasCPermute<AElementwiseOp
         const BDataType* p_b_grid_;
         typename GridwiseGemm::DsGridPointer p_ds_grid_;
         EDataType* p_e_grid_;
+
         AGridDesc_AK0_M_AK1 a_grid_desc_ak0_m_ak1_;
         BGridDesc_BK0_N_BK1 b_grid_desc_bk0_n_bk1_;
-        StaticallyIndexedArray<
-            typename GridwiseGemm::EGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock,
-            NumDTensor>
+        StaticallyIndexedArray<DGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock,
+                               NumDTensor>
             ds_grid_desc_mblock_mperblock_nblock_nperblock_; // FIXME: Ds desc may be of different
                                                              // type from E
         EGridDesc_M_N e_grid_desc_m_n_;
         typename GridwiseGemm::EGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock
             e_grid_desc_mblock_mperblock_nblock_nperblock_;
+
         typename GridwiseGemm::DefaultBlock2ETileMap block_2_etile_map_;
+
         AElementwiseOperation a_element_op_;
         BElementwiseOperation b_element_op_;
         CDEElementwiseOperation cde_element_op_;
@@ -596,9 +662,8 @@ struct DeviceGemmBiasCPermute_Xdl : public DeviceGemmBiasCPermute<AElementwiseOp
                     CDEElementwiseOperation,
                     DeviceOp::AGridDesc_AK0_M_AK1,
                     DeviceOp::BGridDesc_BK0_N_BK1,
-                    ck::StaticallyIndexedArray<
-                        typename GridwiseGemm::EGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock,
-                        NumDTensor>,
+                    ck::StaticallyIndexedArray<DGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock,
+                                               NumDTensor>,
                     typename GridwiseGemm::EGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock,
                     typename GridwiseGemm::DefaultBlock2ETileMap,
                     has_main_loop>;
@@ -665,29 +730,29 @@ struct DeviceGemmBiasCPermute_Xdl : public DeviceGemmBiasCPermute<AElementwiseOp
 
     static auto MakeArgument(const void* p_a,
                              const void* p_b,
-                             const void* p_d,
+                             std::array<const void*, NumDTensor> p_ds,
                              void* p_e,
                              index_t MRaw,
                              index_t NRaw,
                              index_t KRaw,
                              index_t StrideA,
                              index_t StrideB,
-                             DEGridDesc_M0_M1_M2_N0_N1 d_grid_desc,
-                             DEGridDesc_M0_M1_M2_N0_N1 e_grid_desc,
+                             std::array<index_t, NumDTensor> StrideDs,
+                             EGridDesc_M0_M1_M2_N0_N1 e_grid_desc,
                              AElementwiseOperation a_element_op,
                              BElementwiseOperation b_element_op,
                              CDEElementwiseOperation cde_element_op)
     {
         return Argument{p_a,
                         p_b,
-                        p_d,
+                        p_ds,
                         p_e,
                         MRaw,
                         NRaw,
                         KRaw,
                         StrideA,
                         StrideB,
-                        d_grid_desc,
+                        StrideDs,
                         e_grid_desc,
                         a_element_op,
                         b_element_op,
@@ -700,29 +765,29 @@ struct DeviceGemmBiasCPermute_Xdl : public DeviceGemmBiasCPermute<AElementwiseOp
     std::unique_ptr<BaseArgument>
     MakeArgumentPointer(const void* p_a,
                         const void* p_b,
-                        const void* p_d,
+                        std::array<const void*, NumDTensor> p_ds,
                         void* p_e,
                         index_t MRaw,
                         index_t NRaw,
                         index_t KRaw,
                         index_t StrideA,
                         index_t StrideB,
-                        DEGridDesc_M0_M1_M2_N0_N1 d_grid_desc,
-                        DEGridDesc_M0_M1_M2_N0_N1 e_grid_desc,
+                        std::array<ck::index_t, NumDTensor> StrideDs,
+                        EGridDesc_M0_M1_M2_N0_N1 e_grid_desc,
                         AElementwiseOperation a_element_op,
                         BElementwiseOperation b_element_op,
                         CDEElementwiseOperation cde_element_op) override
     {
         return std::make_unique<Argument>(p_a,
                                           p_b,
-                                          p_d,
+                                          p_ds,
                                           p_e,
                                           MRaw,
                                           NRaw,
                                           KRaw,
                                           StrideA,
                                           StrideB,
-                                          d_grid_desc,
+                                          StrideDs,
                                           e_grid_desc,
                                           a_element_op,
                                           b_element_op,

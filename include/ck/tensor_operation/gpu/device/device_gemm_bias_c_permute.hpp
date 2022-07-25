@@ -11,46 +11,54 @@ namespace ck {
 namespace tensor_operation {
 namespace device {
 
-struct DEGridDesc_M0_M1_M2_N0_N1
+struct EGridDesc_M0_M1_M2_N0_N1
 {
     ck::index_t M0_, M1_, M2_, N0_, N1_;
     ck::index_t stride_M0_, stride_M1_, stride_M2_, stride_N0_, stride_N1_;
 };
 
-// input : A[M, K], B[K, N],
-// input : D[M, N], ...
-// output : E[M, N]
-// C = a_op(A) * b_op(B)
-// E = cde_op(C, D)
-template <typename AElementwiseOperation,
+// GEMM:
+//   input : A[M, K], B[K, N],
+//   input : D0[M, N], D1[M, N], ...
+//   output : E[M, N]
+//   C = a_op(A) * b_op(B)
+//   E = cde_op(C, D0, D1, ...)
+// Assume:
+//   D0, D1, ... have the same layout
+
+template <typename ALayout,
+          typename BLayout,
+          typename DLayout,
+          typename ADataType,
+          typename BDataType,
+          typename DsDataType,
+          typename EDataType,
+          typename AElementwiseOperation,
           typename BElementwiseOperation,
           typename CDEElementwiseOperation>
 struct DeviceGemmBiasCPermute : public BaseOperator
 {
+
+    static constexpr index_t NumDTensor = DsDataType::Size();
+
     virtual std::unique_ptr<BaseArgument>
     MakeArgumentPointer(const void* p_a,
                         const void* p_b,
-                        const void* p_d,
+                        std::array<const void*, NumDTensor> p_ds,
                         void* p_e,
                         ck::index_t M,
                         ck::index_t N,
                         ck::index_t K,
                         ck::index_t StrideA,
                         ck::index_t StrideB,
-                        DEGridDesc_M0_M1_M2_N0_N1 d_gride_desc,
-                        DEGridDesc_M0_M1_M2_N0_N1 e_gride_desc,
+                        std::array<ck::index_t, NumDTensor> StrideDs,
+                        EGridDesc_M0_M1_M2_N0_N1 e_gride_desc,
                         AElementwiseOperation a_element_op,
                         BElementwiseOperation b_element_op,
                         CDEElementwiseOperation cde_element_op) = 0;
 
     virtual std::unique_ptr<BaseInvoker> MakeInvokerPointer() = 0;
 };
-
-template <typename AElementwiseOperation,
-          typename BElementwiseOperation,
-          typename CElementwiseOperation>
-using DeviceGemmBiasCPermutePtr = std::unique_ptr<
-    DeviceGemmBiasCPermute<AElementwiseOperation, BElementwiseOperation, CElementwiseOperation>>;
 
 } // namespace device
 } // namespace tensor_operation

@@ -34,7 +34,8 @@ using ADataType        = F16;
 using BDataType        = F16;
 using AccDataType      = F32;
 using CShuffleDataType = F32;
-using DDataType        = F16;
+using D0DataType       = F16;
+using DsDataType       = ck::Tuple<D0DataType>;
 using EDataType        = F16;
 
 using ALayout = Row;
@@ -54,7 +55,7 @@ using DeviceOpInstance = ck::tensor_operation::device::DeviceGemmBiasCPermute_Xd
 //######|        |        |        |      Type|      Type|        Type|         DataType|       Type|      Type| Elementwise| Elementwise|  Elementwise| Spacialization| Prefetch|  Size| Block| Block| Block|    |    |  XDL|  XDL|  Per|  Per|   ThreadCluster|  ThreadCluster| SrcAccessOrder|   SrcVectorDim|      SrcScalar|      DstScalar| AddExtraM|   ThreadCluster|  ThreadCluster| SrcAccessOrder|  SrcVectorDim|      SrcScalar|      DstScalar| AddExtraN| MXdlPerWave| NXdlPerWave|         _MBlock_MWaveMPerXdl| ScalarPerVector|
 //######|        |        |        |          |          |            |                 |           |          |   Operation|   Operation|    Operation|               |    Stage|      |      |      |      |    |    |     |     | Wave| Wave| Lengths_K0_M_K1|   ArrangeOrder|               |               |      PerVector|   PerVector_K1|          | Lengths_K0_N_K1|   ArrangeOrder|               |              |      PerVector|   PerVector_K1|          |  PerShuffle|  PerShuffle|         _NBlock_NWaveNPerXdl|   _NWaveNPerXdl|
 //######|        |        |        |          |          |            |                 |           |          |            |            |             |               |         |      |      |      |      |    |    |     |     |     |     |                |               |               |               |               |               |          |                |               |               |              |               |               |          |            |            |                             |                |
-        < ALayout, BLayout, ELayout, ADataType, BDataType, AccDataType, CShuffleDataType,  DDataType, EDataType,  AElementOp,  BElementOp, CDEElementOp,    GemmDefault,        1,   256,   256,   128,    32,   8,   8,   32,   32,    4,    2,     S<4, 64, 1>,     S<1, 0, 2>,     S<1, 0, 2>,              2,              8,              8,         1,     S<4, 64, 1>,     S<1, 0, 2>,     S<1, 0, 2>,             2,              8,              8,         1,           1,           1,               S<1, 32, 1, 8>,               1>;
+        < ALayout, BLayout, ELayout, ADataType, BDataType, AccDataType, CShuffleDataType,  DsDataType, EDataType,  AElementOp,  BElementOp, CDEElementOp,    GemmDefault,        1,   256,   256,   128,    32,   8,   8,   32,   32,    4,    2,     S<4, 64, 1>,     S<1, 0, 2>,     S<1, 0, 2>,              2,              8,              8,         1,     S<4, 64, 1>,     S<1, 0, 2>,     S<1, 0, 2>,             2,              8,              8,         1,           1,           1,               S<1, 32, 1, 8>,               1>;
 // clang-format on
 
 int main(int argc, char* argv[])
@@ -74,8 +75,9 @@ int main(int argc, char* argv[])
     ck::index_t N = N0 * N1;
     ck::index_t K = 128;
 
-    ck::index_t stride_A = K;
-    ck::index_t stride_B = K;
+    ck::index_t stride_A  = K;
+    ck::index_t stride_B  = K;
+    ck::index_t stride_D0 = 0;
 
 #if 1
     // E = [M0, N0, M1, N1, M2]
@@ -84,21 +86,7 @@ int main(int argc, char* argv[])
     ck::index_t stride_E_M2 = 1;
     ck::index_t stride_E_N0 = M1 * N1 * M2;
     ck::index_t stride_E_N1 = M2;
-
-    // D = [0, N0, 0, N1, 0]
-    ck::index_t stride_D_M0 = 0;
-    ck::index_t stride_D_M1 = 0;
-    ck::index_t stride_D_M2 = 0;
-    ck::index_t stride_D_N0 = N1;
-    ck::index_t stride_D_N1 = 1;
 #else
-    // D = [0, 0, 0, N0, N1]
-    ck::index_t stride_D_M0 = 0;
-    ck::index_t stride_D_M1 = 0;
-    ck::index_t stride_D_M2 = 0;
-    ck::index_t stride_D_N0 = N1;
-    ck::index_t stride_D_N1 = 1;
-
     // E = [M0, M1, M2, N0, N1]
     ck::index_t stride_E_M0 = M1 * M2 * N0 * N1;
     ck::index_t stride_E_M1 = M2 * N0 * N1;
@@ -107,9 +95,7 @@ int main(int argc, char* argv[])
     ck::index_t stride_E_N1 = 1;
 #endif
 
-    const ck::tensor_operation::device::DEGridDesc_M0_M1_M2_N0_N1 d_grid_desc{
-        M0, M1, M2, N0, N1, stride_D_M0, stride_D_M1, stride_D_M2, stride_D_N0, stride_D_N1};
-    const ck::tensor_operation::device::DEGridDesc_M0_M1_M2_N0_N1 e_grid_desc{
+    const ck::tensor_operation::device::EGridDesc_M0_M1_M2_N0_N1 e_grid_desc{
         M0, M1, M2, N0, N1, stride_E_M0, stride_E_M1, stride_E_M2, stride_E_N0, stride_E_N1};
 
     if(argc == 1)
@@ -145,17 +131,17 @@ int main(int argc, char* argv[])
         };
 
     auto f_host_de_tensor_descriptor =
-        [](ck::tensor_operation::device::DEGridDesc_M0_M1_M2_N0_N1 de_grid_desc) {
-            std::size_t m0        = de_grid_desc.M0_;
-            std::size_t m1        = de_grid_desc.M1_;
-            std::size_t m2        = de_grid_desc.M2_;
-            std::size_t n0        = de_grid_desc.N0_;
-            std::size_t n1        = de_grid_desc.N1_;
-            std::size_t stride_m0 = de_grid_desc.stride_M0_;
-            std::size_t stride_m1 = de_grid_desc.stride_M1_;
-            std::size_t stride_m2 = de_grid_desc.stride_M2_;
-            std::size_t stride_n0 = de_grid_desc.stride_N0_;
-            std::size_t stride_n1 = de_grid_desc.stride_N1_;
+        [](ck::tensor_operation::device::EGridDesc_M0_M1_M2_N0_N1 e_grid_desc_) {
+            std::size_t m0        = e_grid_desc_.M0_;
+            std::size_t m1        = e_grid_desc_.M1_;
+            std::size_t m2        = e_grid_desc_.M2_;
+            std::size_t n0        = e_grid_desc_.N0_;
+            std::size_t n1        = e_grid_desc_.N1_;
+            std::size_t stride_m0 = e_grid_desc_.stride_M0_;
+            std::size_t stride_m1 = e_grid_desc_.stride_M1_;
+            std::size_t stride_m2 = e_grid_desc_.stride_M2_;
+            std::size_t stride_n0 = e_grid_desc_.stride_N0_;
+            std::size_t stride_n1 = e_grid_desc_.stride_N1_;
             return HostTensorDescriptor(
                 std::vector<std::size_t>({m0, m1, m2, n0, n1}),
                 std::vector<std::size_t>({stride_m0, stride_m1, stride_m2, stride_n0, stride_n1}));
@@ -163,13 +149,13 @@ int main(int argc, char* argv[])
 
     Tensor<ADataType> a_m_k(f_host_tensor_descriptor(M, K, stride_A, ALayout{}));
     Tensor<BDataType> b_k_n(f_host_tensor_descriptor(K, N, stride_B, BLayout{}));
-    Tensor<DDataType> d_m0_m1_m2_n0_n1(f_host_de_tensor_descriptor(d_grid_desc));
+    Tensor<D0DataType> d0_m_n(f_host_tensor_descriptor(M, N, stride_D0, DLayout{}));
     Tensor<EDataType> e_m0_m1_m2_n0_n1_host_result(f_host_de_tensor_descriptor(e_grid_desc));
     Tensor<EDataType> e_m0_m1_m2_n0_n1_device_result(f_host_de_tensor_descriptor(e_grid_desc));
 
     std::cout << "a_m_k: " << a_m_k.mDesc << std::endl;
     std::cout << "b_k_n: " << b_k_n.mDesc << std::endl;
-    std::cout << "d_m0_m1_m2_n0_n1: " << d_m0_m1_m2_n0_n1.mDesc << std::endl;
+    std::cout << "d0_m_n: " << d0_m_n.mDesc << std::endl;
     std::cout << "e_m0_m1_m2_n0_n1: " << e_m0_m1_m2_n0_n1_host_result.mDesc << std::endl;
 
     switch(init_method)
@@ -178,24 +164,23 @@ int main(int argc, char* argv[])
     case 1:
         a_m_k.GenerateTensorValue(GeneratorTensor_2<ADataType>{-5, 5});
         b_k_n.GenerateTensorValue(GeneratorTensor_2<BDataType>{-5, 5});
-        d_m0_m1_m2_n0_n1.GenerateTensorValue(GeneratorTensor_2<DDataType>{-5, 5});
+        d0_m_n.GenerateTensorValue(GeneratorTensor_2<D0DataType>{-5, 5});
         break;
     default:
         a_m_k.GenerateTensorValue(GeneratorTensor_3<ADataType>{0.0, 1.0});
         b_k_n.GenerateTensorValue(GeneratorTensor_3<BDataType>{-0.5, 0.5});
-        d_m0_m1_m2_n0_n1.GenerateTensorValue(GeneratorTensor_3<DDataType>{0.0, 1.0});
+        d0_m_n.GenerateTensorValue(GeneratorTensor_3<D0DataType>{0.0, 1.0});
     }
 
     DeviceMem a_m_k_device_buf(sizeof(ADataType) * a_m_k.mDesc.GetElementSpace());
     DeviceMem b_k_n_device_buf(sizeof(BDataType) * b_k_n.mDesc.GetElementSpace());
-    DeviceMem d_m0_m1_m2_n0_n1_device_buf(sizeof(DDataType) *
-                                          d_m0_m1_m2_n0_n1.mDesc.GetElementSpace());
+    DeviceMem d0_m_n_device_buf(sizeof(D0DataType) * d0_m_n.mDesc.GetElementSpace());
     DeviceMem e_m0_m1_m2_n0_n1_device_buf(sizeof(EDataType) *
                                           e_m0_m1_m2_n0_n1_device_result.mDesc.GetElementSpace());
 
     a_m_k_device_buf.ToDevice(a_m_k.mData.data());
     b_k_n_device_buf.ToDevice(b_k_n.mData.data());
-    d_m0_m1_m2_n0_n1_device_buf.ToDevice(d_m0_m1_m2_n0_n1.mData.data());
+    d0_m_n_device_buf.ToDevice(d0_m_n.mData.data());
 
     auto a_element_op   = AElementOp{};
     auto b_element_op   = BElementOp{};
@@ -206,14 +191,14 @@ int main(int argc, char* argv[])
     auto invoker   = device_op.MakeInvoker();
     auto argument  = device_op.MakeArgument(a_m_k_device_buf.GetDeviceBuffer(),
                                            b_k_n_device_buf.GetDeviceBuffer(),
-                                           d_m0_m1_m2_n0_n1_device_buf.GetDeviceBuffer(),
+                                           {d0_m_n_device_buf.GetDeviceBuffer()},
                                            e_m0_m1_m2_n0_n1_device_buf.GetDeviceBuffer(),
                                            M,
                                            N,
                                            K,
                                            stride_A,
                                            stride_B,
-                                           d_grid_desc,
+                                           {stride_D0},
                                            e_grid_desc,
                                            a_element_op,
                                            b_element_op,
@@ -228,7 +213,7 @@ int main(int argc, char* argv[])
 
     std::size_t flop      = std::size_t(2) * M * N * K;
     std::size_t num_btype = sizeof(ADataType) * M * K + sizeof(BDataType) * K * N +
-                            sizeof(DDataType) * N + sizeof(EDataType) * M * N;
+                            sizeof(D0DataType) * N + sizeof(EDataType) * M * N;
 
     float tflops = static_cast<float>(flop) / 1.E9 / ave_time;
 
@@ -269,7 +254,7 @@ int main(int argc, char* argv[])
 
                             cde_element_op(e_m0_m1_m2_n0_n1_host_result(m0, m1, m2, n0, n1),
                                            ck::type_convert<EDataType>(c_m_n(m, n)),
-                                           d_m0_m1_m2_n0_n1(m0, m1, m2, n0, n1));
+                                           d0_m_n(m, n));
                         }
 
         e_m0_m1_m2_n0_n1_device_buf.FromDevice(e_m0_m1_m2_n0_n1_device_result.mData.data());
