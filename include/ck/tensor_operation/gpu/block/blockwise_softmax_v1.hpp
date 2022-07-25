@@ -22,6 +22,10 @@ struct BlockwiseSoftmax_V1
 {
     static_assert(MRepeat == 1, "Now MRepeat must equal 1");
 
+    static constexpr auto I0                  = Number<0>{};
+    static constexpr auto I1                  = Number<1>{};
+    static constexpr auto I2                  = Number<2>{};
+    static constexpr index_t MThreadSliceSize = 1;
     static constexpr index_t WaveSize = 64;
 
     struct BlockToMKMap_M0_K_M1Adapt
@@ -36,10 +40,6 @@ struct BlockwiseSoftmax_V1
             return make_tuple(m, k);
         }
     };
-    static constexpr auto I0                  = Number<0>{};
-    static constexpr auto I1                  = Number<1>{};
-    static constexpr auto I2                  = Number<2>{};
-    static constexpr index_t MThreadSliceSize = 1;
 
     constexpr static auto in_thread_desc = make_naive_tensor_descriptor_packed(
         make_tuple(Number<MRepeat>{}, Number<NRepeat>{}, Number<RegSizePerXdlops>{}));
