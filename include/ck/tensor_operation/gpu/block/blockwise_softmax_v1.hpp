@@ -62,22 +62,22 @@ struct BlockwiseSoftmax_V1
     using ThreadClusterLengths_M_K = Sequence<MPerBlock, WaveSize / MPerXDL>;
 
     using BlockwiseMaxReduce =
-        PartitionedBlockwiseReduction2<AccDataType,
-                                       BlockSize,
-                                       ThreadClusterLengths_M_K,
-                                       BlockToMKMap_M0_K_M1Adapt,
-                                       reduce::Max,
-                                       false, // param ignored
-                                       detail::AccumulateWithNanIgnore<reduce::Max, AccDataType>>;
+        PartitionedBlockwiseReduction_V2<AccDataType,
+                                         BlockSize,
+                                         ThreadClusterLengths_M_K,
+                                         BlockToMKMap_M0_K_M1Adapt,
+                                         reduce::Max,
+                                         false, // param ignored
+                                         detail::AccumulateWithNanIgnore<reduce::Max, AccDataType>>;
 
     using BlockwiseSumReduce =
-        PartitionedBlockwiseReduction2<AccDataType,
-                                       BlockSize,
-                                       ThreadClusterLengths_M_K,
-                                       BlockToMKMap_M0_K_M1Adapt,
-                                       reduce::Add,
-                                       false, // ignored
-                                       detail::AccumulateWithNanIgnore<reduce::Add, AccDataType>>;
+        PartitionedBlockwiseReduction_V2<AccDataType,
+                                         BlockSize,
+                                         ThreadClusterLengths_M_K,
+                                         BlockToMKMap_M0_K_M1Adapt,
+                                         reduce::Add,
+                                         false, // ignored
+                                         detail::AccumulateWithNanIgnore<reduce::Add, AccDataType>>;
 
     using ThreadwiseSumReduce =
         ThreadwiseReduction<AccDataType,
