@@ -129,6 +129,9 @@
 #define CK_EXPERIMENTAL_INTER_WAVE_SCHEDULING 0
 #define CK_EXPERIMENTAL_INTER_WAVE_SCHEDULING_MAC_CLUSTERS 1
 
+// experimental feature: gridwise_gemm_pipeline_v2
+#define CK_EXPERIMENTAL_GRIDWISE_GEMM_PIPELINE_V2 0
+
 // hack: have underlying assumption that need to be satsified, otherwise it's a bug
 // hack for forcing register to keep idx_diff_low_const in SGPR. idx_diff_low_const must be
 // thread-invariant, otherwise it's a bug

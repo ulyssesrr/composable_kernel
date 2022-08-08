@@ -137,11 +137,11 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
 
     // FIXME: pass GridwiseGemmPipe as a template arguement into GridwiseGemm
     using GridwiseGemmPipe =
-#if 1
+#if CK_EXPERIMENTAL_GRIDWISE_GEMM_PIPELINE_V2
+        GridwiseGemmPipeline_v2;
+#else
         remove_cvref_t<decltype(
             GridwiseGemmPipeline_v1_Selector<NumGemmKPrefetchStage, LoopSched>())>;
-#else
-        GridwiseGemmPipeline_v2;
 #endif
 
     __host__ __device__ static constexpr auto GetABlockDescriptor_AK0PerBlock_MPerBlock_AK1()
