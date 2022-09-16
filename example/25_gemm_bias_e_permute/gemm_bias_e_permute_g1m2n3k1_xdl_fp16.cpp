@@ -202,29 +202,31 @@ int main(int argc, char* argv[])
     int init_method      = 1;
     bool time_kernel     = false;
 
-    ck::index_t G0 = 1;
+    ck::index_t G = 3;
 
-    ck::index_t M0 = 4;
-    ck::index_t M1 = 256;
+    ck::index_t M0 = 128;  // batch
+    ck::index_t M1 = 4096; // seq
 
-    ck::index_t N0 = 4;
-    ck::index_t N1 = 16;
-    ck::index_t N2 = 32;
+    ck::index_t N0 = 1;
+    ck::index_t N1 = 12; // num_heads
+    ck::index_t N2 = 64; // head_dims
 
-    ck::index_t K0 = 256;
+    ck::index_t K0 = 768;
 
-    // A[M0, M1, M2, K0]
-    std::vector<ck::index_t> a_gs_ms_ks_lengths{G0, M0, M1, K0};
-    std::vector<ck::index_t> a_gs_ms_ks_strides{M0 * M1 * K0, M1 * K0, K0, 1};
-    // B[N0, N1, K0]
-    std::vector<ck::index_t> b_gs_ns_ks_lengths{G0, N0, N1, N2, K0};
+    // A[G, M0, M1, K0]
+    std::vector<ck::index_t> a_gs_ms_ks_lengths{G, M0, M1, K0};
+    std::vector<ck::index_t> a_gs_ms_ks_strides{0, M1 * K0, K0, 1};
+
+    // B[G, N0, N1, N2, K0]
+    std::vector<ck::index_t> b_gs_ns_ks_lengths{G, N0, N1, N2, K0};
     std::vector<ck::index_t> b_gs_ns_ks_strides{N0 * N1 * N2 * K0, N1 * N2 * K0, N2 * K0, K0, 1};
 
-    // D[N0, M0, N1, M1, N2]
-    std::vector<ck::index_t> d_gs_ms_ns_lengths{G0, M0, M1, N0, N1, N2};
+    // D[G, N0, M0, N1, M1, N2]
+    std::vector<ck::index_t> d_gs_ms_ns_lengths{G, M0, M1, N0, N1, N2};
     std::vector<ck::index_t> d_gs_ms_ns_strides{N0 * N1 * N2, 0, 0, N1 * N2, N2, 1};
-    // E[N0, M0, N1, M1, N2]
-    std::vector<ck::index_t> e_gs_ms_ns_lengths{G0, M0, M1, N0, N1, N2};
+
+    // E[G, N0, M0, N1, M1, N2]
+    std::vector<ck::index_t> e_gs_ms_ns_lengths{G, M0, M1, N0, N1, N2};
     std::vector<ck::index_t> e_gs_ms_ns_strides{
         M0 * M1 * N0 * N1 * N2, N1 * M1 * N2, N2, M0 * N1 * M1 * N2, M1 * N2, 1};
 
