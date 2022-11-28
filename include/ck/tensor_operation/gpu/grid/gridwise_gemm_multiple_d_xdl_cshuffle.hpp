@@ -259,6 +259,11 @@ struct GridwiseGemmMultipleD_xdl_cshuffle
         const auto N = b_grid_desc_n_k.GetLength(I0);
         const auto K = a_grid_desc_m_k.GetLength(I1);
 
+        //check if any of the dimensions has been set to 0
+        if(M==0 || N==0 || K==0)
+            return false;
+
+
         // check consistency of desc
         if(!(M == e_grid_desc_m_n.GetLength(I0) && N == e_grid_desc_m_n.GetLength(I1)))
         {

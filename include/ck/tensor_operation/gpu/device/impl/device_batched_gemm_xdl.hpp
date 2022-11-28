@@ -175,9 +175,15 @@ struct DeviceBatchedGemmXdl : public DeviceBatchedGemm<ALayout,
         assert(K % K1 == 0);
 
         // set K0 to 0 if assert condition is not satisfied
-        const index_t K0 = [&]()->index_t{
-                if(K % K1 == 0){return K/K1;}
-                else{return 0;}
+        const index_t K0 = [&]() -> index_t {
+            if(K % K1 == 0)
+            {
+                return K / K1;
+            }
+            else
+            {
+                return 0;
+            }
         }();
 
 
@@ -209,9 +215,15 @@ struct DeviceBatchedGemmXdl : public DeviceBatchedGemm<ALayout,
         assert(K % K1 == 0);
 
         // set K0 to 0 if assert condition is not satisfied
-        const index_t K0 = [&]()->index_t{
-                if(K % K1 == 0){return K/K1;}
-                else{return 0;}
+        const index_t K0 = [&]() -> index_t {
+            if(K % K1 == 0)
+            {
+                return K / K1;
+            }
+            else
+            {
+                return 0;
+            }
         }();
 
         const auto b_grid_desc_k_n = [&]() {
