@@ -183,6 +183,9 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_skip_b_lds_v1
         const auto N  = b_grid_desc_k0_n_k1.GetLength(I1);
         const auto K0 = a_grid_desc_k0_m_k1.GetLength(I0);
 
+        //check if any of the dimensions has been set to 0
+        if(M==0 || N==0 || K0==0) return false;
+
         if(!(M == c_grid_desc_m_n.GetLength(I0) && N == c_grid_desc_m_n.GetLength(I1) &&
              K0 == b_grid_desc_k0_n_k1.GetLength(I0) && K1 == a_grid_desc_k0_m_k1.GetLength(I2) &&
              K1 == b_grid_desc_k0_n_k1.GetLength(I2)))

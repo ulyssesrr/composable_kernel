@@ -109,7 +109,11 @@ struct DeviceGemm_Xdl_CShuffle : public DeviceGemm<ALayout,
             // pad both M and K
             assert(K % AK1 == 0);
 
-            const auto AK0 = K / AK1;
+            // set AK0 to 0 if assert condition is not satisfied
+            const auto AK0 = [&]()->auto{
+                    if(KRaw % AK1 == 0){return KRaw/AK1;}
+                    else{return 0;}
+            }();
 
             const auto a_grid_desc_m_k =
                 transform_tensor_descriptor(a_grid_desc_mraw_kraw,
@@ -172,7 +176,11 @@ struct DeviceGemm_Xdl_CShuffle : public DeviceGemm<ALayout,
             // not pad M or K
             assert(KRaw % AK1 == 0);
 
-            const auto AK0 = KRaw / AK1;
+            // set AK0 to 0 if assert condition is not satisfied
+            const auto AK0 = [&]()->auto{
+                    if(KRaw % AK1 == 0){return KRaw/AK1;}
+                    else{return 0;}
+            }();
 
             const auto a_grid_desc_ak0_m_ak1 =
                 transform_tensor_descriptor(a_grid_desc_mraw_kraw,
