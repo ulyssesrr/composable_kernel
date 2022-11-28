@@ -260,7 +260,7 @@ struct GridwiseGemmMultipleD_xdl_cshuffle
         const auto K = a_grid_desc_m_k.GetLength(I1);
 
         //check if any of the dimensions has been set to 0
-        if(M==0 || N==0 || K==0)
+        if(M == 0 || N == 0 || K == 0)
             return false;
 
 

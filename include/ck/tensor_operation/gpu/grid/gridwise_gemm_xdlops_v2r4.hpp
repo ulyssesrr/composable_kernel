@@ -192,7 +192,7 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4
         const auto KBatch = a_b_k0_m_k1_grid_desc.GetLength(I0);
 
         //check if any of the dimensions has been set to 0
-        if(M==0 || N==0 || K0==0)
+        if(M == 0 || N == 0 || K0 == 0)
             return false;
 
         if(!(M == c_m_n_grid_desc.GetLength(I0) && N == c_m_n_grid_desc.GetLength(I1) &&

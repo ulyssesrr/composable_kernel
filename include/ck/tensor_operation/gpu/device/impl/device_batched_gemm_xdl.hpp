@@ -186,7 +186,6 @@ struct DeviceBatchedGemmXdl : public DeviceBatchedGemm<ALayout,
             }
         }();
 
-
         const auto a_grid_desc_m_k = [&]() {
             if constexpr(is_same<tensor_layout::gemm::RowMajor, ALayout>::value)
             {
