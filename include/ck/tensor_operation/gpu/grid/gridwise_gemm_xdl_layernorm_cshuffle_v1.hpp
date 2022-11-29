@@ -259,7 +259,7 @@ struct GridwiseGemmLayernorm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
         const auto N = b_grid_desc_bk0_n_bk1.GetLength(I1);
         const auto K = a_grid_desc_ak0_m_ak1.GetLength(I0) * a_grid_desc_ak0_m_ak1.GetLength(I2);
 
-        //check if any of the dimensions has been set to 0
+        // check if any of the dimensions has been set to 0
         if(M == 0 || N == 0 || K == 0)
             return false;
 

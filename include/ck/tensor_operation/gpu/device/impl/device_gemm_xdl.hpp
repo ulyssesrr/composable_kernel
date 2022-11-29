@@ -80,8 +80,7 @@ struct DeviceGemmXdl : public DeviceGemm<ALayout,
         assert(K % K1 == 0);
 
         // set K0 to 0 if assert condition is not satisfied
-        const index_t K0 = [&]() -> index_t
-        {
+        const index_t K0 = [&]() -> index_t {
             if(K % K1 == 0)
             {
                 return K / K1;
@@ -90,8 +89,7 @@ struct DeviceGemmXdl : public DeviceGemm<ALayout,
             {
                 return 0;
             }
-        }
-        ();
+        }();
 
         const auto a_grid_desc_m_k = [&]() {
             if constexpr(is_same<tensor_layout::gemm::RowMajor, ALayout>::value)
@@ -131,8 +129,7 @@ struct DeviceGemmXdl : public DeviceGemm<ALayout,
         assert(K % K1 == 0);
 
         // set K0 to 0 if assert condition is not satisfied
-        const index_t K0 = [&]() -> index_t
-        {
+        const index_t K0 = [&]() -> index_t {
             if(K % K1 == 0)
             {
                 return K / K1;
@@ -141,8 +138,7 @@ struct DeviceGemmXdl : public DeviceGemm<ALayout,
             {
                 return 0;
             }
-        }
-        ();
+        }();
 
         const auto b_grid_desc_k_n = [&]() {
             if constexpr(is_same<tensor_layout::gemm::RowMajor, BLayout>::value)
