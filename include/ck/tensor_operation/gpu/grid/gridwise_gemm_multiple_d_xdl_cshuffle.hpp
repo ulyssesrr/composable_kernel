@@ -263,7 +263,6 @@ struct GridwiseGemmMultipleD_xdl_cshuffle
         if(M == 0 || N == 0 || K == 0)
             return false;
 
-
         // check consistency of desc
         if(!(M == e_grid_desc_m_n.GetLength(I0) && N == e_grid_desc_m_n.GetLength(I1)))
         {
