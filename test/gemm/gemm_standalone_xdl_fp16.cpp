@@ -7,9 +7,9 @@
 #include "ck/tensor_operation/gpu/device/impl/device_gemm_xdl_cshuffle.hpp"
 
 #include "gemm_f16_nn_instance.hpp"
-#include "gemm_f16_nt_instance.hpp"
-#include "gemm_f16_tn_instance.hpp"
-#include "gemm_f16_tt_instance.hpp"
+// #include "gemm_f16_nt_instance.hpp"
+// #include "gemm_f16_tn_instance.hpp"
+// #include "gemm_f16_tt_instance.hpp"
 
 using Row = ck::tensor_layout::gemm::RowMajor;
 using Col = ck::tensor_layout::gemm::ColumnMajor;
