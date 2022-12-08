@@ -100,6 +100,7 @@ struct GridwiseGemmPipeline_v2
                 // global read i + 2
                 b_blockwise_copy.RunRead(b_grid_desc, b_grid_buf);
 
+#if 1
                 __builtin_amdgcn_sched_group_barrier(0x020, 1, 0); // VMEM read
                 __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
 
@@ -126,6 +127,7 @@ struct GridwiseGemmPipeline_v2
                 __builtin_amdgcn_sched_group_barrier(0x020, 1, 0); // VMEM read
                 __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
                 __builtin_amdgcn_sched_group_barrier(0x200, 1, 0); // DS write
+#endif
 
                 ++i;
             } while(i < (num_loop - 2));
