@@ -100,7 +100,7 @@ struct GridwiseGemmPipeline_v2
                 // global read i + 2
                 b_blockwise_copy.RunRead(b_grid_desc, b_grid_buf);
 
-#if 1
+#if defined(ENABLE_PIPELINE_V2_OPT)
                 __builtin_amdgcn_sched_group_barrier(0x020, 2, 0); // VMEM read
                 __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
 
