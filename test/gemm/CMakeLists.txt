@@ -24,7 +24,7 @@ set(SRC_FILE_COMPILE_FLAGS "-save-temps -Wno-gnu-line-marker")
 set(SRC_FILE_COMPILE_FLAGS "${SRC_FILE_COMPILE_FLAGS} -amdgpu-enable-max-ilp-scheduling-strategy")
 set_source_files_properties(instance/gemm_f16_nn_instance.cpp PROPERTIES COMPILE_FLAGS ${SRC_FILE_COMPILE_FLAGS})
 
-set_source_files_properties(instance/gemm_f16_nn_instance.cpp PROPERTIES COMPILE_DEFINITIONS ENABLE_PIPELINE_V2_OPT)
+set_source_files_properties(instance/gemm_f16_nn_instance.cpp PROPERTIES COMPILE_DEFINITIONS "ENABLE_PIPELINE_V2_OPT;IGLP_OPT_STRATEGY=1")
 
 add_test_executable(test_gemm_standalone_xdl_fp16 gemm_standalone_xdl_fp16.cpp)
 target_link_libraries(test_gemm_standalone_xdl_fp16 PRIVATE gemm_standalone_xdl_fp16_instances utility)
