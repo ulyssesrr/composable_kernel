@@ -100,36 +100,34 @@ struct GridwiseGemmPipeline_v2
                 // global read i + 2
                 b_blockwise_copy.RunRead(b_grid_desc, b_grid_buf);
 
+#if !defined(NUM_MFMA_PER_CLUSTER)
+#define NUM_MFMA_PER_CLUSTER 1
+#endif
+
 #if defined(ENABLE_PIPELINE_V2_OPT)
-                __builtin_amdgcn_sched_group_barrier(0x020, 2, 0); // VMEM read
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
+                __builtin_amdgcn_sched_group_barrier(0x020, 2, 0);                    // VMEM read
+                __builtin_amdgcn_sched_group_barrier(0x008, NUM_MFMA_PER_CLUSTER, 0); // MFMA
 
-                __builtin_amdgcn_sched_group_barrier(0x020, 1, 0); // VMEM read
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
+                __builtin_amdgcn_sched_group_barrier(0x020, 1, 0);                    // VMEM read
+                __builtin_amdgcn_sched_group_barrier(0x008, NUM_MFMA_PER_CLUSTER, 0); // MFMA
 
-                __builtin_amdgcn_sched_group_barrier(0x020, 2, 0); // VMEM read
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
+                __builtin_amdgcn_sched_group_barrier(0x020, 2, 0);                    // VMEM read
+                __builtin_amdgcn_sched_group_barrier(0x008, NUM_MFMA_PER_CLUSTER, 0); // MFMA
 
-                __builtin_amdgcn_sched_group_barrier(0x020, 1, 0); // VMEM read
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
+                __builtin_amdgcn_sched_group_barrier(0x020, 1, 0);                    // VMEM read
+                __builtin_amdgcn_sched_group_barrier(0x008, NUM_MFMA_PER_CLUSTER, 0); // MFMA
 
-                __builtin_amdgcn_sched_group_barrier(0x020, 2, 0); // VMEM read
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
+                __builtin_amdgcn_sched_group_barrier(0x020, 2, 0);                    // VMEM read
+                __builtin_amdgcn_sched_group_barrier(0x008, NUM_MFMA_PER_CLUSTER, 0); // MFMA
 
-                __builtin_amdgcn_sched_group_barrier(0x020, 1, 0); // VMEM read
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
+                __builtin_amdgcn_sched_group_barrier(0x020, 1, 0);                    // VMEM read
+                __builtin_amdgcn_sched_group_barrier(0x008, NUM_MFMA_PER_CLUSTER, 0); // MFMA
 
-                __builtin_amdgcn_sched_group_barrier(0x020, 2, 0); // VMEM read
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
+                __builtin_amdgcn_sched_group_barrier(0x020, 2, 0);                    // VMEM read
+                __builtin_amdgcn_sched_group_barrier(0x008, NUM_MFMA_PER_CLUSTER, 0); // MFMA
 
-                __builtin_amdgcn_sched_group_barrier(0x020, 1, 0); // VMEM read
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
-
-                __builtin_amdgcn_sched_group_barrier(0x020, 2, 0); // VMEM read
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
-
-                __builtin_amdgcn_sched_group_barrier(0x020, 1, 0); // VMEM read
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
+                __builtin_amdgcn_sched_group_barrier(0x020, 1, 0);                    // VMEM read
+                __builtin_amdgcn_sched_group_barrier(0x008, NUM_MFMA_PER_CLUSTER, 0); // MFMA
 #endif
 
                 ++i;
