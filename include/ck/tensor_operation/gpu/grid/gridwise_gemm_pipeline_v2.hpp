@@ -104,66 +104,79 @@ struct GridwiseGemmPipeline_v2
 #define IGLP_OPT_STRATEGY 1
 #endif
 
+#if !defined(LAYOUT_NN)
+#define LAYOUT_NN 0
+#define LAYOUT_NT 1
+#define LAYOUT_TN 2
+#define LAYOUT_TT 3
+#endif
+
 #if defined(ENABLE_PIPELINE_V2_OPT)
+
+#if GEMM_LAYOUT == LAYOUT_TN
 #if IGLP_OPT_STRATEGY == 1
-                // 8 MFMAs
-                __builtin_amdgcn_sched_group_barrier(0x020, 2, 0); // VMEM read
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
+                __builtin_amdgcn_sched_group_barrier(0x0008, 4, 0); // MFMA
 
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
+                __builtin_amdgcn_sched_group_barrier(0x0200, 2, 0); // DS write
+                __builtin_amdgcn_sched_group_barrier(0x0020, 1, 0); // VMEM read
+                __builtin_amdgcn_sched_group_barrier(0x0008, 1, 0); // MFMA
 
-                __builtin_amdgcn_sched_group_barrier(0x020, 2, 0); // VMEM read
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
+                __builtin_amdgcn_sched_group_barrier(0x0200, 1, 0); // DS write
+                __builtin_amdgcn_sched_group_barrier(0x0008, 1, 0); // MFMA
 
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
+                __builtin_amdgcn_sched_group_barrier(0x0020, 1, 0); // VMEM read
+                __builtin_amdgcn_sched_group_barrier(0x0008, 1, 0); // MFMA
 
-                __builtin_amdgcn_sched_group_barrier(0x020, 1, 0); // VMEM read
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
-
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
-
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
-
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
+                __builtin_amdgcn_sched_group_barrier(0x0020, 1, 0); // VMEM read
+                __builtin_amdgcn_sched_group_barrier(0x0008, 1, 0); // MFMA
 #elif IGLP_OPT_STRATEGY == 2
-                // 16 MFMAs
-                // cluster #1
-                __builtin_amdgcn_sched_group_barrier(0x020, 2, 0); // VMEM read
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
+                __builtin_amdgcn_sched_group_barrier(0x0008, 8, 0); // MFMA
 
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
+                __builtin_amdgcn_sched_group_barrier(0x0200, 2, 0); // DS write
+                __builtin_amdgcn_sched_group_barrier(0x0020, 1, 0); // VMEM read
+                __builtin_amdgcn_sched_group_barrier(0x0008, 1, 0); // MFMA
 
-                __builtin_amdgcn_sched_group_barrier(0x020, 2, 0); // VMEM read
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
+                __builtin_amdgcn_sched_group_barrier(0x0200, 2, 0); // DS write
+                __builtin_amdgcn_sched_group_barrier(0x0020, 1, 0); // VMEM read
+                __builtin_amdgcn_sched_group_barrier(0x0008, 1, 0); // MFMA
 
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
+                __builtin_amdgcn_sched_group_barrier(0x0020, 1, 0); // VMEM read
+                __builtin_amdgcn_sched_group_barrier(0x0008, 1, 0); // MFMA
 
-                __builtin_amdgcn_sched_group_barrier(0x020, 1, 0); // VMEM read
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
+                __builtin_amdgcn_sched_group_barrier(0x0020, 1, 0); // VMEM read
+                __builtin_amdgcn_sched_group_barrier(0x0008, 1, 0); // MFMA
 
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
+                __builtin_amdgcn_sched_group_barrier(0x0008, 4, 0); // MFMA
+#elif IGLP_OPT_STRATEGY == 3
+                __builtin_amdgcn_sched_group_barrier(0x0008, 16, 0); // MFMA
 
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
+                __builtin_amdgcn_sched_group_barrier(0x0200, 2, 0); // DS write
+                __builtin_amdgcn_sched_group_barrier(0x0020, 1, 0); // VMEM read
+                __builtin_amdgcn_sched_group_barrier(0x0008, 1, 0); // MFMA
 
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
-                // cluster #2
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
+                __builtin_amdgcn_sched_group_barrier(0x0200, 2, 0); // DS write
+                __builtin_amdgcn_sched_group_barrier(0x0008, 1, 0); // MFMA
 
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
+                __builtin_amdgcn_sched_group_barrier(0x0200, 2, 0); // DS write
+                __builtin_amdgcn_sched_group_barrier(0x0020, 1, 0); // VMEM read
+                __builtin_amdgcn_sched_group_barrier(0x0008, 2, 0); // MFMA
 
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
+                __builtin_amdgcn_sched_group_barrier(0x0020, 1, 0); // VMEM read
+                __builtin_amdgcn_sched_group_barrier(0x0008, 2, 0); // MFMA
 
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
+                __builtin_amdgcn_sched_group_barrier(0x0020, 1, 0); // VMEM read
+                __builtin_amdgcn_sched_group_barrier(0x0008, 2, 0); // MFMA
 
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
+                __builtin_amdgcn_sched_group_barrier(0x0020, 1, 0); // VMEM read
+                __builtin_amdgcn_sched_group_barrier(0x0008, 2, 0); // MFMA
 
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
+                __builtin_amdgcn_sched_group_barrier(0x0020, 1, 0); // VMEM read
 
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
-
-                __builtin_amdgcn_sched_group_barrier(0x008, 1, 0); // MFMA
+                __builtin_amdgcn_sched_group_barrier(0x0008, 6, 0); // MFMA
 #endif
-#endif
+#endif // GEMM_LAYOUT == 2
+
+#endif // defined(ENABLE_PIPELINE_V2_OPT)
 
                 ++i;
             } while(i < (num_loop - 2));
