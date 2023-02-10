@@ -1,0 +1,1 @@
+add_example_executable(example_hello_world hello_world.cpp)
