@@ -14,11 +14,13 @@
 // program
 struct HelloWorld
 {
-    __host__ __device__ void operator()(TileProgram& tp, int x, int y)
+    __host__ __device__ void operator()(TileProgram& tp, int x, int y, int* res)
     {
-        auto desc = tp.make_naive_tensor_descriptor_packed(ck::make_tuple(x));
+        auto desc0 = tp(make_naive_tensor_descriptor_packed(ck::make_tuple(x)));
+        auto desc1 = tp(make_naive_tensor_descriptor_packed(ck::make_tuple(y)));
 
-        printf("length %d\n", desc.GetLength(ck::Number<0>{}));
+        res[0] = desc0.GetLength(ck::Number<0>{});
+        res[1] = desc1.GetLength(ck::Number<0>{});
     }
 };
 
@@ -27,7 +29,16 @@ int main()
     int x = 100;
     int y = 101;
 
-    launch(HelloWorld{}, 1, 1, x, y);
+    DeviceMem res_dev_buf(2 * sizeof(int));
+
+    launch(HelloWorld{}, 1, 1, x, y, static_cast<int*>(res_dev_buf.GetDeviceBuffer()));
+
+    int res_host[2];
+
+    res_dev_buf.FromDevice(res_host);
+
+    printf("res_host %d\n", res_host[0]);
+    printf("res_host %d\n", res_host[1]);
 
     return 0;
 }
