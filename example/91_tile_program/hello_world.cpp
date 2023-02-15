@@ -19,6 +19,8 @@ struct HelloWorld
         auto desc0 = tp(make_naive_tensor_descriptor_packed(ck::make_tuple(x)));
         auto desc1 = tp(make_naive_tensor_descriptor_packed(ck::make_tuple(y)));
 
+        // only for testing purpose
+        // cpu should not do work here
         res[0] = desc0.GetLength(ck::Number<0>{});
         res[1] = desc1.GetLength(ck::Number<0>{});
     }
