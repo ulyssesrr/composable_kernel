@@ -27,6 +27,7 @@ struct GemmMultiD
     {
         using namespace ck;
 
+        const auto a  = tp(make_naive_tensor(a_m_k_lengths, a_m_k_strides), p_a);
         const auto b  = tp(make_naive_tensor(b_n_k_lengths, b_n_k_strides), p_b);
         const auto ds = tp(generate_tuple(
             [&](auto i) {
@@ -95,7 +96,7 @@ struct GemmMultiD
                                          a_dram_window_map_strategy);
 
         auto window_a_block =
-            make_window(a_lds_block, {NPerTile, KPerTile}, {0, 0}, a_lds_window_map_strategy);
+            make_window(a_lds_block, {MPerTile, KPerTile}, {0, 0}, a_lds_window_map_strategy);
 
 #endif
 

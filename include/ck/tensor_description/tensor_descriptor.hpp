@@ -26,6 +26,8 @@ template <typename Transforms,
           typename ElementSpaceSize>
 struct TensorDescriptor
 {
+    using ElementSpaceSizeType = ElementSpaceSize;
+
     // TODO make these private
     __host__ __device__ static constexpr index_t GetNumOfTransform() { return Transforms::Size(); }
 

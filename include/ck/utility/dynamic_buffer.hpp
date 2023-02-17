@@ -26,7 +26,7 @@ struct DynamicBuffer
 
     T* p_data_;
     ElementSpaceSize element_space_size_;
-    T invalid_element_value_ = T{0};
+    remove_cvref_t<T> invalid_element_value_ = T{0};
 
     __host__ __device__ constexpr DynamicBuffer(T* p_data, ElementSpaceSize element_space_size)
         : p_data_{p_data}, element_space_size_{element_space_size}
