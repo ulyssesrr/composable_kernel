@@ -52,8 +52,8 @@ template <typename SliceLengths,
           typename SrcElementwiseOperation,
           typename DstElementwiseOperation,
           InMemoryDataOperationEnum DstInMemOp,
-          typename SrcData,
-          typename DstData,
+          typename SrcDataTmp,
+          typename DstDataTmp,
           typename SrcDesc,
           typename DstDesc,
           typename SrcDimAccessOrder,
@@ -76,6 +76,9 @@ struct ThreadwiseTensorSliceTransfer_v3r1
     static constexpr index_t nDim = SliceLengths::Size();
     using Index                   = MultiIndex<nDim>;
 
+    using SrcData = remove_cvref_t<SrcDataTmp>;
+    using DstData = remove_cvref_t<DstDataTmp>;
+
     using SrcCoord = decltype(make_tensor_coordinate(SrcDesc{}, Index{}));
     using DstCoord = decltype(make_tensor_coordinate(DstDesc{}, Index{}));
 
@@ -83,6 +86,11 @@ struct ThreadwiseTensorSliceTransfer_v3r1
     using DstCoordStep = decltype(make_tensor_coordinate_step(DstDesc{}, Index{}));
 
     static constexpr auto I0 = Number<0>{};
+
+    __host__ __device__ constexpr ThreadwiseTensorSliceTransfer_v3r1()
+        : src_coord_{}, dst_coord_{}, src_element_op_{}, dst_element_op_{}
+    {
+    }
 
     __device__ constexpr ThreadwiseTensorSliceTransfer_v3r1(
         const SrcDesc& src_desc,

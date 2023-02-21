@@ -6,10 +6,13 @@
 #include "ck/tensor_description/tensor_descriptor.hpp"
 #include "ck/tensor_description/tensor_descriptor_helper.hpp"
 
-// hidden intermediate argument
-struct Arg
+// Meta data for GPU
+// TODO: do we need to take care of data alignment in code or it's done by compiler?
+template <ck::index_t kSize>
+struct MetaData
 {
-    char data_[128];
+    char p_data_[kSize];
+
     ck::index_t size_ = 0;
     ck::index_t pos_  = 0;
 
@@ -21,49 +24,59 @@ struct Arg
 
     __device__ void reset_pos() { pos_ = 0; }
 
-    // push arg on host
+    // push meta data on host
+    // TODO: correct forwarding?
     template <typename T>
-    __host__ T push(const T& a)
+    __host__ auto push(T&& a)
     {
-        *reinterpret_cast<T*>(data_ + size_) = a;
+        assert(size_ + sizeof(Type) <= kSize);
 
-        size_ += sizeof(T);
+        using Type = ck::remove_cvref_t<T>;
 
-        return a;
+        *reinterpret_cast<Type*>(p_data_ + size_) = a;
+
+        size_ += sizeof(Type);
+
+        return ck::forwarder{}(a);
     }
 
-    // pull arg on device
+    // pull meta data on device
+    // TODO: correct forwarding?
     template <typename T>
-    __device__ T pull()
+    __device__ auto pull()
     {
-        T a = *reinterpret_cast<T*>(data_ + pos_);
+        using Type = ck::remove_cvref_t<T>;
 
-        pos_ += sizeof(T);
+        Type a = *reinterpret_cast<Type*>(p_data_ + pos_);
+
+        pos_ += sizeof(Type);
 
         return a;
     }
 };
 
 // namespace tp (for tile programming)
-struct TileProgram
+struct ProgramServer
 {
-    // arg on device
-    Arg arg_;
+    // meta data on device
+    MetaData<1024> meta_data_;
 
-    __device__ void gpu_init() { arg_.reset_pos(); }
+    __host__ void cpu_init() { meta_data_.reset(); }
 
-    // push arg on host
+    __device__ void gpu_init() { meta_data_.reset_pos(); }
+
+    // push meta data on host
     template <typename T>
-    __host__ T operator()(const T& a)
+    __host__ auto operator()(T&& a)
     {
-        return arg_.push(a);
+        return ck::forwarder{}(meta_data_.push(a));
     }
 
-    // push arg on host
+    // push meta data on host
     template <typename T>
-    __device__ T operator()(const T&)
+    __device__ auto operator()(T&&)
     {
-        return arg_.pull<T>();
+        return ck::forwarder{}(meta_data_.pull<T>());
     }
 
     __host__ static ck::index_t get_block_1d_id() { return -1; }
@@ -73,23 +86,36 @@ struct TileProgram
     __device__ static ck::index_t get_block_1d_id() { return ck::get_block_1d_id(); }
 
     __device__ static ck::index_t get_grid_size() { return ck::get_grid_size(); }
+
+    // TODO: correct forwarding?
+    template <typename T>
+    __host__ static constexpr auto read_first_lane(T&& a)
+    {
+        return ck::forwarder{}(a);
+    }
+
+    template <typename T>
+    __device__ static constexpr auto read_first_lane(T&& a)
+    {
+        return __builtin_amdgcn_readfirstlane(a);
+    }
 };
 
-template <typename Program, typename... Xs>
-__global__ void gpu_program_wrapper(Program f, TileProgram tp, Xs... xs)
+template <typename Server, typename Program, typename... Xs>
+__global__ void gpu_program_wrapper(Server server, Program f, Xs... xs)
 {
-    tp.gpu_init();
-    f(tp, xs...);
+    server.gpu_init();
+    f(server, xs...);
 }
 
-template <typename Program, typename... Xs>
-void launch(Program f, dim3 grid_dim, dim3 block_dim, Xs... xs)
+template <typename Server, typename Program, typename... Xs>
+void launch(Server server, Program f, dim3 grid_dim, dim3 block_dim, Xs... xs)
 {
-    TileProgram tp;
+    server.cpu_init();
 
-    f(tp, xs...);
+    f(server, xs...);
 
-    printf("cpu arg size %d\n", tp.arg_.size_);
+    printf("meta data size %d\n", server.meta_data_.size_);
 
-    gpu_program_wrapper<Program><<<grid_dim, block_dim, 0, nullptr>>>(f, tp, xs...);
+    gpu_program_wrapper<Server, Program><<<grid_dim, block_dim, 0, nullptr>>>(server, f, xs...);
 }

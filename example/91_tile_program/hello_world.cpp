@@ -14,10 +14,10 @@
 // program
 struct HelloWorld
 {
-    __host__ __device__ void operator()(TileProgram& tp, int x, int y, int* res)
+    __host__ __device__ void operator()(ProgramServer& ps, int x, int y, int* res)
     {
-        auto desc0 = tp(make_naive_tensor_descriptor_packed(ck::make_tuple(x)));
-        auto desc1 = tp(make_naive_tensor_descriptor_packed(ck::make_tuple(y)));
+        auto desc0 = ps(make_naive_tensor_descriptor_packed(ck::make_tuple(x)));
+        auto desc1 = ps(make_naive_tensor_descriptor_packed(ck::make_tuple(y)));
 
         // only for testing purpose
         // cpu should not do work here
@@ -33,7 +33,13 @@ int main()
 
     DeviceMem res_dev_buf(2 * sizeof(int));
 
-    launch(HelloWorld{}, 1, 1, x, y, static_cast<int*>(res_dev_buf.GetDeviceBuffer()));
+    launch(ProgramServer{},
+           HelloWorld{},
+           1,
+           1,
+           x,
+           y,
+           static_cast<int*>(res_dev_buf.GetDeviceBuffer()));
 
     int res_host[2];
 

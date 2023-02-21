@@ -24,12 +24,17 @@ struct DynamicBuffer
 {
     using type = T;
 
-    T* p_data_;
+    T* p_data_ = nullptr;
     ElementSpaceSize element_space_size_;
     remove_cvref_t<T> invalid_element_value_ = T{0};
 
+    __host__ __device__ constexpr DynamicBuffer()
+        : p_data_{}, element_space_size_{}, invalid_element_value_{}
+    {
+    }
+
     __host__ __device__ constexpr DynamicBuffer(T* p_data, ElementSpaceSize element_space_size)
-        : p_data_{p_data}, element_space_size_{element_space_size}
+        : p_data_{p_data}, element_space_size_{element_space_size}, invalid_element_value_{0}
     {
     }
 
@@ -42,20 +47,17 @@ struct DynamicBuffer
     {
     }
 
-    __host__ __device__ static constexpr AddressSpaceEnum GetAddressSpace()
-    {
-        return BufferAddressSpace;
-    }
+    __device__ static constexpr AddressSpaceEnum GetAddressSpace() { return BufferAddressSpace; }
 
-    __host__ __device__ constexpr const T& operator[](index_t i) const { return p_data_[i]; }
+    __device__ constexpr const T& operator[](index_t i) const { return p_data_[i]; }
 
-    __host__ __device__ constexpr T& operator()(index_t i) { return p_data_[i]; }
+    __device__ constexpr T& operator()(index_t i) { return p_data_[i]; }
 
     template <typename X,
               typename enable_if<is_same<typename scalar_type<remove_cvref_t<X>>::type,
                                          typename scalar_type<remove_cvref_t<T>>::type>::value,
                                  bool>::type = false>
-    __host__ __device__ constexpr auto Get(index_t i, bool is_valid_element) const
+    __device__ constexpr auto Get(index_t i, bool is_valid_element) const
     {
         // X contains multiple T
         constexpr index_t scalar_per_t_vector = scalar_type<remove_cvref_t<T>>::vector_size;
@@ -120,7 +122,7 @@ struct DynamicBuffer
               typename enable_if<is_same<typename scalar_type<remove_cvref_t<X>>::type,
                                          typename scalar_type<remove_cvref_t<T>>::type>::value,
                                  bool>::type = false>
-    __host__ __device__ void Update(index_t i, bool is_valid_element, const X& x)
+    __device__ void Update(index_t i, bool is_valid_element, const X& x)
     {
         if constexpr(Op == InMemoryDataOperationEnum::Set)
         {
@@ -147,7 +149,7 @@ struct DynamicBuffer
               typename enable_if<is_same<typename scalar_type<remove_cvref_t<X>>::type,
                                          typename scalar_type<remove_cvref_t<T>>::type>::value,
                                  bool>::type = false>
-    __host__ __device__ void Set(index_t i, bool is_valid_element, const X& x)
+    __device__ void Set(index_t i, bool is_valid_element, const X& x)
     {
         // X contains multiple T
         constexpr index_t scalar_per_t_vector = scalar_type<remove_cvref_t<T>>::vector_size;
@@ -290,7 +292,7 @@ struct DynamicBuffer
               typename enable_if<is_same<typename scalar_type<remove_cvref_t<X>>::type,
                                          typename scalar_type<remove_cvref_t<T>>::type>::value,
                                  bool>::type = false>
-    __host__ __device__ void AtomicAdd(index_t i, bool is_valid_element, const X& x)
+    __device__ void AtomicAdd(index_t i, bool is_valid_element, const X& x)
     {
         using scalar_t = typename scalar_type<remove_cvref_t<T>>::type;
 
@@ -339,7 +341,7 @@ struct DynamicBuffer
               typename enable_if<is_same<typename scalar_type<remove_cvref_t<X>>::type,
                                          typename scalar_type<remove_cvref_t<T>>::type>::value,
                                  bool>::type = false>
-    __host__ __device__ void AtomicMax(index_t i, bool is_valid_element, const X& x)
+    __device__ void AtomicMax(index_t i, bool is_valid_element, const X& x)
     {
         // X contains multiple T
         constexpr index_t scalar_per_t_vector = scalar_type<remove_cvref_t<T>>::vector_size;
@@ -371,9 +373,9 @@ struct DynamicBuffer
         }
     }
 
-    __host__ __device__ static constexpr bool IsStaticBuffer() { return false; }
+    __device__ static constexpr bool IsStaticBuffer() { return false; }
 
-    __host__ __device__ static constexpr bool IsDynamicBuffer() { return true; }
+    __device__ static constexpr bool IsDynamicBuffer() { return true; }
 };
 
 template <AddressSpaceEnum BufferAddressSpace, typename T, typename ElementSpaceSize>

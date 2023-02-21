@@ -1,8 +1,14 @@
 #include "tile_program.hpp"
 
+#include "ck/utility/common_header.hpp"
+#include "ck/utility/thread_group.hpp"
+
 #include "ck/tensor_description/tensor_descriptor_helper.hpp"
 #include "ck/tensor_description/cluster_descriptor.hpp"
 #include "ck/tensor/tensor.hpp"
+
+#include "ck/tensor_operation/gpu/block/thread_group_tensor_slice_transfer_v4r1.hpp"
+#include "ck/tensor_operation/gpu/element/unary_element_wise_operation.hpp"
 
 #include "ck/tensor_operation/operator_transform/transform_conv_fwd_to_gemm.hpp"
 #include "ck/tensor_operation/gpu/device/convolution_forward_specialization.hpp"
@@ -11,6 +17,182 @@
 #include "ck/host_utility/device_prop.hpp"
 
 #include "ck/library/utility/device_memory.hpp"
+
+namespace ck {
+
+template <typename ThreadGroup,
+          typename SrcElementwiseOperation,
+          typename DstElementwiseOperation,
+          InMemoryDataOperationEnum DstInMemOp,
+          typename BlockSliceLengths,
+          typename ThreadClusterLengths,
+          typename ThreadClusterArrangeOrder,
+          typename SrcTensor,
+          typename DstTensor,
+          typename SrcDimAccessOrder,
+          typename DstDimAccessOrder,
+          index_t SrcVectorDim,
+          index_t DstVectorDim,
+          index_t SrcScalarPerVector,
+          index_t DstScalarPerVector,
+          index_t SrcScalarStrideInVector,
+          index_t DstScalarStrideInVector,
+          bool ThreadTransferSrcResetCoordinateAfterRun,
+          bool ThreadTransferDstResetCoordinateAfterRun>
+struct Copier
+{
+    using SrcDesc = typename SrcTensor::TensorDescriptor;
+    using DstDesc = typename DstTensor::TensorDescriptor;
+
+    static constexpr ck::index_t nDim = remove_reference_t<SrcDesc>::GetNumOfDimension();
+
+    using Index = MultiIndex<nDim>;
+
+    __host__ __device__ constexpr Copier() : block_copy_{}, src_tensor_{}, dst_tensor_{} {}
+
+    __device__ constexpr Copier(const SrcTensor& src_tensor,
+                                const Index& src_block_slice_origin,
+                                const SrcElementwiseOperation& src_element_op,
+                                DstTensor& dst_tensor,
+                                const Index& dst_block_slice_origin,
+                                const DstElementwiseOperation& dst_element_op)
+        : block_copy_{src_tensor.desc_,
+                      src_block_slice_origin,
+                      src_element_op,
+                      dst_tensor.desc_,
+                      dst_block_slice_origin,
+                      dst_element_op},
+          src_tensor_{src_tensor.buf_.p_data_, src_tensor.desc_},
+          dst_tensor_{dst_tensor.buf_.p_data_, dst_tensor.desc_}
+    {
+    }
+
+    __host__ void operator()() {}
+
+    __device__ void operator()()
+    {
+        block_copy_.Run(
+            src_tensor_.desc_, src_tensor_.buf_, dst_tensor_.desc_, dst_tensor_.buf_, Number<0>{});
+    }
+
+    __host__ void move_src_window(const Index&) {}
+
+    __device__ void move_src_window(const Index& step)
+    {
+        block_copy_.MoveSrcSliceWindow(src_tensor_.desc_, step);
+    }
+
+    __host__ void move_dst_window(const Index&) {}
+
+    __device__ void move_dst_window(const Index& step)
+    {
+        block_copy_.MoveDstSliceWindow(dst_tensor_.desc_, step);
+    }
+
+    // member
+    ThreadGroupTensorSliceTransfer_v4r1<ThreadGroup,
+                                        SrcElementwiseOperation,
+                                        DstElementwiseOperation,
+                                        DstInMemOp,
+                                        BlockSliceLengths,
+                                        ThreadClusterLengths,
+                                        ThreadClusterArrangeOrder,
+                                        typename SrcTensor::DataType,
+                                        typename SrcTensor::DataType,
+                                        SrcDesc,
+                                        DstDesc,
+                                        SrcDimAccessOrder,
+                                        DstDimAccessOrder,
+                                        SrcVectorDim,
+                                        DstVectorDim,
+                                        SrcScalarPerVector,
+                                        DstScalarPerVector,
+                                        SrcScalarStrideInVector,
+                                        DstScalarStrideInVector,
+                                        ThreadTransferSrcResetCoordinateAfterRun,
+                                        ThreadTransferDstResetCoordinateAfterRun>
+        block_copy_;
+
+    SrcTensor src_tensor_;
+    DstTensor dst_tensor_;
+};
+
+} // namespace ck
+
+struct CopierStrategy
+{
+};
+
+template <ck::index_t BlockSize>
+struct MyProgramServer : public ProgramServer
+{
+    template <typename SrcTensor, typename DstTensor, typename Index, typename Strategy>
+    __host__ auto make_copier(const SrcTensor& src_tensor,
+                              const Index& src_window_origin,
+                              DstTensor& dst_tensor,
+                              const Index& dst_window_origin,
+                              const Index& window_lengths,
+                              const Strategy& strategy)
+    {
+        using namespace ck;
+
+        return Copier<ThisThreadBlock<BlockSize>,
+                      tensor_operation::element_wise::PassThrough,
+                      tensor_operation::element_wise::PassThrough,
+                      InMemoryDataOperationEnum::Set,
+                      Sequence<128, 16>, // BlockSliceLengths,
+                      Sequence<16, 16>,
+                      Sequence<0, 1>,
+                      SrcTensor,
+                      DstTensor,
+                      Sequence<0, 1>,
+                      Sequence<0, 1>,
+                      1,
+                      1,
+                      1,
+                      1,
+                      1,
+                      1,
+                      true,
+                      true>{};
+    }
+
+    template <typename SrcTensor, typename DstTensor, typename Index, typename Strategy>
+    __device__ auto make_copier(const SrcTensor& src_tensor,
+                                const Index& src_window_origin,
+                                DstTensor& dst_tensor,
+                                const Index& dst_window_origin,
+                                const Index& window_lengths,
+                                const Strategy& strategy)
+    {
+        using namespace ck;
+
+        return Copier<ThisThreadBlock<BlockSize>,
+                      tensor_operation::element_wise::PassThrough,
+                      tensor_operation::element_wise::PassThrough,
+                      InMemoryDataOperationEnum::Set,
+                      Sequence<128, 16>, // BlockSliceLengths,
+                      Sequence<16, 16>,
+                      Sequence<0, 1>,
+                      SrcTensor,
+                      DstTensor,
+                      Sequence<0, 1>,
+                      Sequence<0, 1>,
+                      1,
+                      1,
+                      1,
+                      1,
+                      1,
+                      1,
+                      true,
+                      true>{src_tensor,
+                            src_window_origin,
+                            tensor_operation::element_wise::PassThrough{},
+                            dst_tensor,
+                            dst_window_origin,
+                            tensor_operation::element_wise::PassThrough{}};
+    }
+};
 
 // program
 template <ck::index_t NDimSpatial,
@@ -21,8 +203,9 @@ template <ck::index_t NDimSpatial,
           ck::index_t kKPerTile>
 struct Im2Col
 {
+    template <typename Server, typename CopierStrategy>
     __host__ __device__ void
-    operator()(TileProgram& tp,
+    operator()(Server& ps,
                const std::array<ck::index_t, NDimSpatial + 3>& a_g_n_c_wis_lengths,
                const std::array<ck::index_t, NDimSpatial + 3>& a_g_n_c_wis_strides,
                const std::array<ck::index_t, NDimSpatial + 3>& b_g_k_c_xs_lengths,
@@ -34,17 +217,19 @@ struct Im2Col
                const std::array<ck::index_t, NDimSpatial>& input_left_pads,
                const std::array<ck::index_t, NDimSpatial>& input_right_pads,
                //
-               const std::array<ck::index_t, 3> a_gemmg_gemmm_gemmk_lengths,
-               const std::array<ck::index_t, 3> a_gemmg_gemmm_gemmk_strides,
+               const std::array<ck::index_t, 2> a_gemmm_gemmk_lengths,
+               const std::array<ck::index_t, 2> a_gemmm_gemmk_strides,
                //
                const T* p_a_img,
-               T* p_a_mtx)
+               T* p_a_mtx,
+               // strategy
+               const CopierStrategy& copier_strategy)
     {
         using namespace ck;
 
         constexpr auto I0 = Number<0>{};
-        constexpr auto I1 = Number<1>{};
 
+#if 0 // debug
         const auto a_src_desc = tensor_operation::TransformConvFwdToGemm<
             NDimSpatial,
             tensor_operation::device::ConvolutionForwardSpecialization::Default>::
@@ -58,36 +243,55 @@ struct Im2Col
                                                   conv_filter_dilations,
                                                   input_left_pads,
                                                   input_right_pads);
+#else
+        const auto a_src_desc =
+            ps(tensor_operation::TransformConvFwdToGemm<
+                NDimSpatial,
+                tensor_operation::device::ConvolutionForwardSpecialization::Default>::
+                   template MakeADescriptor_M_K<ALayout>(a_g_n_c_wis_lengths,
+                                                         a_g_n_c_wis_strides,
+                                                         b_g_k_c_xs_lengths,
+                                                         b_g_k_c_xs_strides,
+                                                         c_g_n_k_wos_lengths,
+                                                         c_g_n_k_wos_strides,
+                                                         conv_filter_strides,
+                                                         conv_filter_dilations,
+                                                         input_left_pads,
+                                                         input_right_pads));
+#endif
 
-        const auto a_dst_desc =
-            make_naive_tensor_descriptor(make_tuple(a_gemmg_gemmm_gemmk_lengths[0],
-                                                    a_gemmg_gemmm_gemmk_lengths[1],
-                                                    a_gemmg_gemmm_gemmk_lengths[2]),
-                                         make_tuple(a_gemmg_gemmm_gemmk_strides[0],
-                                                    a_gemmg_gemmm_gemmk_strides[1],
-                                                    a_gemmg_gemmm_gemmk_strides[2]));
+#if 1 // debug
+        const auto a_dst_desc = ps(make_naive_tensor_descriptor(
+            make_tuple(a_gemmm_gemmk_lengths[0], a_gemmm_gemmk_lengths[1]),
+            make_tuple(a_gemmm_gemmk_strides[0], a_gemmm_gemmk_strides[1])));
+#else
+        const auto a_dst_desc = make_naive_tensor_descriptor(
+            make_tuple(a_gemmm_gemmk_lengths[0], a_gemmm_gemmk_lengths[1]),
+            make_tuple(a_gemmm_gemmk_strides[0], a_gemmm_gemmk_strides[1]));
+#endif
 
-        const auto a_src = tp(make_tensor<AddressSpaceEnum::Global, true>(a_src_desc, p_a_img));
+        const auto a_src = make_tensor<AddressSpaceEnum::Global, true>(a_src_desc, p_a_img);
 
-        auto a_dst = tp(make_tensor<AddressSpaceEnum::Global, true>(a_dst_desc, p_a_mtx));
+        auto a_dst = make_tensor<AddressSpaceEnum::Global, true>(a_dst_desc, p_a_mtx);
 
-        const auto num_gemmg = a_gemmg_gemmm_gemmk_lengths[0];
-        const auto num_gemmm = a_gemmg_gemmm_gemmk_lengths[1];
-        const auto num_gemmk = a_gemmg_gemmm_gemmk_lengths[2];
+        const auto num_gemmm = a_gemmm_gemmk_lengths[0];
+        const auto num_gemmk = a_gemmm_gemmk_lengths[1];
 
-        const auto id_block = tp.get_block_1d_id();
+        const auto id_block = ps.get_block_1d_id();
 
-        const auto num_tile_m = num_gemmm / kMPerTile;
-        const auto num_tile_k = num_gemmk / kKPerTile;
+        const auto num_tile_m = ps.read_first_lane(num_gemmm / kMPerTile);
 
-        const auto block2tile = tp(make_cluster_descriptor(make_tuple(num_tile_m, num_tile_k)));
+#if 1 // debug
+        const auto block2tile = ps(make_cluster_descriptor(make_tuple(num_tile_m)));
+#else
+        const auto block2tile = make_cluster_descriptor(make_tuple(num_tile_m));
+#endif
 
         const auto id_tile = block2tile.CalculateBottomIndex(make_tuple(id_block));
 
-        const auto id_tile_m = id_tile[I0];
-        const auto id_tile_k = id_tile[I1];
+        const auto id_tile_m = ps.read_first_lane(id_tile[I0]);
 
-#if 1
+#if 0
         // data-based syntax: per-data solution strategy
         auto window_a_src = make_window(a_src,
                                         make_tuple(1, MPerTile, KPerTile),
@@ -107,6 +311,25 @@ struct Im2Col
             window_a_dst += make_tuple(1, 0, 0);
         }
 #else
+        // operator-based syntax
+        auto copier = ps.make_copier(a_src,
+                                     make_tuple(id_tile_m * kMPerTile, 0),
+                                     a_dst,
+                                     make_tuple(id_tile_m * kMPerTile, 0),
+                                     make_tuple(kMPerTile, kKPerTile),
+                                     copier_strategy);
+
+        ck::index_t id_gemmk = 0;
+
+        do
+        {
+            copier();
+
+            copier.move_src_window(make_tuple(0, kKPerTile));
+            copier.move_dst_window(make_tuple(0, kKPerTile));
+
+            id_gemmk += kKPerTile;
+        } while(id_gemmk < num_gemmk - kKPerTile);
 #endif
     }
 };
@@ -117,7 +340,7 @@ int main()
 
     constexpr ck::index_t NumDimSpatial = 2;
 
-    ck::index_t G  = 32;
+    ck::index_t G  = 1;
     ck::index_t N  = 256;
     ck::index_t K  = 192;
     ck::index_t C  = 192;
@@ -170,8 +393,8 @@ int main()
     std::array<ck::index_t, NumDimSpatial> input_right_pads{1, 1};
 
     // matrix
-    std::array<ck::index_t, 3> in_mtx_lengths{G, G * Ho * Wo, C * Y * X};
-    std::array<ck::index_t, 3> in_mtx_strides{0, 0, 1};
+    std::array<ck::index_t, 2> in_mtx_lengths{N * Ho * Wo, C * Y * X};
+    std::array<ck::index_t, 2> in_mtx_strides{0, 1};
 
     std::partial_sum(rbegin(in_mtx_lengths),
                      std::prev(rend(in_mtx_lengths)),
@@ -181,9 +404,10 @@ int main()
     DeviceMem in(sizeof(DataType) * G * N * Hi * Wi * C);
     DeviceMem in_mtx(sizeof(DataType) * G * N * Ho * Wo * C * Y * X);
 
-    launch(Im2Col<2, ck::tensor_layout::convolution::GNHWC, float, 128, 128>{},
+    launch(MyProgramServer<256>{},
+           Im2Col<2, ck::tensor_layout::convolution::GNHWC, float, 128, 16>{},
            1,
-           256,
+           1,
            in_lengths,
            in_strides,
            wei_lengths,
@@ -199,7 +423,8 @@ int main()
            in_mtx_strides,
            //
            static_cast<DataType*>(in.GetDeviceBuffer()),
-           static_cast<DataType*>(in_mtx.GetDeviceBuffer()));
+           static_cast<DataType*>(in_mtx.GetDeviceBuffer()),
+           CopierStrategy{});
 
     return 0;
 }

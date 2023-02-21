@@ -8,32 +8,38 @@ namespace ck {
 template <AddressSpaceEnum AddressSpace,
           bool InvalidElementUseNumericalZeroValue,
           typename T,
-          typename TensorDesc>
+          typename TensorDescTmp>
 struct Tensor
 {
+    using TensorDescriptor = remove_cvref_t<TensorDescTmp>;
+    using DataType         = remove_reference_t<T>;
+
     static constexpr AddressSpaceEnum kAdressSpace_ = AddressSpace;
     static constexpr bool kInvalidElementUseNumericalZeroValue_ =
         InvalidElementUseNumericalZeroValue;
 
     __host__ __device__ constexpr Tensor() : buf_{nullptr, 0}, desc_{} {}
 
-    __host__ __device__ constexpr Tensor(T* p_data, TensorDesc desc)
+    __host__ __device__ constexpr Tensor(DataType* p_data, TensorDescriptor desc)
         : buf_{p_data, desc.GetElementSpaceSize()}, desc_{desc}
     {
     }
 
-    __host__ __device__ constexpr Tensor(T* p_data, TensorDesc desc, T invalid_element_value)
+    __host__ __device__ constexpr Tensor(DataType* p_data,
+                                         TensorDescriptor desc,
+                                         DataType invalid_element_value)
         : buf_{p_data, desc.GetElementSpaceSize(), invalid_element_value}, desc_{desc}
     {
     }
 
+    // member
     DynamicBuffer<AddressSpace,
-                  T,
-                  typename TensorDesc::ElementSpaceSizeType,
+                  DataType,
+                  typename TensorDescriptor::ElementSpaceSizeType,
                   InvalidElementUseNumericalZeroValue>
         buf_;
 
-    TensorDesc desc_;
+    TensorDescriptor desc_;
 };
 
 template <AddressSpaceEnum AddressSpace,
