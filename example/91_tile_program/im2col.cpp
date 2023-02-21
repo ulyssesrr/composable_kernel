@@ -229,7 +229,7 @@ struct Im2Col
 
         constexpr auto I0 = Number<0>{};
 
-#if 0 // debug
+#if 1 // debug
         const auto a_src_desc = tensor_operation::TransformConvFwdToGemm<
             NDimSpatial,
             tensor_operation::device::ConvolutionForwardSpecialization::Default>::
@@ -261,13 +261,13 @@ struct Im2Col
 #endif
 
 #if 1 // debug
-        const auto a_dst_desc = ps(make_naive_tensor_descriptor(
-            make_tuple(a_gemmm_gemmk_lengths[0], a_gemmm_gemmk_lengths[1]),
-            make_tuple(a_gemmm_gemmk_strides[0], a_gemmm_gemmk_strides[1])));
-#else
         const auto a_dst_desc = make_naive_tensor_descriptor(
             make_tuple(a_gemmm_gemmk_lengths[0], a_gemmm_gemmk_lengths[1]),
             make_tuple(a_gemmm_gemmk_strides[0], a_gemmm_gemmk_strides[1]));
+#else
+        const auto a_dst_desc = ps(make_naive_tensor_descriptor(
+            make_tuple(a_gemmm_gemmk_lengths[0], a_gemmm_gemmk_lengths[1]),
+            make_tuple(a_gemmm_gemmk_strides[0], a_gemmm_gemmk_strides[1])));
 #endif
 
         const auto a_src = make_tensor<AddressSpaceEnum::Global, true>(a_src_desc, p_a_img);
@@ -282,9 +282,9 @@ struct Im2Col
         const auto num_tile_m = ps.read_first_lane(num_gemmm / kMPerTile);
 
 #if 1 // debug
-        const auto block2tile = ps(make_cluster_descriptor(make_tuple(num_tile_m)));
-#else
         const auto block2tile = make_cluster_descriptor(make_tuple(num_tile_m));
+#else
+        const auto block2tile = ps(make_cluster_descriptor(make_tuple(num_tile_m)));
 #endif
 
         const auto id_tile = block2tile.CalculateBottomIndex(make_tuple(id_block));
