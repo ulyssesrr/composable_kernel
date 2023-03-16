@@ -28,6 +28,9 @@ struct Activation_Mul_Clamp
     {
         // CAUSION - We might type_convert to int8 in threadwise copy
         // eg. GridwiseGemmDlMultipleD_km_kn_mn
+        // replace line 34-37 with line 32 to avoid crash
+        // y = x;
+
         float y_fp32 = ck::type_convert<float>(x);
         activationOp_(y_fp32, y_fp32);
         y_fp32 = math::clamp(requantScale_ * y_fp32, -128.f, 127.f);
