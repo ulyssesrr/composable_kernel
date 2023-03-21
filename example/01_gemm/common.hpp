@@ -24,20 +24,20 @@
 
 struct ProblemSize final
 {
-    ck::index_t M = 3840;
-    ck::index_t N = 4096;
-    ck::index_t K = 4096;
+    ck::index_t M = 832;
+    ck::index_t N = 1024;
+    ck::index_t K = 1024;
 
-    ck::index_t StrideA = 4096;
-    ck::index_t StrideB = 4096;
-    ck::index_t StrideC = 4096;
+    ck::index_t StrideA = 1024;
+    ck::index_t StrideB = 1024;
+    ck::index_t StrideC = 1024;
 };
 
 struct ExecutionConfig final
 {
     bool do_verification = true;
     int init_method      = 1;
-    bool time_kernel     = false;
+    bool time_kernel     = true;
 };
 
 template <ck::index_t... Is>
