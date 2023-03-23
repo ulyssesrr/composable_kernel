@@ -27,6 +27,9 @@ template <typename GridwiseGemm,
           typename CElementwiseOperation,
           typename Block2CTileMap,
           bool HasMainKBlockLoop>
+#ifdef USE_WAVES_PER_EU
+__attribute__((amdgpu_waves_per_eu(1, 1)))
+#endif
 __global__ void
 #if CK_USE_LAUNCH_BOUNDS
     __launch_bounds__(CK_MAX_THREAD_PER_BLOCK, CK_MIN_BLOCK_PER_CU)

@@ -140,7 +140,7 @@
 // this will let make_default_loop_scheduler() return interwave scheduling flag by default
 #define CK_EXPERIMENTAL_DEFAULT_TO_INTER_WAVE_SCHEDULING 0
 // experimental feature: add instances using interwave scheduling
-#define CK_EXPERIMENTAL_INTER_WAVE_INSTANCES 1
+#define CK_EXPERIMENTAL_INTER_WAVE_INSTANCES 0
 // experimental feature: add instances using pipeline v2
 #define CK_EXPERIMENTAL_PIPELINE_V2_INSTANCES 1
 
