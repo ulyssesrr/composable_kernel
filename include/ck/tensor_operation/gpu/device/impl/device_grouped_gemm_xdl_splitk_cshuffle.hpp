@@ -32,13 +32,25 @@ __global__ void
     __launch_bounds__(CK_MAX_THREAD_PER_BLOCK, CK_MIN_BLOCK_PER_CU)
 #endif
         kernel_grouped_gemm_xdl_splitk(const void CK_CONSTANT_ADDRESS_SPACE* gemm_descs_const,
-                                       const index_t group_count)
+                                       const index_t group_count,
+                                       const index_t num_wg,
+                                       index_t* block_id_count)
 {
 #if(!defined(__HIP_DEVICE_COMPILE__) || defined(__gfx908__) || defined(__gfx90a__))
     constexpr index_t shared_size = GridwiseGemm::GetSharedMemoryNumberOfByte();
     __shared__ uint8_t p_shared[shared_size];
 
-    const index_t block_id = get_block_1d_id();
+    __shared__ index_t block_id_share;
+
+    if(get_thread_local_1d_id() == 0)
+    {
+        block_id_share = atomic_add(block_id_count, 1);
+    }
+
+    block_sync_lds();
+
+    const index_t block_id = block_id_share;
+
     const auto gemm_desc_ptr =
         reinterpret_cast<const GemmDesc*>(cast_pointer_to_generic_address_space(gemm_descs_const));
 
@@ -63,7 +75,13 @@ __global__ void
     GridwiseGemm::template Run<HasMainKBlockLoop, CGlobalMemoryDataOperation>(
         gemm_desc_ptr[group_id].karg_,
         static_cast<void*>(p_shared),
-        gemm_desc_ptr[group_id].block_2_ctile_map_);
+        gemm_desc_ptr[group_id].block_2_ctile_map_,
+        block_id);
+
+    if(get_thread_local_1d_id() == 0 && block_id == num_wg - 1)
+    {
+        *block_id_count = 0;
+    }
 #else
     ignore = gemm_descs_const;
     ignore = group_count;
@@ -408,6 +426,9 @@ struct DeviceGroupedGemmXdlSplitKCShuffle : public DeviceGroupedGemmSplitK<ALayo
                                       arg.gemm_kernel_args_.size() * sizeof(GemmTransKernelArg),
                                       hipMemcpyHostToDevice));
 
+            index_t* block_id_count;
+            hip_check_error(hipMalloc(&block_id_count, sizeof(index_t)));
+
             float ave_time = 0;
 
             const auto Run = [&](const auto& kernel) {
@@ -421,6 +442,8 @@ struct DeviceGroupedGemmXdlSplitKCShuffle : public DeviceGroupedGemmSplitK<ALayo
                     }
                 }
 
+                hip_check_error(hipMemset(block_id_count, 0, sizeof(index_t)));
+
                 ave_time =
                     launch_and_time_kernel(stream_config,
                                            kernel,
@@ -428,7 +451,9 @@ struct DeviceGroupedGemmXdlSplitKCShuffle : public DeviceGroupedGemmSplitK<ALayo
                                            dim3(BlockSize),
                                            0,
                                            cast_pointer_to_constant_address_space(arg.p_workspace_),
-                                           arg.gemm_kernel_args_.size());
+                                           arg.gemm_kernel_args_.size(),
+                                           arg.grid_size_,
+                                           block_id_count);
             };
 
             if(all_have_main_k0_block_loop)
