@@ -827,7 +827,9 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
                                                                b_block_slice_copy_step,
                                                                blockwise_gemm,
                                                                c_thread_buf,
-                                                               num_k_block_main_loop, loop_start, loop_end);
+                                                               num_k_block_main_loop,
+                                                               loop_start,
+                                                               loop_end);
 
         // shuffle C and write out
         {
@@ -1030,9 +1032,12 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
             asm volatile("; [POYENC] kernel end" ::);
             __builtin_amdgcn_sched_barrier(0);
 
-            if (blockIdx.x == 0 && threadIdx.x == 0) {
-               printf("[POYENC] prolog: %ld, hot-loop: %ld, epilog: %ld\n",
-                   loop_start - kernel_start, loop_end - loop_start, kernel_end - loop_end);
+            if(blockIdx.x == 0 && threadIdx.x == 0)
+            {
+                printf("[POYENC] prolog: %ld, hot-loop: %ld, epilog: %ld\n",
+                       loop_start - kernel_start,
+                       loop_end - loop_start,
+                       kernel_end - loop_end);
             }
         }
     }
