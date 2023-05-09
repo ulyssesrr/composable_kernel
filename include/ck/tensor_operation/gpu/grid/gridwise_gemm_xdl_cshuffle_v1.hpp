@@ -292,6 +292,11 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
                                    c_grid_desc_mblock_mperblock_nblock_nperblock,
                                const Block2CTileMap& block_2_ctile_map)
     {
+        __builtin_amdgcn_sched_barrier(0);
+        const long kernel_start = __builtin_readcyclecounter();
+        asm volatile("; [POYENC] kernel start" ::);
+        __builtin_amdgcn_sched_barrier(0);
+
         const auto a_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
             p_a_grid, a_grid_desc_ak0_m_ak1.GetElementSpaceSize());
         const auto b_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
@@ -436,6 +441,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
             (a_grid_desc_ak0_m_ak1.GetLength(I0) * a_grid_desc_ak0_m_ak1.GetLength(I2)) /
             KPerBlock);
 
+        long loop_start = 0, loop_end = 0;
         gridwise_gemm_pipeline.template Run<HasMainKBlockLoop>(a_grid_desc_ak0_m_ak1,
                                                                a_block_desc_ak0_m_ak1,
                                                                a_blockwise_copy,
@@ -450,7 +456,9 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
                                                                b_block_slice_copy_step,
                                                                blockwise_gemm,
                                                                c_thread_buf,
-                                                               num_k_block_main_loop);
+                                                               num_k_block_main_loop,
+                                                               loop_start,
+                                                               loop_end);
 
         // shuffle C and write out
         {
@@ -647,6 +655,19 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
                         c_grid_desc_mblock_mperblock_nblock_nperblock, c_global_step);
                 }
             });
+
+            __builtin_amdgcn_sched_barrier(0);
+            const long kernel_end = __builtin_readcyclecounter();
+            asm volatile("; [POYENC] kernel end" ::);
+            __builtin_amdgcn_sched_barrier(0);
+
+            if(blockIdx.x == 0 && threadIdx.x == 0)
+            {
+                printf("[POYENC] prolog: %ld, hot-loop: %ld, epilog: %ld\n",
+                       loop_start - kernel_start,
+                       loop_end - loop_start,
+                       kernel_end - loop_end);
+            }
         }
     }
 };
