@@ -492,6 +492,11 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
                                void* __restrict__ p_shared,
                                const Argument& karg)
     {
+        __builtin_amdgcn_sched_barrier(0);
+        const long kernel_start = __builtin_readcyclecounter();
+        asm volatile("; [POYENC] kernel start" ::);
+        __builtin_amdgcn_sched_barrier(0);
+
         const auto a_grid_desc_k0_m_k1 =
             MakeAGridDescriptor_K0_M_K1(karg.M, karg.MPadded, karg.K, karg.StrideA);
         const auto b_grid_desc_k0_n_k1 =
@@ -646,6 +651,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
         // gridwise GEMM pipeline
         const index_t num_k_block_main_loop = __builtin_amdgcn_readfirstlane(K0 / K0PerBlock);
 
+        long loop_start = 0, loop_end = 0;
         GridwiseGemmPipe::template Run<HasMainKBlockLoop>(a_grid_desc_k0_m_k1,
                                                           a_block_desc_k0_m_k1,
                                                           a_blockwise_copy,
@@ -660,7 +666,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
                                                           b_block_slice_copy_step,
                                                           blockwise_gemm,
                                                           c_thread_buf,
-                                                          num_k_block_main_loop);
+                                                          num_k_block_main_loop, loop_start, loop_end);
 
         // output: register to global memory
         {
@@ -738,6 +744,16 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
                               c_thread_buf,
                               c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2,
                               c_grid_buf);
+
+            __builtin_amdgcn_sched_barrier(0);
+            const long kernel_end = __builtin_readcyclecounter();
+            asm volatile("; [POYENC] kernel end" ::);
+            __builtin_amdgcn_sched_barrier(0);
+
+            if (blockIdx.x == 0 && threadIdx.x == 0) {
+               printf("[POYENC] prolog: %ld, hot-loop: %ld, epilog: %ld\n",
+                   loop_start - kernel_start, loop_end - loop_start, kernel_end - loop_end);
+            }
         }
     }
 };
