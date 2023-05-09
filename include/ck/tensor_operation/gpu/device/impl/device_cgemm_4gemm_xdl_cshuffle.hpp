@@ -172,12 +172,12 @@ struct DeviceCGemm_4Gemm_Xdl_CShuffle
     {
         using Parent = typename GridwiseGemm::Argument;
 
-        Argument(const ADataType* p_a_grid_real,
-                 const ADataType* p_a_grid_imag,
-                 const BDataType* p_b_grid_real,
-                 const BDataType* p_b_grid_imag,
-                 CDataType* p_c_grid_real,
-                 CDataType* p_c_grid_imag,
+        Argument(const ADataType* p_a_grid_real_,
+                 const ADataType* p_a_grid_imag_,
+                 const BDataType* p_b_grid_real_,
+                 const BDataType* p_b_grid_imag_,
+                 CDataType* p_c_grid_real_,
+                 CDataType* p_c_grid_imag_,
                  CDataType* p_workspace,
                  index_t M_,
                  index_t N_,
@@ -185,63 +185,51 @@ struct DeviceCGemm_4Gemm_Xdl_CShuffle
                  index_t StrideA_,
                  index_t StrideB_,
                  index_t StrideC_)
-            : Parent(M_,
-                     N_,
-                     K_,
-                     StrideA_,
-                     StrideB_,
-                     StrideC_,
-                     GridwiseGemm::CalculateMPadded(M_),
-                     GridwiseGemm::CalculateNPadded(N_),
-                     GridwiseGemm::CalculateKPadded(K_),
-                     GridwiseGemm::CalculateAK0(K_),
-                     GridwiseGemm::CalculateBK0(K_)),
-              p_a_grid_real_{p_a_grid_real},
-              p_a_grid_imag_{p_a_grid_imag},
-              p_b_grid_real_{p_b_grid_real},
-              p_b_grid_imag_{p_b_grid_imag},
-              p_c_grid_real_{p_c_grid_real},
-              p_c_grid_imag_{p_c_grid_imag},
-              p_aux_grid_{p_workspace}
+            : Parent(M_, N_, K_, StrideA_, StrideB_, StrideC_),
+              p_a_grid_real{p_a_grid_real_},
+              p_a_grid_imag{p_a_grid_imag_},
+              p_b_grid_real{p_b_grid_real_},
+              p_b_grid_imag{p_b_grid_imag_},
+              p_c_grid_real{p_c_grid_real_},
+              p_c_grid_imag{p_c_grid_imag_},
+              p_aux_grid{p_workspace}
         {
             const index_t grid_size = std::get<1>(GridwiseGemm::CalculateGridSize(M_, N_));
 
             if constexpr(is_same<tensor_layout::gemm::RowMajor, CLayout>::value)
             {
-                c_grid_desc_m_ =
+                c_grid_desc_m =
                     DeviceOp::MakeDescriptor_M({M_, N_}, {StrideC_, I1}, grid_size, BlockSize);
             }
             else if constexpr(is_same<tensor_layout::gemm::ColumnMajor, CLayout>::value)
             {
-                c_grid_desc_m_ =
+                c_grid_desc_m =
                     DeviceOp::MakeDescriptor_M({M_, N_}, {I1, StrideC_}, grid_size, BlockSize);
             }
 
-            p_aux_2_grid_ = p_workspace + Parent::c_grid_desc_m_n.GetElementSpaceSize();
+            p_aux_2_grid = p_workspace + GetCElementSpaceSize(M_, N_, StrideC_);
         }
 
         //  private:
-        const ADataType* p_a_grid_real_;
-        const ADataType* p_a_grid_imag_;
-        const BDataType* p_b_grid_real_;
-        const BDataType* p_b_grid_imag_;
-        CDataType* p_c_grid_real_;
-        CDataType* p_c_grid_imag_;
-        CDataType* p_aux_grid_;
-        CDataType* p_aux_2_grid_;
-        CGridDesc_M c_grid_desc_m_;
+        const ADataType* p_a_grid_real;
+        const ADataType* p_a_grid_imag;
+        const BDataType* p_b_grid_real;
+        const BDataType* p_b_grid_imag;
+        CDataType* p_c_grid_real;
+        CDataType* p_c_grid_imag;
+        CDataType* p_aux_grid;
+        CDataType* p_aux_2_grid;
+        CGridDesc_M c_grid_desc_m;
     };
 
     // Invoker
     struct Invoker : public BaseInvoker
     {
-        void Print(const Argument& karg) { karg.Print(); }
-
         float Run(const Argument& karg, const StreamConfig& stream_config = StreamConfig{})
         {
             if(stream_config.log_level_ > 0)
             {
-                Print(karg);
+                karg.Print();
             }
 
             if(!GridwiseGemm::CheckValidity(karg))
@@ -303,9 +291,9 @@ struct DeviceCGemm_4Gemm_Xdl_CShuffle
                                                    dim3(gdx, gdy, gdz),
                                                    dim3(BlockSize),
                                                    0,
-                                                   karg.p_a_grid_real_,
-                                                   karg.p_b_grid_real_,
-                                                   karg.p_aux_grid_,
+                                                   karg.p_a_grid_real,
+                                                   karg.p_b_grid_real,
+                                                   karg.p_aux_grid,
                                                    karg);
 
                 ave_time += launch_and_time_kernel(stream_config,
@@ -313,9 +301,9 @@ struct DeviceCGemm_4Gemm_Xdl_CShuffle
                                                    dim3(gdx, gdy, gdz),
                                                    dim3(BlockSize),
                                                    0,
-                                                   karg.p_a_grid_imag_,
-                                                   karg.p_b_grid_imag_,
-                                                   karg.p_aux_2_grid_,
+                                                   karg.p_a_grid_imag,
+                                                   karg.p_b_grid_imag,
+                                                   karg.p_aux_2_grid,
                                                    karg);
 
                 // c_real = aux - aux_2
@@ -325,11 +313,11 @@ struct DeviceCGemm_4Gemm_Xdl_CShuffle
                     dim3(gdx, gdy, gdz),
                     dim3(BlockSize),
                     0,
-                    make_tuple(karg.c_grid_desc_m_, karg.c_grid_desc_m_),
-                    make_tuple(karg.c_grid_desc_m_),
-                    make_tuple(const_cast<const CDataType*>(karg.p_aux_grid_),
-                               const_cast<const CDataType*>(karg.p_aux_2_grid_)),
-                    make_tuple(karg.p_c_grid_real_),
+                    make_tuple(karg.c_grid_desc_m, karg.c_grid_desc_m),
+                    make_tuple(karg.c_grid_desc_m),
+                    make_tuple(const_cast<const CDataType*>(karg.p_aux_grid),
+                               const_cast<const CDataType*>(karg.p_aux_2_grid)),
+                    make_tuple(karg.p_c_grid_real),
                     Subtract{});
 
                 ave_time += launch_and_time_kernel(stream_config,
@@ -337,9 +325,9 @@ struct DeviceCGemm_4Gemm_Xdl_CShuffle
                                                    dim3(gdx, gdy, gdz),
                                                    dim3(BlockSize),
                                                    0,
-                                                   karg.p_a_grid_real_,
-                                                   karg.p_b_grid_imag_,
-                                                   karg.p_aux_grid_,
+                                                   karg.p_a_grid_real,
+                                                   karg.p_b_grid_imag,
+                                                   karg.p_aux_grid,
                                                    karg);
 
                 ave_time += launch_and_time_kernel(stream_config,
@@ -347,9 +335,9 @@ struct DeviceCGemm_4Gemm_Xdl_CShuffle
                                                    dim3(gdx, gdy, gdz),
                                                    dim3(BlockSize),
                                                    0,
-                                                   karg.p_a_grid_imag_,
-                                                   karg.p_b_grid_real_,
-                                                   karg.p_aux_2_grid_,
+                                                   karg.p_a_grid_imag,
+                                                   karg.p_b_grid_real,
+                                                   karg.p_aux_2_grid,
                                                    karg);
 
                 // c_imag = aux + aux_2
@@ -359,11 +347,11 @@ struct DeviceCGemm_4Gemm_Xdl_CShuffle
                     dim3(gdx, gdy, gdz),
                     dim3(BlockSize),
                     0,
-                    make_tuple(karg.c_grid_desc_m_, karg.c_grid_desc_m_),
-                    make_tuple(karg.c_grid_desc_m_),
-                    make_tuple(const_cast<const CDataType*>(karg.p_aux_grid_),
-                               const_cast<const CDataType*>(karg.p_aux_2_grid_)),
-                    make_tuple(karg.p_c_grid_imag_),
+                    make_tuple(karg.c_grid_desc_m, karg.c_grid_desc_m),
+                    make_tuple(karg.c_grid_desc_m),
+                    make_tuple(const_cast<const CDataType*>(karg.p_aux_grid),
+                               const_cast<const CDataType*>(karg.p_aux_2_grid)),
+                    make_tuple(karg.p_c_grid_imag),
                     Add{});
             }
             else
@@ -375,9 +363,9 @@ struct DeviceCGemm_4Gemm_Xdl_CShuffle
                                                    dim3(gdx, gdy, gdz),
                                                    dim3(BlockSize),
                                                    0,
-                                                   karg.p_a_grid_real_,
-                                                   karg.p_b_grid_real_,
-                                                   karg.p_aux_grid_,
+                                                   karg.p_a_grid_real,
+                                                   karg.p_b_grid_real,
+                                                   karg.p_aux_grid,
                                                    karg);
 
                 ave_time += launch_and_time_kernel(stream_config,
@@ -385,9 +373,9 @@ struct DeviceCGemm_4Gemm_Xdl_CShuffle
                                                    dim3(gdx, gdy, gdz),
                                                    dim3(BlockSize),
                                                    0,
-                                                   karg.p_a_grid_imag_,
-                                                   karg.p_b_grid_imag_,
-                                                   karg.p_aux_2_grid_,
+                                                   karg.p_a_grid_imag,
+                                                   karg.p_b_grid_imag,
+                                                   karg.p_aux_2_grid,
                                                    karg);
 
                 // c_real = aux - aux_2
@@ -397,11 +385,11 @@ struct DeviceCGemm_4Gemm_Xdl_CShuffle
                     dim3(gdx, gdy, gdz),
                     dim3(BlockSize),
                     0,
-                    make_tuple(karg.c_grid_desc_m_, karg.c_grid_desc_m_),
-                    make_tuple(karg.c_grid_desc_m_),
-                    make_tuple(const_cast<const CDataType*>(karg.p_aux_grid_),
-                               const_cast<const CDataType*>(karg.p_aux_2_grid_)),
-                    make_tuple(karg.p_c_grid_real_),
+                    make_tuple(karg.c_grid_desc_m, karg.c_grid_desc_m),
+                    make_tuple(karg.c_grid_desc_m),
+                    make_tuple(const_cast<const CDataType*>(karg.p_aux_grid),
+                               const_cast<const CDataType*>(karg.p_aux_2_grid)),
+                    make_tuple(karg.p_c_grid_real),
                     Subtract{});
 
                 ave_time += launch_and_time_kernel(stream_config,
@@ -409,9 +397,9 @@ struct DeviceCGemm_4Gemm_Xdl_CShuffle
                                                    dim3(gdx, gdy, gdz),
                                                    dim3(BlockSize),
                                                    0,
-                                                   karg.p_a_grid_real_,
-                                                   karg.p_b_grid_imag_,
-                                                   karg.p_aux_grid_,
+                                                   karg.p_a_grid_real,
+                                                   karg.p_b_grid_imag,
+                                                   karg.p_aux_grid,
                                                    karg);
 
                 ave_time += launch_and_time_kernel(stream_config,
@@ -419,9 +407,9 @@ struct DeviceCGemm_4Gemm_Xdl_CShuffle
                                                    dim3(gdx, gdy, gdz),
                                                    dim3(BlockSize),
                                                    0,
-                                                   karg.p_a_grid_imag_,
-                                                   karg.p_b_grid_real_,
-                                                   karg.p_aux_2_grid_,
+                                                   karg.p_a_grid_imag,
+                                                   karg.p_b_grid_real,
+                                                   karg.p_aux_2_grid,
                                                    karg);
 
                 // c_imag = aux + aux_2
@@ -431,11 +419,11 @@ struct DeviceCGemm_4Gemm_Xdl_CShuffle
                     dim3(gdx, gdy, gdz),
                     dim3(BlockSize),
                     0,
-                    make_tuple(karg.c_grid_desc_m_, karg.c_grid_desc_m_),
-                    make_tuple(karg.c_grid_desc_m_),
-                    make_tuple(const_cast<const CDataType*>(karg.p_aux_grid_),
-                               const_cast<const CDataType*>(karg.p_aux_2_grid_)),
-                    make_tuple(karg.p_c_grid_imag_),
+                    make_tuple(karg.c_grid_desc_m, karg.c_grid_desc_m),
+                    make_tuple(karg.c_grid_desc_m),
+                    make_tuple(const_cast<const CDataType*>(karg.p_aux_grid),
+                               const_cast<const CDataType*>(karg.p_aux_2_grid)),
+                    make_tuple(karg.p_c_grid_imag),
                     Add{});
             }
 
@@ -561,6 +549,14 @@ struct DeviceCGemm_4Gemm_Xdl_CShuffle
         return str.str();
     }
 
+    static std::size_t GetCElementSpaceSize(index_t M, index_t N, index_t StrideC)
+    {
+        const auto c_grid_desc_m_n = GridwiseGemm::MakeCGridDescriptor_M_N(
+            M, GridwiseGemm::CalculateMPadded(M), N, GridwiseGemm::CalculateNPadded(N), StrideC);
+
+        return c_grid_desc_m_n.GetElementSpaceSize();
+    }
+
     std::size_t GetWorkspaceSize(index_t M,
                                  index_t N,
                                  [[maybe_unused]] index_t K,
@@ -568,10 +564,7 @@ struct DeviceCGemm_4Gemm_Xdl_CShuffle
                                  [[maybe_unused]] index_t StrideB,
                                  index_t StrideC) override
     {
-        const auto c_grid_desc_m_n = GridwiseGemm::MakeCGridDescriptor_M_N(
-            M, GridwiseGemm::CalculateMPadded(M), N, GridwiseGemm::CalculateNPadded(N), StrideC);
-
-        return 2 * sizeof(CDataType) * c_grid_desc_m_n.GetElementSpaceSize();
+        return 2 * sizeof(CDataType) * GetCElementSpaceSize(M, N, StrideC);
     }
 };
 

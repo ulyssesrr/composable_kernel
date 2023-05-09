@@ -143,17 +143,7 @@ struct DeviceGemm_Xdl_CShuffle : public DeviceGemm<ALayout,
                  index_t StrideA_,
                  index_t StrideB_,
                  index_t StrideC_)
-            : Parent(M_,
-                     N_,
-                     K_,
-                     StrideA_,
-                     StrideB_,
-                     StrideC_,
-                     GridwiseGemm::CalculateMPadded(M_),
-                     GridwiseGemm::CalculateNPadded(N_),
-                     GridwiseGemm::CalculateKPadded(K_),
-                     GridwiseGemm::CalculateAK0(K_),
-                     GridwiseGemm::CalculateBK0(K_)),
+            : Parent(M_, N_, K_, StrideA_, StrideB_, StrideC_),
               p_a_grid{p_a_grid_},
               p_b_grid{p_b_grid_},
               p_c_grid{p_c_grid_}
@@ -168,13 +158,11 @@ struct DeviceGemm_Xdl_CShuffle : public DeviceGemm<ALayout,
     // Invoker
     struct Invoker : public BaseInvoker
     {
-        void Print(const Argument& karg) { karg.Print(); }
-
         float Run(const Argument& karg, const StreamConfig& stream_config = StreamConfig{})
         {
             if(stream_config.log_level_ > 0)
             {
-                Print(karg);
+                karg.Print();
             }
 
             if(!GridwiseGemm::CheckValidity(karg))
