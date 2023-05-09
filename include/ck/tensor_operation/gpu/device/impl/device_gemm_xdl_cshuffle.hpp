@@ -309,6 +309,7 @@ struct DeviceGemm_Xdl_CShuffle : public DeviceGemm<ALayout,
         // clang-format off
         str << "DeviceGemm_Xdl_CShuffle"
             << "<"
+            << NumGemmKPrefetchStage << ", "
             << BlockSize << ", "
             << MPerBlock << ", "
             << NPerBlock << ", "
