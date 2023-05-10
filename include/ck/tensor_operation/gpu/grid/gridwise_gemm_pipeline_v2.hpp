@@ -51,10 +51,11 @@ struct GridwiseGemmPipeline_v2
                                CThreadBuffer& c_thread_buf,
                                index_t num_loop
 #if ENABLE_DUMP_CLOCK
-                               , long& loop_start,
+                               ,
+                               long& loop_start,
                                long& loop_end
 #endif
-                               )
+    )
     {
 #if ENABLE_DUMP_CLOCK
         __builtin_amdgcn_sched_barrier(0);
@@ -97,6 +98,10 @@ struct GridwiseGemmPipeline_v2
 
             do
             {
+#ifdef USE_IGLP_OPT
+                __builtin_amdgcn_iglp_opt(1);
+#endif
+
                 block_sync_lds();
 
                 // GEMM i

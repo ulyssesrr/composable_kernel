@@ -18,6 +18,9 @@
 namespace ck {
 
 template <typename GridwiseGemm, bool HasMainKBlockLoop>
+#ifdef USE_WAVES_PER_EU
+__attribute__((amdgpu_waves_per_eu(1, 1)))
+#endif
 __global__ void
 #if CK_USE_LAUNCH_BOUNDS
     __launch_bounds__(CK_MAX_THREAD_PER_BLOCK, CK_MIN_BLOCK_PER_CU)
@@ -678,9 +681,11 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
                                                           c_thread_buf,
                                                           num_k_block_main_loop
 #if ENABLE_DUMP_CLOCK
-                                                          , loop_start, loop_end
+                                                          ,
+                                                          loop_start,
+                                                          loop_end
 #endif
-                                                          );
+        );
 
         // output: register to global memory
         {

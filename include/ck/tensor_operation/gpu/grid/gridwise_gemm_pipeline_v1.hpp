@@ -56,10 +56,11 @@ struct GridwiseGemmPipeline_v1<1>
                                CThreadBuffer& c_thread_buf,
                                index_t num_loop
 #if ENABLE_DUMP_CLOCK
-                               , long& loop_start,
+                               ,
+                               long& loop_start,
                                long& loop_end
 #endif
-                               )
+    )
     {
 #if ENABLE_DUMP_CLOCK
         __builtin_amdgcn_sched_barrier(0);
@@ -94,6 +95,10 @@ struct GridwiseGemmPipeline_v1<1>
 
             do
             {
+#ifdef USE_IGLP_OPT
+                __builtin_amdgcn_iglp_opt(1);
+#endif
+
                 a_blockwise_copy.RunRead(a_grid_desc, a_grid_buf);
 
                 block_sync_lds();
@@ -183,10 +188,11 @@ struct GridwiseGemmPipeline_v1<2>
                                CThreadBuffer& c_thread_buf,
                                index_t num_loop
 #if ENABLE_DUMP_CLOCK
-                               , long& loop_start,
+                               ,
+                               long& loop_start,
                                long& loop_end
 #endif
-                               )
+    )
     {
 #if ENABLE_DUMP_CLOCK
         __builtin_amdgcn_sched_barrier(0);
@@ -226,6 +232,10 @@ struct GridwiseGemmPipeline_v1<2>
 
             do
             {
+#ifdef USE_IGLP_OPT
+                __builtin_amdgcn_iglp_opt(1);
+#endif
+
                 // Move
                 a_blockwise_copy.MoveSrcSliceWindow(a_grid_desc, a_block_copy_step);
                 b_blockwise_copy.MoveSrcSliceWindow(b_grid_desc, b_block_copy_step);
@@ -355,10 +365,11 @@ struct GridwiseGemmPipelineInterwave_v1<1>
                                CThreadBuffer& c_thread_buf,
                                index_t num_loop
 #if ENABLE_DUMP_CLOCK
-                               , long& loop_start,
+                               ,
+                               long& loop_start,
                                long& loop_end
 #endif
-                               )
+    )
     {
 #if ENABLE_DUMP_CLOCK
         __builtin_amdgcn_sched_barrier(0);
@@ -393,6 +404,10 @@ struct GridwiseGemmPipelineInterwave_v1<1>
 
             do
             {
+#ifdef USE_IGLP_OPT
+                __builtin_amdgcn_iglp_opt(1);
+#endif
+
                 a_blockwise_copy.RunRead(a_grid_desc, a_grid_buf);
 
                 block_sync_lds();
