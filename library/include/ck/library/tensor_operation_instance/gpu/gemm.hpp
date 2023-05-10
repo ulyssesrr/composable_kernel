@@ -257,124 +257,18 @@ struct DeviceOperationInstanceFactory<
     {
         std::vector<std::unique_ptr<DeviceOp>> op_ptrs;
 
-        // if constexpr(is_same_v<ADataType, float> && is_same_v<BDataType, float> &&
-        //              is_same_v<CDataType, float>)
-        // {
-        //     if constexpr(is_same_v<ALayout, Row> && is_same_v<BLayout, Row> &&
-        //                  is_same_v<CLayout, Row>)
-        //     {
-        //         add_device_gemm_xdl_f32_f32_f32_mk_kn_mn_instances(op_ptrs);
-        //         add_device_gemm_dl_f32_f32_f32_mk_kn_mn_instances(op_ptrs);
-        //         add_device_gemm_xdl_c_shuffle_f32_f32_f32_mk_kn_mn_instances(op_ptrs);
-        //     }
-        //     else if constexpr(is_same_v<ALayout, Row> && is_same_v<BLayout, Col> &&
-        //                       is_same_v<CLayout, Row>)
-        //     {
-        //         add_device_gemm_xdl_f32_f32_f32_mk_nk_mn_instances(op_ptrs);
-        //         add_device_gemm_dl_f32_f32_f32_mk_nk_mn_instances(op_ptrs);
-        //         add_device_gemm_xdl_c_shuffle_f32_f32_f32_mk_nk_mn_instances(op_ptrs);
-        //     }
-        //     else if constexpr(is_same_v<ALayout, Col> && is_same_v<BLayout, Row> &&
-        //                       is_same_v<CLayout, Row>)
-        //     {
-        //         add_device_gemm_xdl_f32_f32_f32_km_kn_mn_instances(op_ptrs);
-        //         add_device_gemm_dl_f32_f32_f32_km_kn_mn_instances(op_ptrs);
-        //         add_device_gemm_xdl_c_shuffle_f32_f32_f32_km_kn_mn_instances(op_ptrs);
-        //     }
-        //     else if constexpr(is_same_v<ALayout, Col> && is_same_v<BLayout, Col> &&
-        //                       is_same_v<CLayout, Row>)
-        //     {
-        //         add_device_gemm_xdl_f32_f32_f32_km_nk_mn_instances(op_ptrs);
-        //         add_device_gemm_dl_f32_f32_f32_km_nk_mn_instances(op_ptrs);
-        //         add_device_gemm_xdl_c_shuffle_f32_f32_f32_km_nk_mn_instances(op_ptrs);
-        //     }
-        // }
         if constexpr(is_same_v<ADataType, half_t> && is_same_v<BDataType, half_t> &&
                      is_same_v<CDataType, half_t>)
         {
-            if constexpr(is_same_v<ALayout, Row> && is_same_v<BLayout, Row> &&
+            if constexpr(is_same_v<ALayout, Row> && is_same_v<BLayout, Col> &&
                          is_same_v<CLayout, Row>)
-            {
-                add_device_gemm_xdl_f16_f16_f16_mk_kn_mn_instances(op_ptrs);
-                // add_device_gemm_dl_f16_f16_f16_mk_kn_mn_instances(op_ptrs);
-                add_device_gemm_xdl_c_shuffle_f16_f16_f16_mk_kn_mn_instances(op_ptrs);
-            }
-            else if constexpr(is_same_v<ALayout, Row> && is_same_v<BLayout, Col> &&
-                              is_same_v<CLayout, Row>)
             {
                 add_device_gemm_xdl_f16_f16_f16_mk_nk_mn_instances(op_ptrs);
                 // add_device_gemm_dl_f16_f16_f16_mk_nk_mn_instances(op_ptrs);
                 add_device_gemm_xdl_c_shuffle_f16_f16_f16_mk_nk_mn_instances(op_ptrs);
                 add_device_gemm_xdl_c_shuffle_2_stage_f16_f16_f16_mk_nk_mn_instances(op_ptrs);
             }
-            else if constexpr(is_same_v<ALayout, Col> && is_same_v<BLayout, Row> &&
-                              is_same_v<CLayout, Row>)
-            {
-                add_device_gemm_xdl_f16_f16_f16_km_kn_mn_instances(op_ptrs);
-                // add_device_gemm_dl_f16_f16_f16_km_kn_mn_instances(op_ptrs);
-                add_device_gemm_xdl_c_shuffle_f16_f16_f16_km_kn_mn_instances(op_ptrs);
-            }
-            else if constexpr(is_same_v<ALayout, Col> && is_same_v<BLayout, Col> &&
-                              is_same_v<CLayout, Row>)
-            {
-                add_device_gemm_xdl_f16_f16_f16_km_nk_mn_instances(op_ptrs);
-                // add_device_gemm_dl_f16_f16_f16_km_nk_mn_instances(op_ptrs);
-                add_device_gemm_xdl_c_shuffle_f16_f16_f16_km_nk_mn_instances(op_ptrs);
-            }
         }
-        // else if constexpr(is_same_v<ADataType, ck::bhalf_t> && is_same_v<BDataType, ck::bhalf_t>
-        // &&
-        //                   is_same_v<CDataType, ck::bhalf_t>)
-        // {
-        //     if constexpr(is_same_v<ALayout, Row> && is_same_v<BLayout, Row> &&
-        //                  is_same_v<CLayout, Row>)
-        //     {
-        //         add_device_gemm_xdl_c_shuffle_bf16_bf16_bf16_mk_kn_mn_instances(op_ptrs);
-        //     }
-        //     else if constexpr(is_same_v<ALayout, Row> && is_same_v<BLayout, Col> &&
-        //                       is_same_v<CLayout, Row>)
-        //     {
-        //         add_device_gemm_xdl_c_shuffle_bf16_bf16_bf16_mk_nk_mn_instances(op_ptrs);
-        //     }
-        //     else if constexpr(is_same_v<ALayout, Col> && is_same_v<BLayout, Row> &&
-        //                       is_same_v<CLayout, Row>)
-        //     {
-        //         add_device_gemm_xdl_c_shuffle_bf16_bf16_bf16_km_kn_mn_instances(op_ptrs);
-        //     }
-        //     else if constexpr(is_same_v<ALayout, Col> && is_same_v<BLayout, Col> &&
-        //                       is_same_v<CLayout, Row>)
-        //     {
-        //         add_device_gemm_xdl_c_shuffle_bf16_bf16_bf16_km_nk_mn_instances(op_ptrs);
-        //     }
-        // }
-        // else if constexpr(is_same_v<ADataType, int8_t> && is_same_v<BDataType, int8_t> &&
-        //                   is_same_v<CDataType, int8_t>)
-        // {
-        //     if constexpr(is_same_v<ALayout, Row> && is_same_v<BLayout, Row> &&
-        //                  is_same_v<CLayout, Row>)
-        //     {
-        //         add_device_gemm_xdl_c_shuffle_i8_i8_i8_mk_kn_mn_instances(op_ptrs);
-        //         add_device_gemm_dl_i8_i8_i8_mk_kn_mn_instances(op_ptrs);
-        //     }
-        //     else if constexpr(is_same_v<ALayout, Row> && is_same_v<BLayout, Col> &&
-        //                       is_same_v<CLayout, Row>)
-        //     {
-        //         add_device_gemm_xdl_c_shuffle_i8_i8_i8_mk_nk_mn_instances(op_ptrs);
-        //         add_device_gemm_dl_i8_i8_i8_mk_nk_mn_instances(op_ptrs);
-        //     }
-        //     else if constexpr(is_same_v<ALayout, Col> && is_same_v<BLayout, Row> &&
-        //                       is_same_v<CLayout, Row>)
-        //     {
-        //         add_device_gemm_xdl_c_shuffle_i8_i8_i8_km_kn_mn_instances(op_ptrs);
-        //         add_device_gemm_dl_i8_i8_i8_km_kn_mn_instances(op_ptrs);
-        //     }
-        //     else if constexpr(is_same_v<ALayout, Col> && is_same_v<BLayout, Col> &&
-        //                       is_same_v<CLayout, Row>)
-        //     {
-        //         add_device_gemm_xdl_c_shuffle_i8_i8_i8_km_nk_mn_instances(op_ptrs);
-        //         add_device_gemm_dl_i8_i8_i8_km_nk_mn_instances(op_ptrs);
-        //     }
-        // }
 
         return op_ptrs;
     }

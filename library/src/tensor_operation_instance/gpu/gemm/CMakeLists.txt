@@ -7,10 +7,10 @@ add_instance_library(device_gemm_instance
    # device_gemm_xdl_f32_f32_f32_mk_nk_mn_instance.cpp
    # device_gemm_xdl_f32_f32_f32_km_kn_mn_instance.cpp
    # device_gemm_xdl_f32_f32_f32_km_nk_mn_instance.cpp
-   device_gemm_xdl_f16_f16_f16_mk_kn_mn_instance.cpp
+   # device_gemm_xdl_f16_f16_f16_mk_kn_mn_instance.cpp
    device_gemm_xdl_f16_f16_f16_mk_nk_mn_instance.cpp
-   device_gemm_xdl_f16_f16_f16_km_kn_mn_instance.cpp
-   device_gemm_xdl_f16_f16_f16_km_nk_mn_instance.cpp
+   # device_gemm_xdl_f16_f16_f16_km_kn_mn_instance.cpp
+   # device_gemm_xdl_f16_f16_f16_km_nk_mn_instance.cpp
    # device_gemm_xdl_c_shuffle_i8_i8_i8_mk_kn_mn_instance.cpp
    # device_gemm_xdl_c_shuffle_i8_i8_i8_mk_nk_mn_instance.cpp
    # device_gemm_xdl_c_shuffle_i8_i8_i8_km_kn_mn_instance.cpp
@@ -19,10 +19,10 @@ add_instance_library(device_gemm_instance
    # device_gemm_xdl_c_shuffle_bf16_bf16_bf16_mk_nk_mn_instance.cpp
    # device_gemm_xdl_c_shuffle_bf16_bf16_bf16_km_kn_mn_instance.cpp
    # device_gemm_xdl_c_shuffle_bf16_bf16_bf16_km_nk_mn_instance.cpp
-   device_gemm_xdl_c_shuffle_f16_f16_f16_mk_kn_mn_instance.cpp
+   # device_gemm_xdl_c_shuffle_f16_f16_f16_mk_kn_mn_instance.cpp
    device_gemm_xdl_c_shuffle_f16_f16_f16_mk_nk_mn_instance.cpp
-   device_gemm_xdl_c_shuffle_f16_f16_f16_km_kn_mn_instance.cpp
-   device_gemm_xdl_c_shuffle_f16_f16_f16_km_nk_mn_instance.cpp
+   # device_gemm_xdl_c_shuffle_f16_f16_f16_km_kn_mn_instance.cpp
+   # device_gemm_xdl_c_shuffle_f16_f16_f16_km_nk_mn_instance.cpp
    # device_gemm_xdl_c_shuffle_f32_f32_f32_mk_kn_mn_instance.cpp
    # device_gemm_xdl_c_shuffle_f32_f32_f32_mk_nk_mn_instance.cpp
    # device_gemm_xdl_c_shuffle_f32_f32_f32_km_kn_mn_instance.cpp
