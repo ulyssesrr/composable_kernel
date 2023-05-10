@@ -24,13 +24,13 @@
 
 struct ProblemSize final
 {
-    ck::index_t M = 3840;
-    ck::index_t N = 4096;
-    ck::index_t K = 4096;
+    ck::index_t M = 1024;
+    ck::index_t N = 1024;
+    ck::index_t K = 256;
 
-    ck::index_t StrideA = 4096;
-    ck::index_t StrideB = 4096;
-    ck::index_t StrideC = 4096;
+    ck::index_t StrideA = M;
+    ck::index_t StrideB = N;
+    ck::index_t StrideC = N;
 };
 
 struct ExecutionConfig final
