@@ -49,13 +49,19 @@ struct GridwiseGemmPipeline_v2
                                const BBlockTransferStep& b_block_copy_step,
                                const BlockwiseGemm& blockwise_gemm,
                                CThreadBuffer& c_thread_buf,
-                               index_t num_loop,
+                               index_t num_loop
+#if ENABLE_DUMP_CLOCK
+                               ,
                                long& loop_start,
-                               long& loop_end)
+                               long& loop_end
+#endif
+    )
     {
+#if ENABLE_DUMP_CLOCK
         __builtin_amdgcn_sched_barrier(0);
         asm volatile("; [POYENC] pipeline start" ::);
         __builtin_amdgcn_sched_barrier(0);
+#endif
 
         // global read 0
         a_blockwise_copy.RunRead(a_grid_desc, a_grid_buf);
@@ -78,10 +84,12 @@ struct GridwiseGemmPipeline_v2
         // global Read 1
         b_blockwise_copy.RunRead(b_grid_desc, b_grid_buf);
 
+#if ENABLE_DUMP_CLOCK
         __builtin_amdgcn_sched_barrier(0);
         loop_start = __builtin_readcyclecounter();
         asm volatile("; [POYENC] hot-loop start" ::);
         __builtin_amdgcn_sched_barrier(0);
+#endif
 
         // main body
         if constexpr(HasMainLoop)
@@ -134,6 +142,7 @@ struct GridwiseGemmPipeline_v2
             blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
         }
 
+#if ENABLE_DUMP_CLOCK
         __builtin_amdgcn_sched_barrier(0);
         loop_end = __builtin_readcyclecounter();
         asm volatile("; [POYENC] hot-loop end" ::);
@@ -142,6 +151,7 @@ struct GridwiseGemmPipeline_v2
         __builtin_amdgcn_sched_barrier(0);
         asm volatile("; [POYENC] pipeline end" ::);
         __builtin_amdgcn_sched_barrier(0);
+#endif
     }
 };
 

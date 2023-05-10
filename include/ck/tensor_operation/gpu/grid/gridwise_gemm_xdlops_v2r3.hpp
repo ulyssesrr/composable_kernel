@@ -331,10 +331,12 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
         const CElementwiseOperation& c_element_op,
         const Block2CTileMap& block_2_ctile_map)
     {
+#if ENABLE_DUMP_CLOCK
         __builtin_amdgcn_sched_barrier(0);
         const long kernel_start = __builtin_readcyclecounter();
         asm volatile("; [POYENC] kernel start" ::);
         __builtin_amdgcn_sched_barrier(0);
+#endif
 
         const auto a_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
             p_a_grid, a_grid_desc_k0_m_k1.GetElementSpaceSize());
@@ -474,7 +476,9 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
         // gridwise GEMM pipeline
         const index_t num_k_block_main_loop = __builtin_amdgcn_readfirstlane(K0 / K0PerBlock);
 
+#if ENABLE_DUMP_CLOCK
         long loop_start = 0, loop_end = 0;
+#endif
         GridwiseGemmPipe::template Run<HasMainKBlockLoop>(a_grid_desc_k0_m_k1,
                                                           a_block_desc_k0_m_k1,
                                                           a_blockwise_copy,
@@ -489,9 +493,13 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
                                                           b_block_slice_copy_step,
                                                           blockwise_gemm,
                                                           c_thread_buf,
-                                                          num_k_block_main_loop,
+                                                          num_k_block_main_loop
+#if ENABLE_DUMP_CLOCK
+                                                          ,
                                                           loop_start,
-                                                          loop_end);
+                                                          loop_end
+#endif
+        );
 
         // output: register to global memory
         {
@@ -570,6 +578,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
                               c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2,
                               c_grid_buf);
 
+#if ENABLE_DUMP_CLOCK
             __builtin_amdgcn_sched_barrier(0);
             const long kernel_end = __builtin_readcyclecounter();
             asm volatile("; [POYENC] kernel end" ::);
@@ -582,6 +591,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
                        loop_end - loop_start,
                        kernel_end - loop_end);
             }
+#endif
         }
     }
 };

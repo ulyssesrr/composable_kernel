@@ -292,10 +292,12 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
                                    c_grid_desc_mblock_mperblock_nblock_nperblock,
                                const Block2CTileMap& block_2_ctile_map)
     {
+#if ENABLE_DUMP_CLOCK
         __builtin_amdgcn_sched_barrier(0);
         const long kernel_start = __builtin_readcyclecounter();
         asm volatile("; [POYENC] kernel start" ::);
         __builtin_amdgcn_sched_barrier(0);
+#endif
 
         const auto a_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
             p_a_grid, a_grid_desc_ak0_m_ak1.GetElementSpaceSize());
@@ -441,7 +443,9 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
             (a_grid_desc_ak0_m_ak1.GetLength(I0) * a_grid_desc_ak0_m_ak1.GetLength(I2)) /
             KPerBlock);
 
+#if ENABLE_DUMP_CLOCK
         long loop_start = 0, loop_end = 0;
+#endif
         gridwise_gemm_pipeline.template Run<HasMainKBlockLoop>(a_grid_desc_ak0_m_ak1,
                                                                a_block_desc_ak0_m_ak1,
                                                                a_blockwise_copy,
@@ -456,9 +460,13 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
                                                                b_block_slice_copy_step,
                                                                blockwise_gemm,
                                                                c_thread_buf,
-                                                               num_k_block_main_loop,
+                                                               num_k_block_main_loop
+#if ENABLE_DUMP_CLOCK
+                                                               ,
                                                                loop_start,
-                                                               loop_end);
+                                                               loop_end
+#endif
+        );
 
         // shuffle C and write out
         {
@@ -656,6 +664,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
                 }
             });
 
+#if ENABLE_DUMP_CLOCK
             __builtin_amdgcn_sched_barrier(0);
             const long kernel_end = __builtin_readcyclecounter();
             asm volatile("; [POYENC] kernel end" ::);
@@ -668,6 +677,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
                        loop_end - loop_start,
                        kernel_end - loop_end);
             }
+#endif
         }
     }
 };

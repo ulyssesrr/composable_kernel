@@ -10,6 +10,8 @@
 
 #define CK_TIME_KERNEL 1
 
+#define ENABLE_DUMP_CLOCK 1
+
 // constant address space for kernel parameter
 // https://llvm.org/docs/AMDGPUUsage.html#address-spaces
 #define CK_CONSTANT_ADDRESS_SPACE __attribute__((address_space(4)))
