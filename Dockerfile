@@ -11,13 +11,19 @@ RUN useradd -rm -d /home/jenkins -s /bin/bash -u 1004 jenkins
 # Add rocm repository
 RUN apt-get update
 RUN apt-get install -y wget gnupg curl
-RUN --mount=type=ssh if [ "$ROCMVERSION" != "5.6"]; then \
-	wget -qO - http://repo.radeon.com/rocm/rocm.gpg.key | apt-key add - && \
+RUN --mount=type=ssh if [ "$ROCMVERSION" != "5.6" ]; then \
+        wget -qO - http://repo.radeon.com/rocm/rocm.gpg.key | apt-key add - && \
         sh -c "echo deb [arch=amd64] $DEB_ROCM_REPO ubuntu main > /etc/apt/sources.list.d/rocm.list"; \
-    else sh -c "wget http://artifactory-cdn.amd.com/artifactory/list/amdgpu-deb/amd-nonfree-radeon_20.04-1_all.deb" && \
+    elif [ "$ROCMVERSION" = "5.6" ] && [ "$compiler_version" = "" ]; then \
+         sh -c "wget http://artifactory-cdn.amd.com/artifactory/list/amdgpu-deb/amd-nonfree-radeon_20.04-1_all.deb" && \
          apt update && apt-get install -y ./amd-nonfree-radeon_20.04-1_all.deb && \
          amdgpu-repo --amdgpu-build=1567752 --rocm-build=compute-rocm-dkms-no-npi-hipclang/11914 && \
          DEBIAN_FRONTEND=noninteractive amdgpu-install -y --usecase=rocm ; \
+    elif [ "$ROCMVERSION" = "5.6" ] && [ "$compiler_version" = "rc1" ]; then \
+         sh -c "wget http://artifactory-cdn.amd.com/artifactory/list/amdgpu-deb/amd-nonfree-radeon_20.04-1_all.deb" && \
+         apt update && apt-get install -y ./amd-nonfree-radeon_20.04-1_all.deb && \
+         sh -c 'echo deb [arch=amd64 trusted=yes] http://compute-artifactory.amd.com/artifactory/list/rocm-release-archive-20.04-deb/ 5.6 rel-17 > /etc/apt/sources.list.d/rocm-build.list' && \
+         amdgpu-repo --amdgpu-build=1588567 && DEBIAN_FRONTEND=noninteractive amdgpu-install -y --usecase=rocm ; \
     fi
 RUN wget --no-check-certificate -qO - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -
 RUN sh -c "echo deb http://mirrors.kernel.org/ubuntu focal main universe | tee -a /etc/apt/sources.list"
