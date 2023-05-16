@@ -57,4 +57,36 @@ __host__ __device__ constexpr Y bit_cast(const X& x)
 #endif
 }
 
+namespace detail {
+template <typename T>
+struct sgpr_ptr
+{
+    static_assert(!std::is_const_v<T> && !std::is_reference_v<T> &&
+                  std::is_trivially_copyable_v<T>);
+
+    __device__ explicit sgpr_ptr(const T& obj) noexcept
+    {
+        /// TODO: copy object content into member 'memory' by __builtin_amdgcn_readfirstlane()
+        __builtin_memcpy(memory, &obj, sizeof(obj));
+    }
+
+    __device__ T& operator*() { return *(this->operator->()); }
+
+    __device__ const T& operator*() const { return *(this->operator->()); }
+
+    __device__ T* operator->() { return reinterpret_cast<T*>(memory); }
+
+    __device__ const T* operator->() const { return reinterpret_cast<const T*>(memory); }
+
+    private:
+    alignas(T) unsigned char memory[sizeof(T) + 3];
+};
+} // namespace detail
+
+template <typename T>
+__device__ constexpr auto readfirstlane(const T& obj)
+{
+    return detail::sgpr_ptr<T>(obj);
+}
+
 } // namespace ck
