@@ -518,12 +518,12 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
             MakeCGridDescriptor_M_N(karg.M, karg.MPadded, karg.N, karg.NPadded, karg.StrideC));
 
         const auto c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2 =
-            MakeCGridDescriptor_M0_N0_M1_N1_M2_M3_M4_N2(*c_grid_desc_m_n);
+            MakeCGridDescriptor_M0_N0_M1_N1_M2_M3_M4_N2(c_grid_desc_m_n);
 
         const auto a_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
-            p_a_grid, a_grid_desc_k0_m_k1->GetElementSpaceSize());
+            p_a_grid, a_grid_desc_k0_m_k1.GetElementSpaceSize());
         const auto b_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
-            p_b_grid, b_grid_desc_k0_n_k1->GetElementSpaceSize());
+            p_b_grid, b_grid_desc_k0_n_k1.GetElementSpaceSize());
         auto c_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
             p_c_grid, c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2.GetElementSpaceSize());
 
@@ -572,7 +572,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
                                                 ABlockTransferThreadClusterArrangeOrder,
                                                 FloatAB,
                                                 FloatABAdjusted,
-                                                decltype(*a_grid_desc_k0_m_k1),
+                                                decltype(a_grid_desc_k0_m_k1),
                                                 decltype(a_block_desc_k0_m_k1),
                                                 ABlockTransferSrcAccessOrder,
                                                 Sequence<1, 0, 2>,
@@ -585,7 +585,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
                                                 AThreadTransferSrcResetCoordinateAfterRun,
                                                 true,
                                                 NumGemmKPrefetchStage>(
-                *a_grid_desc_k0_m_k1,
+                a_grid_desc_k0_m_k1,
                 make_multi_index(0, m_block_data_idx_on_grid, 0),
                 a_element_op,
                 a_block_desc_k0_m_k1,
@@ -603,7 +603,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
                                                 BBlockTransferThreadClusterArrangeOrder,
                                                 FloatAB,
                                                 FloatABAdjusted,
-                                                decltype(*b_grid_desc_k0_n_k1),
+                                                decltype(b_grid_desc_k0_n_k1),
                                                 decltype(b_block_desc_k0_n_k1),
                                                 BBlockTransferSrcAccessOrder,
                                                 Sequence<1, 0, 2>,
@@ -616,7 +616,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
                                                 BThreadTransferSrcResetCoordinateAfterRun,
                                                 true,
                                                 NumGemmKPrefetchStage>(
-                *b_grid_desc_k0_n_k1,
+                b_grid_desc_k0_n_k1,
                 make_multi_index(0, n_block_data_idx_on_grid, 0),
                 b_element_op,
                 b_block_desc_k0_n_k1,
@@ -665,13 +665,13 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
 #if ENABLE_DUMP_CLOCK
         long loop_start = 0, loop_end = 0;
 #endif
-        GridwiseGemmPipe::template Run<HasMainKBlockLoop>(*a_grid_desc_k0_m_k1,
+        GridwiseGemmPipe::template Run<HasMainKBlockLoop>(a_grid_desc_k0_m_k1,
                                                           a_block_desc_k0_m_k1,
                                                           a_blockwise_copy,
                                                           a_grid_buf,
                                                           a_block_buf,
                                                           a_block_slice_copy_step,
-                                                          *b_grid_desc_k0_n_k1,
+                                                          b_grid_desc_k0_n_k1,
                                                           b_block_desc_k0_n_k1,
                                                           b_blockwise_copy,
                                                           b_grid_buf,
