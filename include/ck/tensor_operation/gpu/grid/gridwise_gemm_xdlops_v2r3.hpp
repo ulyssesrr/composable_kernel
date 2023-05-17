@@ -510,12 +510,21 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
         __builtin_amdgcn_sched_barrier(0);
 #endif
 
+#if ENABLE_DESC_OPT
         const auto a_grid_desc_k0_m_k1 = readfirstlane(
             MakeAGridDescriptor_K0_M_K1(karg.M, karg.MPadded, karg.K, karg.K0, karg.StrideA));
         const auto b_grid_desc_k0_n_k1 = readfirstlane(
             MakeBGridDescriptor_K0_N_K1(karg.K, karg.N, karg.NPadded, karg.K0, karg.StrideB));
         const auto c_grid_desc_m_n = readfirstlane(
             MakeCGridDescriptor_M_N(karg.M, karg.MPadded, karg.N, karg.NPadded, karg.StrideC));
+#else
+        const auto a_grid_desc_k0_m_k1 =
+            MakeAGridDescriptor_K0_M_K1(karg.M, karg.MPadded, karg.K, karg.K0, karg.StrideA);
+        const auto b_grid_desc_k0_n_k1 =
+            MakeBGridDescriptor_K0_N_K1(karg.K, karg.N, karg.NPadded, karg.K0, karg.StrideB);
+        const auto c_grid_desc_m_n =
+            MakeCGridDescriptor_M_N(karg.M, karg.MPadded, karg.N, karg.NPadded, karg.StrideC);
+#endif
 
         const auto c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2 =
             MakeCGridDescriptor_M0_N0_M1_N1_M2_M3_M4_N2(c_grid_desc_m_n);
