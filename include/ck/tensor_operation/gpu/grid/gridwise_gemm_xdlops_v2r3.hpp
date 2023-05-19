@@ -17,7 +17,7 @@
 
 namespace ck {
 
-template <typename GridwiseGemm, bool HasMainKBlockLoop>
+template <typename GridwiseGemm, typename FloatAB, typename FloatC, bool HasMainKBlockLoop>
 #ifdef USE_WAVES_PER_EU
 __attribute__((amdgpu_waves_per_eu(1, 1)))
 #endif
@@ -25,28 +25,36 @@ __global__ void
 #if CK_USE_LAUNCH_BOUNDS
     __launch_bounds__(CK_MAX_THREAD_PER_BLOCK, CK_MIN_BLOCK_PER_CU)
 #endif
-        kernel_gemm_xdlops_v2r3(const typename GridwiseGemm::FloatAB* __restrict__ p_a_grid,
-                                const typename GridwiseGemm::FloatAB* __restrict__ p_b_grid,
-                                typename GridwiseGemm::FloatC* __restrict__ p_c_grid,
-                                const typename GridwiseGemm::Argument karg)
+        kernel_gemm_xdlops_v2r3(const typename GridwiseGemm::Argument karg)
 {
 #if(!defined(__HIP_DEVICE_COMPILE__) || defined(__gfx908__) || defined(__gfx90a__) || \
     defined(__gfx940__))
     __shared__ char p_shared[GridwiseGemm::GetSharedMemoryNumberOfByte()];
 
-    GridwiseGemm::template Run<HasMainKBlockLoop>(p_a_grid, p_b_grid, p_c_grid, p_shared, karg);
+    const auto a_grid_desc_k0_m_k1 = readfirstlane(GridwiseGemm::MakeAGridDescriptor_K0_M_K1(
+        karg.M, karg.MPadded, karg.K, karg.K0, karg.StrideA));
+    const auto b_grid_desc_k0_n_k1 = readfirstlane(GridwiseGemm::MakeBGridDescriptor_K0_N_K1(
+        karg.K, karg.N, karg.NPadded, karg.K0, karg.StrideB));
+    const auto c_grid_desc_m_n     = readfirstlane(GridwiseGemm::MakeCGridDescriptor_M_N(
+        karg.M, karg.MPadded, karg.N, karg.NPadded, karg.StrideC));
+
+    GridwiseGemm::template Run<HasMainKBlockLoop>(karg.p_a_grid,
+                                                  karg.p_b_grid,
+                                                  karg.p_c_grid,
+                                                  p_shared,
+                                                  a_grid_desc_k0_m_k1,
+                                                  b_grid_desc_k0_n_k1,
+                                                  c_grid_desc_m_n,
+                                                  karg);
 #else
-    ignore                = p_a_grid;
-    ignore                = p_b_grid;
-    ignore                = p_c_grid;
     ignore                = karg;
 #endif // end of if (defined(__gfx908__) || defined(__gfx90a__))
 }
 
 template <index_t BlockSize,
-          typename FloatAB_,
+          typename FloatAB,
           typename FloatAcc,
-          typename FloatC_,
+          typename FloatC,
           InMemoryDataOperationEnum CGlobalMemoryDataOperation,
           typename ALayout,
           typename BLayout,
@@ -98,9 +106,6 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
 
     // K1 should be Number<...>
     static constexpr auto K1 = Number<K1Value>{};
-
-    using FloatAB = FloatAB_;
-    using FloatC  = FloatC_;
 
     using ThisThreadBlock = ThisThreadBlock<BlockSize>;
 
@@ -496,11 +501,17 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
     // return block_id to C matrix tile idx (m0, n0) mapping
     using Block2CTileMap = BlockToCTileMap_M00_N0_M01Adapt<MPerBlock, NPerBlock>;
 
-    template <bool HasMainKBlockLoop>
+    template <bool HasMainKBlockLoop,
+              typename AGridDesc_K0_M_K1,
+              typename BGridDesc_K0_N_K1,
+              typename CGridDesc_M_N>
     __device__ static void Run(const FloatAB* p_a_grid,
                                const FloatAB* p_b_grid,
                                FloatC* p_c_grid,
                                void* __restrict__ p_shared,
+                               const AGridDesc_K0_M_K1& a_grid_desc_k0_m_k1,
+                               const BGridDesc_K0_N_K1& b_grid_desc_k0_n_k1,
+                               const CGridDesc_M_N& c_grid_desc_m_n,
                                const Argument& karg)
     {
 #if ENABLE_DUMP_CLOCK
@@ -508,22 +519,6 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
         const long kernel_start = __builtin_readcyclecounter();
         asm volatile("; [POYENC] kernel start" ::);
         __builtin_amdgcn_sched_barrier(0);
-#endif
-
-#if ENABLE_DESC_OPT
-        const auto a_grid_desc_k0_m_k1 = readfirstlane(
-            MakeAGridDescriptor_K0_M_K1(karg.M, karg.MPadded, karg.K, karg.K0, karg.StrideA));
-        const auto b_grid_desc_k0_n_k1 = readfirstlane(
-            MakeBGridDescriptor_K0_N_K1(karg.K, karg.N, karg.NPadded, karg.K0, karg.StrideB));
-        const auto c_grid_desc_m_n = readfirstlane(
-            MakeCGridDescriptor_M_N(karg.M, karg.MPadded, karg.N, karg.NPadded, karg.StrideC));
-#else
-        const auto a_grid_desc_k0_m_k1 =
-            MakeAGridDescriptor_K0_M_K1(karg.M, karg.MPadded, karg.K, karg.K0, karg.StrideA);
-        const auto b_grid_desc_k0_n_k1 =
-            MakeBGridDescriptor_K0_N_K1(karg.K, karg.N, karg.NPadded, karg.K0, karg.StrideB);
-        const auto c_grid_desc_m_n =
-            MakeCGridDescriptor_M_N(karg.M, karg.MPadded, karg.N, karg.NPadded, karg.StrideC);
 #endif
 
         const auto c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2 =

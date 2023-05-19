@@ -145,31 +145,19 @@ struct DeviceGemmXdl : public DeviceGemm<ALayout,
 
             if(GridwiseGemm::CalculateHasMainKBlockLoop(karg.K))
             {
-                const auto kernel = kernel_gemm_xdlops_v2r3<GridwiseGemm, true>;
+                const auto kernel =
+                    kernel_gemm_xdlops_v2r3<GridwiseGemm, ADataType, CDataType, true>;
 
-                ave_time = launch_and_time_kernel(stream_config,
-                                                  kernel,
-                                                  dim3(gdx, gdy, gdz),
-                                                  dim3(BlockSize),
-                                                  0,
-                                                  karg.p_a_grid,
-                                                  karg.p_b_grid,
-                                                  karg.p_c_grid,
-                                                  karg);
+                ave_time = launch_and_time_kernel(
+                    stream_config, kernel, dim3(gdx, gdy, gdz), dim3(BlockSize), 0, karg);
             }
             else
             {
-                const auto kernel = kernel_gemm_xdlops_v2r3<GridwiseGemm, false>;
+                const auto kernel =
+                    kernel_gemm_xdlops_v2r3<GridwiseGemm, ADataType, CDataType, false>;
 
-                ave_time = launch_and_time_kernel(stream_config,
-                                                  kernel,
-                                                  dim3(gdx, gdy, gdz),
-                                                  dim3(BlockSize),
-                                                  0,
-                                                  karg.p_a_grid,
-                                                  karg.p_b_grid,
-                                                  karg.p_c_grid,
-                                                  karg);
+                ave_time = launch_and_time_kernel(
+                    stream_config, kernel, dim3(gdx, gdy, gdz), dim3(BlockSize), 0, karg);
             }
 
             return ave_time;
