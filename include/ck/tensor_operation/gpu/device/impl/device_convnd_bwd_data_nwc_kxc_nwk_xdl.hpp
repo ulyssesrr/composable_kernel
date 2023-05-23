@@ -982,21 +982,21 @@ struct DeviceConvNdBwdDataNwcKxcNwk_Xdl
     } // function end
 
     template <ck::index_t NDim, typename ck::enable_if<NDim == 1, bool>::type = false>
-    static auto GetABCGridDesc()
+    static auto GetDummyABCGridDesc()
     {
         return MakeABCGridDescriptor_A_K0_M_K1_B_K0_N_K1_C_M_N<1>(
             1, 1, 1, {1}, {1}, {1}, {1}, {1}, {1}, {1}, {0});
     }
 
     template <ck::index_t NDim, typename ck::enable_if<NDim == 2, bool>::type = false>
-    static auto GetABCGridDesc()
+    static auto GetDummyABCGridDesc()
     {
         return MakeABCGridDescriptor_A_K0_M_K1_B_K0_N_K1_C_M_N<2>(
             1, 1, 1, {1, 1}, {1, 1}, {1, 1}, {1, 1}, {1, 1}, {1, 1}, {1, 1}, {0, 0});
     }
 
     template <ck::index_t NDim, typename ck::enable_if<NDim == 3, bool>::type = false>
-    static auto GetABCGridDesc()
+    static auto GetDummyABCGridDesc()
     {
         return MakeABCGridDescriptor_A_K0_M_K1_B_K0_N_K1_C_M_N<3>(1,
                                                                   1,
@@ -1049,7 +1049,7 @@ struct DeviceConvNdBwdDataNwcKxcNwk_Xdl
         7,                                // CThreadTransferSrcDstVectorDim,
         CThreadTransferDstScalarPerVector>;
 
-    using ABCGridDescs = decltype(GetABCGridDesc<NDimSpatial>());
+    using ABCGridDescs = decltype(GetDummyABCGridDesc<NDimSpatial>());
 
     using AGridDesc_K0_M_K1 = remove_cvref_t<decltype(std::declval<ABCGridDescs>()[I0])>;
     using BGridDesc_K0_N_K1 = remove_cvref_t<decltype(std::declval<ABCGridDescs>()[I1])>;
