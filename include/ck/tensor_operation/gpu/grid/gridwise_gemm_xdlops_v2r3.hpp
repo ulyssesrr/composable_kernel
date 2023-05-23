@@ -17,7 +17,7 @@
 
 namespace ck {
 
-template <typename GridwiseGemm, typename FloatAB, typename FloatC, bool HasMainKBlockLoop>
+template <typename GridwiseGemm, bool HasMainKBlockLoop>
 #ifdef USE_WAVES_PER_EU
 __attribute__((amdgpu_waves_per_eu(1, 1)))
 #endif
@@ -45,7 +45,7 @@ __global__ void
                                                   a_grid_desc_k0_m_k1,
                                                   b_grid_desc_k0_n_k1,
                                                   c_grid_desc_m_n,
-                                                  karg);
+                                                  karg.NumKBlockLoop);
 #else
     ignore                = karg;
 #endif // end of if (defined(__gfx908__) || defined(__gfx90a__))
@@ -128,21 +128,15 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
     }
 
     // Argument
-    struct Argument : public tensor_operation::device::BaseArgument
+    struct Problem
     {
-        __host__ Argument(const FloatAB* p_a_grid_,
-                          const FloatAB* p_b_grid_,
-                          FloatC* p_c_grid_,
-                          index_t M_,
-                          index_t N_,
-                          index_t K_,
-                          index_t StrideA_,
-                          index_t StrideB_,
-                          index_t StrideC_)
-            : p_a_grid{p_a_grid_},
-              p_b_grid{p_b_grid_},
-              p_c_grid{p_c_grid_},
-              M{M_},
+        __host__ Problem(index_t M_,
+                         index_t N_,
+                         index_t K_,
+                         index_t StrideA_,
+                         index_t StrideB_,
+                         index_t StrideC_)
+            : M{M_},
               N{N_},
               K{K_},
               StrideA{StrideA_},
@@ -157,7 +151,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
 
         __host__ void Print() const
         {
-            std::cout << "arg {"
+            std::cout << "problem {"
                       << "M:" << M << ", "
                       << "N:" << N << ", "
                       << "K:" << K << ", "
@@ -170,9 +164,6 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
                       << "NumKBlockLoop: " << NumKBlockLoop << "}" << std::endl;
         }
 
-        const FloatAB* p_a_grid;
-        const FloatAB* p_b_grid;
-        FloatC* p_c_grid;
         index_t M;
         index_t N;
         index_t K;
@@ -183,6 +174,30 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
         index_t NPadded;
         index_t K0;
         index_t NumKBlockLoop;
+    };
+
+    // Argument
+    struct Argument : public Problem, public tensor_operation::device::BaseArgument
+    {
+        __host__ Argument(const FloatAB* p_a_grid_,
+                          const FloatAB* p_b_grid_,
+                          FloatC* p_c_grid_,
+                          index_t M_,
+                          index_t N_,
+                          index_t K_,
+                          index_t StrideA_,
+                          index_t StrideB_,
+                          index_t StrideC_)
+            : Problem{M_, N_, K_, StrideA_, StrideB_, StrideC_},
+              p_a_grid{p_a_grid_},
+              p_b_grid{p_b_grid_},
+              p_c_grid{p_c_grid_}
+        {
+        }
+
+        const FloatAB* p_a_grid;
+        const FloatAB* p_b_grid;
+        FloatC* p_c_grid;
     };
 
     using GridwiseGemmPipe = remove_cvref_t<decltype(
@@ -260,15 +275,11 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
         return (a_block_space_size_aligned + b_block_space_size_aligned) * sizeof(FloatAB);
     }
 
-    template <typename AGridDesc_K0_M_K1,
-              typename BGridDesc_K0_N_K1,
-              typename CGridDesc_M_N,
-              typename Block2CTileMap>
+    template <typename AGridDesc_K0_M_K1, typename BGridDesc_K0_N_K1, typename CGridDesc_M_N>
     __host__ __device__ static constexpr bool
     CheckValidity(const AGridDesc_K0_M_K1& a_grid_desc_k0_m_k1,
                   const BGridDesc_K0_N_K1& b_grid_desc_k0_n_k1,
-                  const CGridDesc_M_N& c_grid_desc_m_n,
-                  const Block2CTileMap& block_2_ctile_map)
+                  const CGridDesc_M_N& c_grid_desc_m_n)
     {
         const auto M  = a_grid_desc_k0_m_k1.GetLength(I1);
         const auto N  = b_grid_desc_k0_n_k1.GetLength(I1);
@@ -290,17 +301,12 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
             return false;
         }
 
-        if(!block_2_ctile_map.CheckValidity(c_grid_desc_m_n))
-        {
-            return false;
-        }
-
         // TODO: also check validity of all components (blockwise-copy, threadwise-copy, etc)
         return true;
     }
 
     // block_id to matrix tile idx (m0, n0) mapping are controlled by {M01, N01}
-    __host__ static constexpr bool CheckValidity(const Argument& karg)
+    __host__ static constexpr bool CheckValidity(const Problem& problem)
     {
         static_assert(is_known_at_compile_time<remove_cv_t<decltype(K1)>>::value,
                       "wrong! K1 need to be known at compile-time");
@@ -310,7 +316,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
                       "Invalid tuning param!");
 
         // check gridwise gemm pipeline
-        const index_t K0      = karg.K / K1Value;
+        const index_t K0      = problem.K / K1Value;
         const auto num_k_loop = K0 / K0PerBlock;
 
         if(!GridwiseGemmPipe::IsSupported(num_k_loop))
@@ -394,7 +400,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
                                const AGridDesc_K0_M_K1& a_grid_desc_k0_m_k1,
                                const BGridDesc_K0_N_K1& b_grid_desc_k0_n_k1,
                                const CGridDesc_M_N& c_grid_desc_m_n,
-                               const Argument& karg)
+                               index_t NumKBlockLoop)
     {
 #if ENABLE_DUMP_CLOCK
         __builtin_amdgcn_sched_barrier(0);
@@ -417,7 +423,8 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
         const BElementwiseOperation b_element_op{};
         const CElementwiseOperation c_element_op{};
 
-        const auto block_2_ctile_map = Block2CTileMap{karg.M, karg.N};
+        const auto block_2_ctile_map =
+            Block2CTileMap{c_grid_desc_m_n.GetLength(I0), c_grid_desc_m_n.GetLength(I1)};
 
         // divide block work by [M, N]
         const auto block_work_idx =
@@ -546,7 +553,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
         constexpr auto b_block_slice_copy_step = make_multi_index(K0PerBlock, 0, 0);
 
         // gridwise GEMM pipeline
-        const index_t num_k_block_main_loop = __builtin_amdgcn_readfirstlane(karg.NumKBlockLoop);
+        const index_t num_k_block_main_loop = __builtin_amdgcn_readfirstlane(NumKBlockLoop);
 
 #if ENABLE_DUMP_CLOCK
         long loop_start = 0, loop_end = 0;
@@ -790,8 +797,8 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3_ext
                                                 LoopSched,
                                                 PipelineVer>;
 
-    using typename Parent::Argument;
     using typename Parent::GridwiseGemmPipe;
+    using typename Parent::Problem;
 
     using Parent::I1;
 
@@ -899,7 +906,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3_ext
     }
 
     // block_id to matrix tile idx (m0, n0) mapping are controlled by {M01, N01}
-    __host__ static constexpr bool CheckValidity(const Argument& karg)
+    __host__ static constexpr bool CheckValidity(const Problem& problem)
     {
         static_assert(is_known_at_compile_time<remove_cv_t<decltype(K1)>>::value,
                       "wrong! K1 need to be known at compile-time");
@@ -913,7 +920,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3_ext
                        GemmSpec == tensor_operation::device::GemmSpecialization::MKPadding ||
                        GemmSpec == tensor_operation::device::GemmSpecialization::MNKPadding))
         {
-            if(!(karg.M % MPerBlock == 0))
+            if(!(problem.M % MPerBlock == 0))
             {
                 return false;
             }
@@ -924,7 +931,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3_ext
                        GemmSpec == tensor_operation::device::GemmSpecialization::NKPadding ||
                        GemmSpec == tensor_operation::device::GemmSpecialization::MNKPadding))
         {
-            if(!(karg.N % NPerBlock == 0))
+            if(!(problem.N % NPerBlock == 0))
             {
                 return false;
             }
@@ -932,14 +939,14 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3_ext
 
         if constexpr(is_same<tensor_layout::gemm::RowMajor, ALayout>::value)
         {
-            if(karg.K % ABlockTransferSrcScalarPerVector != 0)
+            if(problem.K % ABlockTransferSrcScalarPerVector != 0)
             {
                 return false;
             }
         }
         else
         {
-            if(karg.M % ABlockTransferSrcScalarPerVector != 0)
+            if(problem.M % ABlockTransferSrcScalarPerVector != 0)
             {
                 return false;
             }
@@ -947,21 +954,21 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3_ext
 
         if constexpr(is_same<tensor_layout::gemm::RowMajor, BLayout>::value)
         {
-            if(karg.N % BBlockTransferSrcScalarPerVector != 0)
+            if(problem.N % BBlockTransferSrcScalarPerVector != 0)
             {
                 return false;
             }
         }
         else
         {
-            if(karg.K % BBlockTransferSrcScalarPerVector != 0)
+            if(problem.K % BBlockTransferSrcScalarPerVector != 0)
             {
                 return false;
             }
         }
 
         // check gridwise gemm pipeline
-        const index_t K0      = karg.K / K1;
+        const index_t K0      = problem.K / K1;
         const auto num_k_loop = K0 / K0PerBlock;
 
         if(!GridwiseGemmPipe::IsSupported(num_k_loop))

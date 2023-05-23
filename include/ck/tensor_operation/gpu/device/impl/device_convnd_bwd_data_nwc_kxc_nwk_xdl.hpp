@@ -20,6 +20,50 @@ namespace ck {
 namespace tensor_operation {
 namespace device {
 
+namespace detail {
+template <typename GridwiseGemm,
+          typename FloatAB,
+          typename FloatC,
+          typename AGridDesc_K0_M_K1,
+          typename BGridDesc_K0_N_K1,
+          typename CGridDesc_M_N,
+          bool HasMainKBlockLoop>
+__global__ void
+#if CK_USE_LAUNCH_BOUNDS
+    __launch_bounds__(CK_MAX_THREAD_PER_BLOCK, CK_MIN_BLOCK_PER_CU)
+#endif
+        kernel_convnd_bwd_data_nwc_kxc_nwk_xdl(const FloatAB* __restrict__ p_a_grid,
+                                               const FloatAB* __restrict__ p_b_grid,
+                                               FloatC* __restrict__ p_c_grid,
+                                               const AGridDesc_K0_M_K1 a_grid_desc_k0_m_k1,
+                                               const BGridDesc_K0_N_K1 b_grid_desc_k0_n_k1,
+                                               const CGridDesc_M_N c_grid_desc_m_n,
+                                               index_t NumKBlockLoop)
+{
+#if(!defined(__HIP_DEVICE_COMPILE__) || defined(__gfx908__) || defined(__gfx90a__) || \
+    defined(__gfx940__))
+    __shared__ char p_shared[GridwiseGemm::GetSharedMemoryNumberOfByte()];
+
+    GridwiseGemm::template Run<HasMainKBlockLoop>(p_a_grid,
+                                                  p_b_grid,
+                                                  p_c_grid,
+                                                  p_shared,
+                                                  a_grid_desc_k0_m_k1,
+                                                  b_grid_desc_k0_n_k1,
+                                                  c_grid_desc_m_n,
+                                                  NumKBlockLoop);
+#else
+    ignore = p_a_grid;
+    ignore = p_b_grid;
+    ignore = p_c_grid;
+    ignore = a_grid_desc_k0_m_k1;
+    ignore = b_grid_desc_k0_n_k1;
+    ignore = c_grid_desc_m_n;
+    ignore = NumKBlockLoop;
+#endif // end of if (defined(__gfx908__) || defined(__gfx90a__))
+}
+} // namespace detail
+
 // out[N, Ho, Wo, K] = in[N, Hi, Wi, C] * wei[K, Y, X, C]
 template <ck::index_t NDimSpatial,
           typename InDataType,
@@ -967,12 +1011,6 @@ struct DeviceConvNdBwdDataNwcKxcNwk_Xdl
                                                                   {0, 0, 0});
     }
 
-    using ABCGridDescs = decltype(GetABCGridDesc<NDimSpatial>());
-
-    using AGridDesc_K0_M_K1 = remove_cvref_t<decltype(ABCGridDescs{}[I0])>;
-    using BGridDesc_K0_N_K1 = remove_cvref_t<decltype(ABCGridDescs{}[I1])>;
-    using CGridDesc_M_N     = remove_cvref_t<decltype(ABCGridDescs{}[I2])>;
-
     // GridwiseGemm
     using GridwiseGemm = GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3<
         BlockSize,
@@ -980,9 +1018,6 @@ struct DeviceConvNdBwdDataNwcKxcNwk_Xdl
         AccDataType,
         CDataType,
         InMemoryDataOperationEnum::Set,
-        AGridDesc_K0_M_K1,
-        BGridDesc_K0_N_K1,
-        CGridDesc_M_N,
         InElementwiseOperation,
         WeiElementwiseOperation,
         OutElementwiseOperation,
@@ -1014,6 +1049,15 @@ struct DeviceConvNdBwdDataNwcKxcNwk_Xdl
         7,                                // CThreadTransferSrcDstVectorDim,
         CThreadTransferDstScalarPerVector>;
 
+    using ABCGridDescs = decltype(GetABCGridDesc<NDimSpatial>());
+
+    using AGridDesc_K0_M_K1 = remove_cvref_t<decltype(std::declval<ABCGridDescs>()[I0])>;
+    using BGridDesc_K0_N_K1 = remove_cvref_t<decltype(std::declval<ABCGridDescs>()[I1])>;
+    using CGridDesc_M_N     = remove_cvref_t<decltype(std::declval<ABCGridDescs>()[I2])>;
+
+    using CGridDesc_M0_N0_M1_N1_M2_M3_M4_N2 = decltype(
+        GridwiseGemm::MakeCGridDescriptor_M0_N0_M1_N1_M2_M3_M4_N2(std::declval<CGridDesc_M_N>()));
+
     // Argument
     struct Argument : public BaseArgument
     {
@@ -1030,19 +1074,11 @@ struct DeviceConvNdBwdDataNwcKxcNwk_Xdl
                  std::vector<ck::index_t> conv_filter_dilations,
                  std::vector<ck::index_t> input_left_pads,
                  std::vector<ck::index_t> input_right_pads,
-                 ck::index_t M01,
-                 ck::index_t N01,
-                 InElementwiseOperation in_element_op,
-                 WeiElementwiseOperation wei_element_op,
-                 OutElementwiseOperation out_element_op)
+                 ck::index_t M01)
             : p_a_grid_{p_out_grid},
               p_b_grid_{p_wei_grid},
               p_c_grid_{p_in_grid},
               M01_{M01},
-              N01_{N01},
-              a_element_op_{out_element_op},
-              b_element_op_{wei_element_op},
-              c_element_op_{in_element_op},
               Conv_N_{N},
               Conv_K_{K},
               Conv_C_{C},
@@ -1092,17 +1128,6 @@ struct DeviceConvNdBwdDataNwcKxcNwk_Xdl
                 a_grid_desc_k0_m_k1_container_.push_back(descs[I0]);
                 b_grid_desc_k0_n_k1_container_.push_back(descs[I1]);
                 c_grid_desc_m_n_container_.push_back(descs[I2]);
-
-                auto block_2_ctile_map =
-                    GridwiseGemm::MakeDefaultBlock2CTileMap(descs[I2], M01_, N01_);
-
-                if(GridwiseGemm::CheckValidity(descs[I0], descs[I1], descs[I2], block_2_ctile_map))
-                {
-                    c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2_container_.push_back(
-                        GridwiseGemm::MakeCGridDescriptor_M0_N0_M1_N1_M2_M3_M4_N2(descs[I2]));
-
-                    block_2_ctile_map_container_.push_back(block_2_ctile_map);
-                }
             }
         }
         template <ck::index_t NDim, typename ck::enable_if<NDim == 2, bool>::type = false>
@@ -1150,18 +1175,6 @@ struct DeviceConvNdBwdDataNwcKxcNwk_Xdl
                     a_grid_desc_k0_m_k1_container_.push_back(descs[I0]);
                     b_grid_desc_k0_n_k1_container_.push_back(descs[I1]);
                     c_grid_desc_m_n_container_.push_back(descs[I2]);
-
-                    auto block_2_ctile_map =
-                        GridwiseGemm::MakeDefaultBlock2CTileMap(descs[I2], M01_, N01_);
-
-                    if(GridwiseGemm::CheckValidity(
-                           descs[I0], descs[I1], descs[I2], block_2_ctile_map))
-                    {
-                        c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2_container_.push_back(
-                            GridwiseGemm::MakeCGridDescriptor_M0_N0_M1_N1_M2_M3_M4_N2(descs[I2]));
-
-                        block_2_ctile_map_container_.push_back(block_2_ctile_map);
-                    }
                 }
             }
         }
@@ -1218,19 +1231,6 @@ struct DeviceConvNdBwdDataNwcKxcNwk_Xdl
                         a_grid_desc_k0_m_k1_container_.push_back(descs[I0]);
                         b_grid_desc_k0_n_k1_container_.push_back(descs[I1]);
                         c_grid_desc_m_n_container_.push_back(descs[I2]);
-
-                        auto block_2_ctile_map =
-                            GridwiseGemm::MakeDefaultBlock2CTileMap(descs[I2], M01_, N01_);
-
-                        if(GridwiseGemm::CheckValidity(
-                               descs[I0], descs[I1], descs[I2], block_2_ctile_map))
-                        {
-                            c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2_container_.push_back(
-                                GridwiseGemm::MakeCGridDescriptor_M0_N0_M1_N1_M2_M3_M4_N2(
-                                    descs[I2]));
-
-                            block_2_ctile_map_container_.push_back(block_2_ctile_map);
-                        }
                     }
                 }
             }
@@ -1242,14 +1242,7 @@ struct DeviceConvNdBwdDataNwcKxcNwk_Xdl
         std::vector<AGridDesc_K0_M_K1> a_grid_desc_k0_m_k1_container_;
         std::vector<BGridDesc_K0_N_K1> b_grid_desc_k0_n_k1_container_;
         std::vector<CGridDesc_M_N> c_grid_desc_m_n_container_;
-        std::vector<typename GridwiseGemm::CGridDesc_M0_N0_M1_N1_M2_M3_M4_N2>
-            c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2_container_;
-        std::vector<typename GridwiseGemm::DefaultBlock2CTileMap> block_2_ctile_map_container_;
         index_t M01_;
-        index_t N01_;
-        OutElementwiseOperation a_element_op_;
-        WeiElementwiseOperation b_element_op_;
-        InElementwiseOperation c_element_op_;
         // for checking IsSupportedArgument()
         index_t Conv_N_;
         index_t Conv_K_;
@@ -1315,84 +1308,68 @@ struct DeviceConvNdBwdDataNwcKxcNwk_Xdl
 
                 if(!GridwiseGemm::CheckValidity(arg.a_grid_desc_k0_m_k1_container_[i],
                                                 arg.b_grid_desc_k0_n_k1_container_[i],
-                                                arg.c_grid_desc_m_n_container_[i],
-                                                arg.block_2_ctile_map_container_[i]))
+                                                arg.c_grid_desc_m_n_container_[i]))
                 {
                     throw std::runtime_error(
                         "wrong! GridwiseGemm_km_kn_m0m1n0n1_xdlops_v3r1 has invalid setting");
                 }
 
-                const index_t grid_size = arg.block_2_ctile_map_container_[i].CalculateGridSize(
-                    arg.c_grid_desc_m_n_container_[i]);
+                index_t gdx, gdy, gdz;
+                std::tie(gdx, gdy, gdz) = GridwiseGemm::CalculateGridSize(
+                    arg.c_grid_desc_m_n_container_[i].GetLength(I0),
+                    arg.c_grid_desc_m_n_container_[i].GetLength(I1));
 
                 const auto K = arg.a_grid_desc_k0_m_k1_container_[i].GetLength(I0) *
                                arg.a_grid_desc_k0_m_k1_container_[i].GetLength(I2);
 
                 if(GridwiseGemm::CalculateHasMainKBlockLoop(K))
                 {
-                    const auto kernel = kernel_gemm_xdlops_v2r3<
+                    const auto kernel = detail::kernel_convnd_bwd_data_nwc_kxc_nwk_xdl<
                         GridwiseGemm,
                         ADataType, // TODO: distiguish A/B datatype
                         CDataType,
-                        remove_reference_t<DeviceOp::AGridDesc_K0_M_K1>,
-                        remove_reference_t<DeviceOp::BGridDesc_K0_N_K1>,
-                        remove_reference_t<
-                            typename GridwiseGemm::CGridDesc_M0_N0_M1_N1_M2_M3_M4_N2>,
-                        OutElementwiseOperation,
-                        WeiElementwiseOperation,
-                        InElementwiseOperation,
-                        remove_reference_t<typename GridwiseGemm::DefaultBlock2CTileMap>,
+                        AGridDesc_K0_M_K1,
+                        BGridDesc_K0_N_K1,
+                        CGridDesc_M_N,
                         true>;
 
-                    ave_time += launch_and_time_kernel(
-                        stream_config,
-                        kernel,
-                        dim3(grid_size),
-                        dim3(BlockSize),
-                        0,
-                        arg.p_a_grid_,
-                        arg.p_b_grid_,
-                        arg.p_c_grid_,
-                        arg.a_grid_desc_k0_m_k1_container_[i],
-                        arg.b_grid_desc_k0_n_k1_container_[i],
-                        arg.c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2_container_[i],
-                        arg.a_element_op_,
-                        arg.b_element_op_,
-                        arg.c_element_op_,
-                        arg.block_2_ctile_map_container_[i]);
+                    ave_time += launch_and_time_kernel(stream_config,
+                                                       kernel,
+                                                       dim3(gdx, gdy, gdz),
+                                                       dim3(BlockSize),
+                                                       0,
+                                                       arg.p_a_grid_,
+                                                       arg.p_b_grid_,
+                                                       arg.p_c_grid_,
+                                                       arg.a_grid_desc_k0_m_k1_container_[i],
+                                                       arg.b_grid_desc_k0_n_k1_container_[i],
+                                                       arg.c_grid_desc_m_n_container_[i],
+                                                       GridwiseGemm::CalculateNumKBlockLoop(K));
                 }
                 else
                 {
-                    const auto kernel = kernel_gemm_xdlops_v2r3<
+                    const auto kernel = detail::kernel_convnd_bwd_data_nwc_kxc_nwk_xdl<
                         GridwiseGemm,
                         ADataType, // TODO: distiguish A/B datatype
                         CDataType,
-                        remove_reference_t<DeviceOp::AGridDesc_K0_M_K1>,
-                        remove_reference_t<DeviceOp::BGridDesc_K0_N_K1>,
-                        remove_reference_t<
-                            typename GridwiseGemm::CGridDesc_M0_N0_M1_N1_M2_M3_M4_N2>,
-                        OutElementwiseOperation,
-                        WeiElementwiseOperation,
-                        InElementwiseOperation,
-                        remove_reference_t<typename GridwiseGemm::DefaultBlock2CTileMap>,
+
+                        AGridDesc_K0_M_K1,
+                        BGridDesc_K0_N_K1,
+                        CGridDesc_M_N,
                         false>;
 
-                    ave_time += launch_and_time_kernel(
-                        stream_config,
-                        kernel,
-                        dim3(grid_size),
-                        dim3(BlockSize),
-                        0,
-                        arg.p_a_grid_,
-                        arg.p_b_grid_,
-                        arg.p_c_grid_,
-                        arg.a_grid_desc_k0_m_k1_container_[i],
-                        arg.b_grid_desc_k0_n_k1_container_[i],
-                        arg.c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2_container_[i],
-                        arg.a_element_op_,
-                        arg.b_element_op_,
-                        arg.c_element_op_,
-                        arg.block_2_ctile_map_container_[i]);
+                    ave_time += launch_and_time_kernel(stream_config,
+                                                       kernel,
+                                                       dim3(gdx, gdy, gdz),
+                                                       dim3(BlockSize),
+                                                       0,
+                                                       arg.p_a_grid_,
+                                                       arg.p_b_grid_,
+                                                       arg.p_c_grid_,
+                                                       arg.a_grid_desc_k0_m_k1_container_[i],
+                                                       arg.b_grid_desc_k0_n_k1_container_[i],
+                                                       arg.c_grid_desc_m_n_container_[i],
+                                                       GridwiseGemm::CalculateNumKBlockLoop(K));
                 }
             }
             return ave_time;
@@ -1446,8 +1423,7 @@ struct DeviceConvNdBwdDataNwcKxcNwk_Xdl
         {
             if(!GridwiseGemm::CheckValidity(arg.a_grid_desc_k0_m_k1_container_[i],
                                             arg.b_grid_desc_k0_n_k1_container_[i],
-                                            arg.c_grid_desc_m_n_container_[i],
-                                            arg.block_2_ctile_map_container_[i]))
+                                            arg.c_grid_desc_m_n_container_[i]))
             {
                 return false;
             }
@@ -1472,10 +1448,7 @@ struct DeviceConvNdBwdDataNwcKxcNwk_Xdl
                              std::vector<ck::index_t> conv_filter_strides,
                              std::vector<ck::index_t> conv_filter_dilations,
                              std::vector<ck::index_t> input_left_pads,
-                             std::vector<ck::index_t> input_right_pads,
-                             InElementwiseOperation in_element_op,
-                             WeiElementwiseOperation wei_element_op,
-                             OutElementwiseOperation out_element_op)
+                             std::vector<ck::index_t> input_right_pads)
     {
         return Argument{p_in_grid,
                         p_wei_grid,
@@ -1490,11 +1463,7 @@ struct DeviceConvNdBwdDataNwcKxcNwk_Xdl
                         conv_filter_dilations,
                         input_left_pads,
                         input_right_pads,
-                        1,
-                        1,
-                        in_element_op,
-                        wei_element_op,
-                        out_element_op};
+                        1};
     }
 
     static auto MakeInvoker() { return Invoker{}; }
@@ -1513,9 +1482,9 @@ struct DeviceConvNdBwdDataNwcKxcNwk_Xdl
                         std::vector<ck::index_t> conv_filter_dilations,
                         std::vector<ck::index_t> input_left_pads,
                         std::vector<ck::index_t> input_right_pads,
-                        InElementwiseOperation in_element_op,
-                        WeiElementwiseOperation wei_element_op,
-                        OutElementwiseOperation out_element_op) override
+                        InElementwiseOperation,
+                        WeiElementwiseOperation,
+                        OutElementwiseOperation) override
     {
         return std::make_unique<Argument>(static_cast<InDataType*>(p_in_grid),
                                           static_cast<const WeiDataType*>(p_wei_grid),
@@ -1530,11 +1499,7 @@ struct DeviceConvNdBwdDataNwcKxcNwk_Xdl
                                           conv_filter_dilations,
                                           input_left_pads,
                                           input_right_pads,
-                                          1,
-                                          1,
-                                          in_element_op,
-                                          wei_element_op,
-                                          out_element_op);
+                                          1);
     }
 
     std::unique_ptr<BaseInvoker> MakeInvokerPointer() override
