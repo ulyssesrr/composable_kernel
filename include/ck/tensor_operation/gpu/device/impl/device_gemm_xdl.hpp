@@ -76,7 +76,7 @@ struct DeviceGemmXdl : public DeviceGemm<ALayout,
     static constexpr auto K1Number = Number<K1>{};
 
     // GridwiseGemm
-    using GridwiseGemm = GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3<
+    using GridwiseGemm = GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3_ext<
         BlockSize,
         ADataType, // TODO: distinguish A/B datatype
         AccDataType,
