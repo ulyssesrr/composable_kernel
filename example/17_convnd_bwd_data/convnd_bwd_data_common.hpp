@@ -95,10 +95,7 @@ int run_conv_bwd_data(bool do_verification,
                                       conv_param.conv_filter_strides_,
                                       conv_param.conv_filter_dilations_,
                                       conv_param.input_left_pads_,
-                                      conv_param.input_right_pads_,
-                                      in_element_op,
-                                      wei_element_op,
-                                      out_element_op);
+                                      conv_param.input_right_pads_);
 
     if(!conv.IsSupportedArgument(argument))
     {
