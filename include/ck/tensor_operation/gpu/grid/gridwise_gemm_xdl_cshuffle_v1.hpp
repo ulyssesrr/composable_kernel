@@ -682,12 +682,12 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
                                void* __restrict__ p_shared,
                                const Problem& problem)
     {
-        const auto a_grid_desc_ak0_m_ak1 = MakeAGridDescriptor_AK0_M_AK1(
-            problem.M, problem.MPadded, problem.K, problem.KPadded, problem.StrideA, problem.AK0);
-        const auto b_grid_desc_bk0_n_bk1 = MakeBGridDescriptor_BK0_N_BK1(
-            problem.K, problem.KPadded, problem.N, problem.NPadded, problem.StrideB, problem.BK0);
-        const auto c_grid_desc_m_n = MakeCGridDescriptor_M_N(
-            problem.M, problem.MPadded, problem.N, problem.NPadded, problem.StrideC);
+        const auto a_grid_desc_ak0_m_ak1 = readfirstlane(MakeAGridDescriptor_AK0_M_AK1(
+            problem.M, problem.MPadded, problem.K, problem.KPadded, problem.StrideA, problem.AK0));
+        const auto b_grid_desc_bk0_n_bk1 = readfirstlane(MakeBGridDescriptor_BK0_N_BK1(
+            problem.K, problem.KPadded, problem.N, problem.NPadded, problem.StrideB, problem.BK0));
+        const auto c_grid_desc_m_n       = readfirstlane(MakeCGridDescriptor_M_N(
+            problem.M, problem.MPadded, problem.N, problem.NPadded, problem.StrideC));
 
         const auto c_grid_desc_mblock_mperblock_nblock_nperblock =
             MakeCGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock(
