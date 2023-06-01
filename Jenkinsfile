@@ -11,6 +11,16 @@ def show_node_info() {
     """
 }
 
+def nthreads() {
+    def n = $(( $(nproc) / 2 ))
+    if (n > 64){
+        n = 64
+    }
+    if (n < 16){
+        n = n * 2
+    }
+    return n
+}
 def runShell(String command){
     def responseCode = sh returnStatus: true, script: "${command} > tmp.txt"
     def output = readFile(file: "tmp.txt")
@@ -219,7 +229,8 @@ def cmake_build(Map conf=[:]){
         """
     def setup_cmd = conf.get("setup_cmd", "${cmake_envs} cmake ${setup_args}   .. ")
     // reduce parallelism when compiling, clang uses too much memory
-    def build_cmd = conf.get("build_cmd", "${build_envs} dumb-init make  -j\$(( \$(nproc) / 2 )) ${config_targets}")
+    def nt = nthreads()
+    def build_cmd = conf.get("build_cmd", "${build_envs} dumb-init make  -j\$(nt) ${config_targets}")
     def execute_cmd = conf.get("execute_cmd", "")
 
     def cmd = conf.get("cmd", """
@@ -493,8 +504,9 @@ def Build_CK(Map conf=[:]){
                 {
                     cmake_build(conf)
                     dir("build"){
-                        //run tests and examples 	
-                        sh 'make -j\$(( \$(nproc) / 2 )) check'
+                        //run tests and examples
+                        def nt = nthreads()
+                        sh 'make -j\$(nt) check'
                         if (navi_node == 0 ){
                             //we only need the ckProfiler to run the performance tests, so we pack and stash it
                             //do not stash profiler on Navi nodes
