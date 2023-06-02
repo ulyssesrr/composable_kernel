@@ -471,7 +471,7 @@ def Build_CK(Map conf=[:]){
                         else{
                             echo "GPU is OK"
                         }
-                        if ( runShell('grep -n "gfx1030" clinfo.log') ){
+                        if ( runShell('grep -n "gfx1030" clinfo.log') || runShell('grep -n "gfx1101" clinfo.log') ){
                             navi_node = 1
                         }
                     }
@@ -492,7 +492,7 @@ def Build_CK(Map conf=[:]){
                         else{
                             echo "GPU is OK"
                         }
-                        if ( runShell('grep -n "gfx1030" clinfo.log') ){
+                        if ( runShell('grep -n "gfx1030" clinfo.log') || runShell('grep -n "gfx1101" clinfo.log') ){
                             navi_node = 1
                         }
                     }
