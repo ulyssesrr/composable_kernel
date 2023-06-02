@@ -12,7 +12,7 @@ def show_node_info() {
 }
 
 def nthreads() {
-    def n = computer.processorCount
+    def n = "${sh 'nproc'}"
     if (n > 64){
         n = 64
     }
