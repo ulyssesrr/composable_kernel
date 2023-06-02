@@ -16,6 +16,7 @@ def nthreads() {
     if (n > 64){
         n = 64
     }
+    echo "Number of threads used for building: ${n}"
     return n
 }
 
@@ -228,7 +229,7 @@ def cmake_build(Map conf=[:]){
     def setup_cmd = conf.get("setup_cmd", "${cmake_envs} cmake ${setup_args}   .. ")
     // reduce parallelism when compiling, clang uses too much memory
     def nt = nthreads()
-    def build_cmd = conf.get("build_cmd", "${build_envs} dumb-init make  -j\$(nt) ${config_targets}")
+    def build_cmd = conf.get("build_cmd", "${build_envs} dumb-init make  -j${nt} ${config_targets}")
     def execute_cmd = conf.get("execute_cmd", "")
 
     def cmd = conf.get("cmd", """
@@ -504,7 +505,7 @@ def Build_CK(Map conf=[:]){
                     dir("build"){
                         //run tests and examples
                         def nt = nthreads()
-                        sh 'make -j\$(nt) check'
+                        sh "make -j${nt} check"
                         if (navi_node == 0 ){
                             //we only need the ckProfiler to run the performance tests, so we pack and stash it
                             //do not stash profiler on Navi nodes
