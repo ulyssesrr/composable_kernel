@@ -12,7 +12,7 @@ def show_node_info() {
 }
 
 def nthreads() {
-    def n = sh "grep -c '^processor' /proc/cpuinfo" / 2
+    def n = computer.processorCount
     if (n > 64){
         n = 64
     }
@@ -21,6 +21,7 @@ def nthreads() {
     }
     return n
 }
+
 def runShell(String command){
     def responseCode = sh returnStatus: true, script: "${command} > tmp.txt"
     def output = readFile(file: "tmp.txt")
