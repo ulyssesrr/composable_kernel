@@ -12,7 +12,7 @@ def show_node_info() {
 }
 
 def nthreads() {
-    def n = $(( $(nproc) / 2 ))
+    def n = sh "grep -c '^processor' /proc/cpuinfo" / 2
     if (n > 64){
         n = 64
     }
