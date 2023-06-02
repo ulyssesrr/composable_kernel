@@ -16,9 +16,6 @@ def nthreads() {
     if (n > 64){
         n = 64
     }
-    if (n < 16){
-        n = n * 2
-    }
     return n
 }
 
