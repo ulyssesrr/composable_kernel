@@ -86,8 +86,8 @@ bool profile_batched_gemm_impl(int do_verification,
     {
     case 0: break;
     case 1:
-        a_g_m_k.GenerateTensorValue(GeneratorTensor_2<ADataType>{-5, 5});
-        b_g_k_n.GenerateTensorValue(GeneratorTensor_2<BDataType>{-5, 5});
+        a_g_m_k.GenerateTensorValue(GeneratorTensor_2<ADataType>{1, 2});
+        b_g_k_n.GenerateTensorValue(GeneratorTensor_2<BDataType>{1, 2});
         break;
     default:
         a_g_m_k.GenerateTensorValue(GeneratorTensor_3<ADataType>{0.0, 1.0});

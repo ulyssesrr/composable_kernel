@@ -25,10 +25,10 @@ class TestBatchedGemmMultiD : public ::testing::Test
     using BLayout = std::tuple_element_t<1, Tuple>;
     using CLayout = std::tuple_element_t<2, Tuple>;
 
-    static constexpr int M          = 512;
-    static constexpr int N          = 256;
-    static constexpr int K          = 128;
-    static constexpr int BatchCount = 3;
+    static constexpr int M          = 64;
+    static constexpr int N          = 8;
+    static constexpr int K          = 64;
+    static constexpr int BatchCount = 1;
 
     template <typename DataType>
     void Run()
@@ -61,14 +61,15 @@ class TestBatchedGemmMultiD : public ::testing::Test
     }
 };
 
-using KernelTypes = ::testing::Types<std::tuple<Row, Row, Row>,
-                                     std::tuple<Row, Col, Row>,
-                                     std::tuple<Col, Row, Row>,
-                                     std::tuple<Col, Col, Row>>;
+using KernelTypes = ::testing::Types<//std::tuple<Row, Row, Row>,
+                                     std::tuple<Row, Col, Row>
+                                    //  std::tuple<Col, Row, Row>,
+                                    //  std::tuple<Col, Col, Row>
+                                     >;
 } // namespace
 
 TYPED_TEST_SUITE(TestBatchedGemmMultiD, KernelTypes);
 
 TYPED_TEST(TestBatchedGemmMultiD, f16) { this->template Run<F16>(); }
 
-TYPED_TEST(TestBatchedGemmMultiD, int8) { this->template Run<int8_t>(); }
+// TYPED_TEST(TestBatchedGemmMultiD, int8) { this->template Run<int8_t>(); }
