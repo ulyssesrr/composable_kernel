@@ -61,10 +61,10 @@ class TestBatchedGemmMultiD : public ::testing::Test
     }
 };
 
-using KernelTypes = ::testing::Types<//std::tuple<Row, Row, Row>,
-                                     std::tuple<Row, Col, Row>
-                                    //  std::tuple<Col, Row, Row>,
-                                    //  std::tuple<Col, Col, Row>
+using KernelTypes = ::testing::Types<std::tuple<Row, Row, Row>,
+                                     std::tuple<Row, Col, Row>,
+                                     std::tuple<Col, Row, Row>,
+                                     std::tuple<Col, Col, Row>
                                      >;
 } // namespace
 

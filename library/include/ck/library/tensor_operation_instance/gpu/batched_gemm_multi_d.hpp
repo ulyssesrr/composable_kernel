@@ -19,44 +19,44 @@ namespace tensor_operation {
 namespace device {
 namespace instance {
 
-// void add_device_batched_gemm_multi_d_dl_f16_f16_f16_gkm_gkn_gmn_instances(
-//     std::vector<std::unique_ptr<DeviceBatchedGemmMultiD<Col,
-//                                                         Row,
-//                                                         Empty_Tuple,
-//                                                         Row,
-//                                                         F16,
-//                                                         F16,
-//                                                         Empty_Tuple,
-//                                                         F16,
-//                                                         PassThrough,
-//                                                         PassThrough,
-//                                                         PassThrough>>>& instances);
+void add_device_batched_gemm_multi_d_dl_f16_f16_f16_gkm_gkn_gmn_instances(
+    std::vector<std::unique_ptr<DeviceBatchedGemmMultiD<Col,
+                                                        Row,
+                                                        Empty_Tuple,
+                                                        Row,
+                                                        F16,
+                                                        F16,
+                                                        Empty_Tuple,
+                                                        F16,
+                                                        PassThrough,
+                                                        PassThrough,
+                                                        PassThrough>>>& instances);
 
-// void add_device_batched_gemm_multi_d_dl_f16_f16_f16_gkm_gnk_gmn_instances(
-//     std::vector<std::unique_ptr<DeviceBatchedGemmMultiD<Col,
-//                                                         Col,
-//                                                         Empty_Tuple,
-//                                                         Row,
-//                                                         F16,
-//                                                         F16,
-//                                                         Empty_Tuple,
-//                                                         F16,
-//                                                         PassThrough,
-//                                                         PassThrough,
-//                                                         PassThrough>>>& instances);
+void add_device_batched_gemm_multi_d_dl_f16_f16_f16_gkm_gnk_gmn_instances(
+    std::vector<std::unique_ptr<DeviceBatchedGemmMultiD<Col,
+                                                        Col,
+                                                        Empty_Tuple,
+                                                        Row,
+                                                        F16,
+                                                        F16,
+                                                        Empty_Tuple,
+                                                        F16,
+                                                        PassThrough,
+                                                        PassThrough,
+                                                        PassThrough>>>& instances);
 
-// void add_device_batched_gemm_multi_d_dl_f16_f16_f16_gmk_gkn_gmn_instances(
-//     std::vector<std::unique_ptr<DeviceBatchedGemmMultiD<Row,
-//                                                         Row,
-//                                                         Empty_Tuple,
-//                                                         Row,
-//                                                         F16,
-//                                                         F16,
-//                                                         Empty_Tuple,
-//                                                         F16,
-//                                                         PassThrough,
-//                                                         PassThrough,
-//                                                         PassThrough>>>& instances);
+void add_device_batched_gemm_multi_d_dl_f16_f16_f16_gmk_gkn_gmn_instances(
+    std::vector<std::unique_ptr<DeviceBatchedGemmMultiD<Row,
+                                                        Row,
+                                                        Empty_Tuple,
+                                                        Row,
+                                                        F16,
+                                                        F16,
+                                                        Empty_Tuple,
+                                                        F16,
+                                                        PassThrough,
+                                                        PassThrough,
+                                                        PassThrough>>>& instances);
 
 void add_device_batched_gemm_multi_d_dl_f16_f16_f16_gmk_gnk_gmn_instances(
     std::vector<std::unique_ptr<DeviceBatchedGemmMultiD<Row,
@@ -268,7 +268,7 @@ struct DeviceOperationInstanceFactory<ck::tensor_operation::device::DeviceBatche
             if constexpr(is_same_v<ALayout, Row> && is_same_v<BLayout, Row> &&
                          is_same_v<ELayout, Row>)
             {
-                // add_device_batched_gemm_multi_d_dl_f16_f16_f16_gmk_gkn_gmn_instances(op_ptrs);
+                add_device_batched_gemm_multi_d_dl_f16_f16_f16_gmk_gkn_gmn_instances(op_ptrs);
                 // add_device_batched_gemm_multi_d_dl_f16_f16_f16_gmk_gkn_gmn_irregular_instances(
                 //     op_ptrs);
             }
@@ -282,14 +282,14 @@ struct DeviceOperationInstanceFactory<ck::tensor_operation::device::DeviceBatche
             else if constexpr(is_same_v<ALayout, Col> && is_same_v<BLayout, Row> &&
                               is_same_v<ELayout, Row>)
             {
-                // add_device_batched_gemm_multi_d_dl_f16_f16_f16_gkm_gkn_gmn_instances(op_ptrs);
+                add_device_batched_gemm_multi_d_dl_f16_f16_f16_gkm_gkn_gmn_instances(op_ptrs);
                 // add_device_batched_gemm_multi_d_dl_f16_f16_f16_gkm_gkn_gmn_irregular_instances(
                 //     op_ptrs);
             }
             else if constexpr(is_same_v<ALayout, Col> && is_same_v<BLayout, Col> &&
                               is_same_v<ELayout, Row>)
             {
-                // add_device_batched_gemm_multi_d_dl_f16_f16_f16_gkm_gnk_gmn_instances(op_ptrs);
+                add_device_batched_gemm_multi_d_dl_f16_f16_f16_gkm_gnk_gmn_instances(op_ptrs);
                 // add_device_batched_gemm_multi_d_dl_f16_f16_f16_gkm_gnk_gmn_irregular_instances(
                 //     op_ptrs);
             }
