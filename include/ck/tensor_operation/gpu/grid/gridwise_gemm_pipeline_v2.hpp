@@ -79,7 +79,7 @@ struct GridwiseGemmPipeline_v2
 
             do
             {
-                __builtin_amdgcn_iglp_opt(1);
+                __builtin_amdgcn_iglp_opt(2);
 
                 block_sync_lds();
 
