@@ -13,6 +13,9 @@ def show_node_info() {
 
 def nthreads() {
     def n = "${sh 'nproc'}"
+    if (n > 32){
+        n = n / 2
+    }
     if (n > 64){
         n = 64
     }
