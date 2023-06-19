@@ -17,7 +17,7 @@ endif(USE_BITINT_EXTENSION_INT4)
 add_custom_target(example_gemm_xdl)
 
 add_example_executable(example_gemm_xdl_fp16 gemm_xdl_fp16.cpp)
-set_source_files_properties(example_gemm_xdl_fp16 gemm_xdl_fp16.cpp PROPERTIES COMPILE_OPTIONS ";--save-temps;-Wno-gnu-line-marker;")
+set_source_files_properties(example_gemm_xdl_fp16 gemm_xdl_fp16.cpp PROPERTIES COMPILE_OPTIONS ";--save-temps;-Wno-gnu-line-marker;-mllvm;--debug-only=igrouplp;")
 add_example_executable(example_gemm_xdl_wavelet_fp16 gemm_xdl_wavelet_fp16.cpp)
 add_example_executable(example_gemm_xdl_bf16 gemm_xdl_bf16.cpp)
 add_example_executable(example_gemm_xdl_int8 gemm_xdl_int8.cpp)
