@@ -306,17 +306,12 @@ struct BlockwiseGemmXdlops_k0mk1_k0nk1_m0n0m1n1m2m3m4n2_v1
     static constexpr auto b_block_desc_n0_n1_n2_k = MakeBBlockDescriptor_N0_N1_N2_K();
 
 #if defined(EXTRACT_DS_READ)
-
+    static_assert(MRepeat == 1);
 #endif // defined(EXTRACT_DS_READ)
 
-    template <typename ABlockBuffer, typename BBlockBuffer, typename CThreadBuffer>
-    __device__ void Run(const ABlockBuffer& a_block_buf,
-                        const BBlockBuffer& b_block_buf,
-                        CThreadBuffer& c_thread_buf) const
-    {
 #if defined(EXTRACT_DS_READ)
-        static_assert(MRepeat == 1);
-
+    template <typename ABlockBuffer>
+    __device__ void PrepareRun(const ABlockBuffer& a_block_buf) const {
         Number<0> m0;
 
         // read A
@@ -326,6 +321,17 @@ struct BlockwiseGemmXdlops_k0mk1_k0nk1_m0n0m1n1m2m3m4n2_v1
                            a_thread_desc_,
                            make_tuple(I0, I0, I0, I0),
                            a_thread_buf);
+    }
+#endif // defined(EXTRACT_DS_READ)
+
+
+#if defined(EXTRACT_DS_READ)
+    template <typename BBlockBuffer, typename CThreadBuffer>
+    __device__ void Run(const BBlockBuffer& b_block_buf,
+                        CThreadBuffer& c_thread_buf) const
+    {
+
+        Number<0> m0;
 
         static_for<0, NRepeat, 1>{}([&](auto n0) {
             // read B
@@ -360,8 +366,11 @@ struct BlockwiseGemmXdlops_k0mk1_k0nk1_m0n0m1n1m2m3m4n2_v1
             });
         });
 #else 
-        static_assert(false);
-
+    template <typename ABlockBuffer, typename BBlockBuffer, typename CThreadBuffer>
+    __device__ void Run(const ABlockBuffer& a_block_buf,
+                        const BBlockBuffer& b_block_buf,
+                        CThreadBuffer& c_thread_buf) const
+    {
         auto a_thread_buf = make_static_buffer<AddressSpaceEnum::Vgpr, FloatAB>(
             a_thread_desc_.GetElementSpaceSize());
         auto b_thread_buf = make_static_buffer<AddressSpaceEnum::Vgpr, FloatAB>(

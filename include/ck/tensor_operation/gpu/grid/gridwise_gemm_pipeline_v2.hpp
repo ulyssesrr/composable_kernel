@@ -84,7 +84,8 @@ struct GridwiseGemmPipeline_v2
                 block_sync_lds();
 
                 // GEMM i
-                blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
+                blockwise_gemm.PrepareRun(a_block_buf);
+                blockwise_gemm.Run(b_block_buf, c_thread_buf);
 
                 block_sync_lds();
 
@@ -111,7 +112,8 @@ struct GridwiseGemmPipeline_v2
             block_sync_lds();
 
             // GEMM num_loop - 2
-            blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
+            blockwise_gemm.PrepareRun(a_block_buf);
+            blockwise_gemm.Run(b_block_buf, c_thread_buf);
 
             block_sync_lds();
 
@@ -122,7 +124,8 @@ struct GridwiseGemmPipeline_v2
             block_sync_lds();
 
             // GEMM num_loop - 1
-            blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
+            blockwise_gemm.PrepareRun(a_block_buf);
+            blockwise_gemm.Run(b_block_buf, c_thread_buf);
         }
     }
 };
