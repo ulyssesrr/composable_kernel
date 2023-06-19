@@ -83,7 +83,7 @@ struct GridwiseGemmPipeline_v2
 
             do
             {
-                // __builtin_amdgcn_iglp_opt(2);
+                __builtin_amdgcn_iglp_opt(2);
 
                 // GEMM i
                 blockwise_gemm.Run(b_block_buf, c_thread_buf);
