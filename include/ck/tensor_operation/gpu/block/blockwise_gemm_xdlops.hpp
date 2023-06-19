@@ -300,14 +300,68 @@ struct BlockwiseGemmXdlops_k0mk1_k0nk1_m0n0m1n1m2m3m4n2_v1
             make_tuple(Sequence<3>{}, Sequence<0, 1, 2>{}));
     }
 
+#define EXTRACT_DS_READ
+
     static constexpr auto a_block_desc_m0_m1_m2_k = MakeABlockDescriptor_M0_M1_M2_K();
     static constexpr auto b_block_desc_n0_n1_n2_k = MakeBBlockDescriptor_N0_N1_N2_K();
+
+#if defined(EXTRACT_DS_READ)
+
+#endif // defined(EXTRACT_DS_READ)
 
     template <typename ABlockBuffer, typename BBlockBuffer, typename CThreadBuffer>
     __device__ void Run(const ABlockBuffer& a_block_buf,
                         const BBlockBuffer& b_block_buf,
                         CThreadBuffer& c_thread_buf) const
     {
+#if defined(EXTRACT_DS_READ)
+        static_assert(MRepeat == 1);
+
+        Number<0> m0;
+
+        // read A
+        a_thread_copy_.Run(a_block_desc_m0_m1_m2_k,
+                           make_tuple(m0, I0, I0, I0),
+                           a_block_buf,
+                           a_thread_desc_,
+                           make_tuple(I0, I0, I0, I0),
+                           a_thread_buf);
+
+        static_for<0, NRepeat, 1>{}([&](auto n0) {
+            // read B
+            b_thread_copy_.Run(b_block_desc_n0_n1_n2_k,
+                               make_tuple(n0, I0, I0, I0),
+                               b_block_buf,
+                               b_thread_desc_,
+                               make_tuple(I0, I0, I0, I0),
+                               b_thread_buf);
+
+            static_for<0, KPerThread, KPack>{}([&](auto k) {
+                vector_type<FloatAB, KPack> a_thread_vec;
+                vector_type<FloatAB, KPack> b_thread_vec;
+
+                static_for<0, KPack, 1>{}([&](auto i) {
+                    a_thread_vec.template AsType<FloatAB>()(i) = a_thread_buf
+                        [Number<a_thread_desc_.CalculateOffset(make_tuple(0, 0, 0, k + i))>{}];
+                    b_thread_vec.template AsType<FloatAB>()(i) = b_thread_buf
+                        [Number<b_thread_desc_.CalculateOffset(make_tuple(0, 0, 0, k + i))>{}];
+                });
+
+                using mfma_input_type =
+                    typename vector_type<FloatAB, xdlops_gemm.K1PerXdlops>::type;
+
+                constexpr index_t c_offset =
+                    c_thread_desc_.CalculateOffset(make_tuple(m0, n0, 0));
+
+                xdlops_gemm.template Run(
+                    a_thread_vec.template AsType<mfma_input_type>(),
+                    b_thread_vec.template AsType<mfma_input_type>(),
+                    c_thread_buf.GetVectorTypeReference(Number<c_offset>{}));
+            });
+        });
+#else 
+        static_assert(false);
+
         auto a_thread_buf = make_static_buffer<AddressSpaceEnum::Vgpr, FloatAB>(
             a_thread_desc_.GetElementSpaceSize());
         auto b_thread_buf = make_static_buffer<AddressSpaceEnum::Vgpr, FloatAB>(
@@ -355,6 +409,7 @@ struct BlockwiseGemmXdlops_k0mk1_k0nk1_m0n0m1n1m2m3m4n2_v1
                 });
             });
         });
+#endif
     }
 
     protected:
@@ -389,6 +444,10 @@ struct BlockwiseGemmXdlops_k0mk1_k0nk1_m0n0m1n1m2m3m4n2_v1
                                                          3,
                                                          B_K1,
                                                          B_K1>;
+#if defined(EXTRACT_DS_READ)
+    mutable StaticBuffer<AddressSpaceEnum::Vgpr, FloatAB, a_thread_desc_.GetElementSpaceSize(), true> a_thread_buf;
+    mutable StaticBuffer<AddressSpaceEnum::Vgpr, FloatAB, b_thread_desc_.GetElementSpaceSize(), true> b_thread_buf;
+#endif // defined(EXTRACT_DS_READ)
 
     AThreadCopy a_thread_copy_{CalculateAThreadOriginDataIndex()};
     BThreadCopy b_thread_copy_{CalculateBThreadOriginDataIndex()};
