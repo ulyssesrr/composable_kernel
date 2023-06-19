@@ -12,7 +12,7 @@ def show_node_info() {
 }
 
 def nthreads() {
-    def n = sh "$(nproc)"
+    def n = sh '$(nproc)'
     echo "Number of cores: ${n}"
     if (n > 32){
         n /= 2
