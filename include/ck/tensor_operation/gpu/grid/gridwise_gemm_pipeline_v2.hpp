@@ -77,14 +77,15 @@ struct GridwiseGemmPipeline_v2
         {
             index_t i = 0;
 
+            block_sync_lds();
+
+            blockwise_gemm.PrepareRun(a_block_buf);
+
             do
             {
-                __builtin_amdgcn_iglp_opt(2);
-
-                block_sync_lds();
+                // __builtin_amdgcn_iglp_opt(2);
 
                 // GEMM i
-                blockwise_gemm.PrepareRun(a_block_buf);
                 blockwise_gemm.Run(b_block_buf, c_thread_buf);
 
                 block_sync_lds();
@@ -102,6 +103,10 @@ struct GridwiseGemmPipeline_v2
                 b_blockwise_copy.RunWrite(b_block_desc, b_block_buf);
                 // global read i + 2
                 b_blockwise_copy.RunRead(b_grid_desc, b_grid_buf);
+
+                block_sync_lds();
+
+                blockwise_gemm.PrepareRun(a_block_buf);
 
                 ++i;
             } while(i < (num_loop - 2));
