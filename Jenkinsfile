@@ -12,9 +12,8 @@ def show_node_info() {
 }
 
 def nthreads() {
-    def nproc = "${sh 'nproc'}"
-    echo "Number of cores: ${nproc}"
-    def n = nproc.toInteger()
+    def n = env.EXECUTOR_NUMBER.toInteger()
+    echo "Number of cores: ${n}"
     if (n > 32){
         n /= 2
     }
