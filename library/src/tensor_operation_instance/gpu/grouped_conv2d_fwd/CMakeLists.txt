@@ -1,13 +1,17 @@
-add_instance_library(device_grouped_conv2d_fwd_instance
-   # GNHWC, GKYXC, GNHWK
-   device_grouped_conv2d_fwd_xdl_gnhwc_gkyxc_gnhwk_bf16_instance.cpp
-   device_grouped_conv2d_fwd_xdl_gnhwc_gkyxc_gnhwk_f16_instance.cpp
-   device_grouped_conv2d_fwd_xdl_gnhwc_gkyxc_gnhwk_f32_instance.cpp
-   # NHWGC, GKYXC, NHWGK
-   device_grouped_conv2d_fwd_xdl_nhwgc_gkyxc_nhwgk_bf16_instance.cpp
-   device_grouped_conv2d_fwd_xdl_nhwgc_gkyxc_nhwgk_f16_instance.cpp
-   device_grouped_conv2d_fwd_xdl_nhwgc_gkyxc_nhwgk_f32_instance.cpp
-   #dl
-   device_grouped_conv2d_fwd_dl_gnhwc_gkyxc_gnhwk_f16_instance.cpp
-   device_grouped_conv2d_fwd_dl_gnhwc_gkyxc_gnhwk_f32_instance.cpp
-)
+set(DEV_GR_CONV2D_FWD_INSTANCES)
+if(DTYPES MATCHES "fp32" OR NOT DEFINED DTYPES)
+   list(APPEND DEV_GR_CONV2D_FWD_INSTANCES device_grouped_conv2d_fwd_xdl_gnhwc_gkyxc_gnhwk_f32_instance.cpp)
+   list(APPEND DEV_GR_CONV2D_FWD_INSTANCES device_grouped_conv2d_fwd_xdl_nhwgc_gkyxc_nhwgk_f32_instance.cpp)
+   list(APPEND DEV_GR_CONV2D_FWD_INSTANCES device_grouped_conv2d_fwd_dl_gnhwc_gkyxc_gnhwk_f32_instance.cpp)
+endif()
+if(DTYPES MATCHES "fp16" OR NOT DEFINED DTYPES)
+   list(APPEND DEV_GR_CONV2D_FWD_INSTANCES device_grouped_conv2d_fwd_xdl_gnhwc_gkyxc_gnhwk_f16_instance.cpp)
+   list(APPEND DEV_GR_CONV2D_FWD_INSTANCES device_grouped_conv2d_fwd_xdl_nhwgc_gkyxc_nhwgk_f16_instance.cpp)
+   list(APPEND DEV_GR_CONV2D_FWD_INSTANCES device_grouped_conv2d_fwd_dl_gnhwc_gkyxc_gnhwk_f16_instance.cpp)
+endif()
+if(DTYPES MATCHES "bf16" OR NOT DEFINED DTYPES)
+   list(APPEND DEV_GR_CONV2D_FWD_INSTANCES device_grouped_conv2d_fwd_xdl_gnhwc_gkyxc_gnhwk_bf16_instance.cpp)
+   list(APPEND DEV_GR_CONV2D_FWD_INSTANCES device_grouped_conv2d_fwd_xdl_nhwgc_gkyxc_nhwgk_bf16_instance.cpp)
+endif()
+
+add_instance_library(device_grouped_conv2d_fwd_instance ${DEV_GR_CONV2D_FWD_INSTANCES})

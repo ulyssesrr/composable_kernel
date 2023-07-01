@@ -1,76 +1,87 @@
-add_instance_library(device_reduce_instance
-   device_reduce_instance_blockwise_f16_f16_f16_min.cpp
-   device_reduce_instance_blockwise_f16_f16_f16_max.cpp
-   device_reduce_instance_blockwise_f16_f16_f16_amax.cpp
-   device_reduce_instance_blockwise_f16_f32_f16_add.cpp
-   device_reduce_instance_blockwise_f16_f32_f16_avg.cpp
-   device_reduce_instance_blockwise_f16_f32_f16_norm2.cpp
-   device_reduce_instance_blockwise_f32_f32_f32_add.cpp
-   device_reduce_instance_blockwise_f32_f32_f32_avg.cpp
-   device_reduce_instance_blockwise_f32_f32_f32_norm2.cpp
-   device_reduce_instance_blockwise_f32_f32_f32_min.cpp
-   device_reduce_instance_blockwise_f32_f32_f32_max.cpp
-   device_reduce_instance_blockwise_f32_f32_f32_amax.cpp
-   device_reduce_instance_blockwise_f32_f64_f32_add.cpp
-   device_reduce_instance_blockwise_f32_f64_f32_avg.cpp
-   device_reduce_instance_blockwise_f32_f64_f32_norm2.cpp
-   device_reduce_instance_blockwise_f64_f64_f64_add.cpp
-   device_reduce_instance_blockwise_f64_f64_f64_avg.cpp
-   device_reduce_instance_blockwise_f64_f64_f64_norm2.cpp
-   device_reduce_instance_blockwise_f64_f64_f64_min.cpp
-   device_reduce_instance_blockwise_f64_f64_f64_max.cpp
-   device_reduce_instance_blockwise_f64_f64_f64_amax.cpp
-   device_reduce_instance_blockwise_i8_i32_i8_add.cpp
-   device_reduce_instance_blockwise_i8_i32_i8_avg.cpp
-   device_reduce_instance_blockwise_i8_i8_i8_min.cpp   
-   device_reduce_instance_blockwise_i8_i8_i8_max.cpp   
-   device_reduce_instance_blockwise_i8_i8_i8_amax.cpp   
-   device_reduce_instance_blockwise_b16_f32_b16_add.cpp
-   device_reduce_instance_blockwise_b16_f32_b16_avg.cpp
-   device_reduce_instance_blockwise_b16_f32_b16_norm2.cpp
-   device_reduce_instance_blockwise_b16_f32_b16_min.cpp
-   device_reduce_instance_blockwise_b16_f32_b16_max.cpp
-   device_reduce_instance_blockwise_b16_f32_b16_amax.cpp
-   device_reduce_instance_threadwise_f16_f16_f16_min.cpp
-   device_reduce_instance_threadwise_f16_f16_f16_max.cpp
-   device_reduce_instance_threadwise_f16_f16_f16_amax.cpp
-   device_reduce_instance_threadwise_f16_f32_f16_add.cpp
-   device_reduce_instance_threadwise_f16_f32_f16_avg.cpp
-   device_reduce_instance_threadwise_f16_f32_f16_norm2.cpp
-   device_reduce_instance_threadwise_f32_f32_f32_add.cpp
-   device_reduce_instance_threadwise_f32_f32_f32_avg.cpp
-   device_reduce_instance_threadwise_f32_f32_f32_norm2.cpp
-   device_reduce_instance_threadwise_f32_f32_f32_min.cpp
-   device_reduce_instance_threadwise_f32_f32_f32_max.cpp
-   device_reduce_instance_threadwise_f32_f32_f32_amax.cpp
-   device_reduce_instance_threadwise_f32_f64_f32_add.cpp
-   device_reduce_instance_threadwise_f32_f64_f32_avg.cpp
-   device_reduce_instance_threadwise_f32_f64_f32_norm2.cpp
-   device_reduce_instance_threadwise_f64_f64_f64_add.cpp
-   device_reduce_instance_threadwise_f64_f64_f64_avg.cpp
-   device_reduce_instance_threadwise_f64_f64_f64_norm2.cpp
-   device_reduce_instance_threadwise_f64_f64_f64_min.cpp
-   device_reduce_instance_threadwise_f64_f64_f64_max.cpp
-   device_reduce_instance_threadwise_f64_f64_f64_amax.cpp
-   device_reduce_instance_threadwise_i8_i32_i8_add.cpp
-   device_reduce_instance_threadwise_i8_i32_i8_avg.cpp
-   device_reduce_instance_threadwise_i8_i8_i8_min.cpp
-   device_reduce_instance_threadwise_i8_i8_i8_max.cpp
-   device_reduce_instance_threadwise_i8_i8_i8_amax.cpp
-   device_reduce_instance_threadwise_b16_f32_b16_add.cpp
-   device_reduce_instance_threadwise_b16_f32_b16_avg.cpp
-   device_reduce_instance_threadwise_b16_f32_b16_norm2.cpp
-   device_reduce_instance_threadwise_b16_f32_b16_min.cpp
-   device_reduce_instance_threadwise_b16_f32_b16_max.cpp
-   device_reduce_instance_threadwise_b16_f32_b16_amax.cpp
-   device_reduce_instance_multiblock_atomic_add_f16_f32_f32_add.cpp
-   device_reduce_instance_multiblock_atomic_add_f16_f32_f32_avg.cpp
-   device_reduce_instance_multiblock_atomic_add_f32_f32_f32_add.cpp
-   device_reduce_instance_multiblock_atomic_add_f32_f32_f32_avg.cpp
-   device_reduce_instance_multiblock_atomic_add_f32_f64_f32_add.cpp
-   device_reduce_instance_multiblock_atomic_add_f32_f64_f32_avg.cpp
-   device_reduce_instance_multiblock_atomic_add_f64_f64_f64_add.cpp
-   device_reduce_instance_multiblock_atomic_add_f64_f64_f64_avg.cpp
-   device_reduce_instance_multiblock_atomic_add_b16_f32_f32_add.cpp
-   device_reduce_instance_multiblock_atomic_add_b16_f32_f32_avg.cpp
-)
+set(DEV_REDUCE_INSTANCES)
+if(DTYPES MATCHES "fp64" OR NOT DEFINED DTYPES)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_f64_f64_f64_add.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_f64_f64_f64_avg.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_f64_f64_f64_norm2.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_f64_f64_f64_min.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_f64_f64_f64_max.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_f64_f64_f64_amax.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_f64_f64_f64_add.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_f64_f64_f64_avg.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_f64_f64_f64_norm2.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_f64_f64_f64_min.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_f64_f64_f64_max.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_f64_f64_f64_amax.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_multiblock_atomic_add_f64_f64_f64_add.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_multiblock_atomic_add_f64_f64_f64_avg.cpp)
+endif()
+if(DTYPES MATCHES "fp32" OR NOT DEFINED DTYPES)   
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_f32_f32_f32_add.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_f32_f32_f32_avg.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_f32_f32_f32_norm2.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_f32_f32_f32_min.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_f32_f32_f32_max.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_f32_f32_f32_amax.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_f32_f64_f32_add.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_f32_f64_f32_avg.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_f32_f64_f32_norm2.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_f32_f32_f32_add.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_f32_f32_f32_avg.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_f32_f32_f32_norm2.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_f32_f32_f32_min.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_f32_f32_f32_max.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_f32_f32_f32_amax.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_f32_f64_f32_add.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_f32_f64_f32_avg.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_f32_f64_f32_norm2.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_multiblock_atomic_add_f32_f32_f32_add.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_multiblock_atomic_add_f32_f32_f32_avg.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_multiblock_atomic_add_f32_f64_f32_add.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_multiblock_atomic_add_f32_f64_f32_avg.cpp)
+endif()
+if(DTYPES MATCHES "fp16" OR NOT DEFINED DTYPES)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_f16_f16_f16_min.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_f16_f16_f16_max.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_f16_f16_f16_amax.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_f16_f32_f16_add.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_f16_f32_f16_avg.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_f16_f32_f16_norm2.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_f16_f16_f16_min.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_f16_f16_f16_max.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_f16_f16_f16_amax.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_f16_f32_f16_add.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_f16_f32_f16_avg.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_f16_f32_f16_norm2.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_multiblock_atomic_add_f16_f32_f32_add.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_multiblock_atomic_add_f16_f32_f32_avg.cpp)
+endif()
+if(DTYPES MATCHES "bf16" OR NOT DEFINED DTYPES)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_b16_f32_b16_add.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_b16_f32_b16_avg.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_b16_f32_b16_norm2.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_b16_f32_b16_min.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_b16_f32_b16_max.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_b16_f32_b16_amax.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_b16_f32_b16_add.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_b16_f32_b16_avg.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_b16_f32_b16_norm2.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_b16_f32_b16_min.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_b16_f32_b16_max.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_b16_f32_b16_amax.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_multiblock_atomic_add_b16_f32_f32_add.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_multiblock_atomic_add_b16_f32_f32_avg.cpp)
+endif()
+if(DTYPES MATCHES "int8" OR NOT DEFINED DTYPES)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_i8_i32_i8_add.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_i8_i32_i8_avg.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_i8_i8_i8_min.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_i8_i8_i8_max.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_blockwise_i8_i8_i8_amax.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_i8_i32_i8_add.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_i8_i32_i8_avg.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_i8_i8_i8_min.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_i8_i8_i8_max.cpp)
+   list(APPEND DEV_REDUCE_INSTANCES device_reduce_instance_threadwise_i8_i8_i8_amax.cpp)
+endif()
+
+add_instance_library(device_reduce_instance ${DEV_REDUCE_INSTANCES})

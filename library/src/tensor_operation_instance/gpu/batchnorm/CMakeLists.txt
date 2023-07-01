@@ -1,14 +1,23 @@
-add_instance_library(device_batchnorm_instance
-    device_batchnorm_forward_f16_instance.cpp
-    device_batchnorm_forward_f32_instance.cpp
-    device_batchnorm_forward_bf16_instance.cpp
-    device_batchnorm_forward_f64_instance.cpp
-    device_batchnorm_backward_f16_instance.cpp
-    device_batchnorm_backward_f32_instance.cpp
-    device_batchnorm_backward_bf16_instance.cpp
-    device_batchnorm_backward_f64_instance.cpp
-    device_batchnorm_infer_f16_instance.cpp
-    device_batchnorm_infer_f32_instance.cpp
-    device_batchnorm_infer_bf16_instance.cpp
-    device_batchnorm_infer_f64_instance.cpp
-)
+set(DEV_BATCHNORM_INSTANCES)
+if(DTYPES MATCHES "fp64" OR NOT DEFINED DTYPES)
+    list(APPEND DEV_BATCHNORM_INSTANCES device_batchnorm_forward_f64_instance.cpp)
+    list(APPEND DEV_BATCHNORM_INSTANCES device_batchnorm_backward_f64_instance.cpp)
+    list(APPEND DEV_BATCHNORM_INSTANCES device_batchnorm_infer_f64_instance.cpp)
+endif()
+if(DTYPES MATCHES "fp32" OR NOT DEFINED DTYPES)
+    list(APPEND DEV_BATCHNORM_INSTANCES device_batchnorm_forward_f32_instance.cpp)
+    list(APPEND DEV_BATCHNORM_INSTANCES device_batchnorm_backward_f32_instance.cpp)
+    list(APPEND DEV_BATCHNORM_INSTANCES device_batchnorm_infer_f32_instance.cpp)
+endif()
+if(DTYPES MATCHES "fp16" OR NOT DEFINED DTYPES)
+    list(APPEND DEV_BATCHNORM_INSTANCES device_batchnorm_forward_f16_instance.cpp)
+    list(APPEND DEV_BATCHNORM_INSTANCES device_batchnorm_backward_f16_instance.cpp)
+    list(APPEND DEV_BATCHNORM_INSTANCES device_batchnorm_infer_f16_instance.cpp)
+endif()
+if(DTYPES MATCHES "bf16" OR NOT DEFINED DTYPES)
+    list(APPEND DEV_BATCHNORM_INSTANCES device_batchnorm_forward_bf16_instance.cpp)
+    list(APPEND DEV_BATCHNORM_INSTANCES device_batchnorm_backward_bf16_instance.cpp)
+    list(APPEND DEV_BATCHNORM_INSTANCES device_batchnorm_infer_bf16_instance.cpp)
+endif()
+
+add_instance_library(device_batchnorm_instance ${DEV_BATCHNORM_INSTANCES})

@@ -1,6 +1,15 @@
-add_instance_library(device_conv3d_bwd_data_instance
-   device_conv3d_bwd_data_xdl_ndhwc_kzyxc_ndhwk_f16_instance.cpp
-   device_conv3d_bwd_data_xdl_ndhwc_kzyxc_ndhwk_f32_instance.cpp
-   device_conv3d_bwd_data_xdl_ndhwc_kzyxc_ndhwk_bf16_instance.cpp
-   device_conv3d_bwd_data_xdl_ndhwc_kzyxc_ndhwk_int8_instance.cpp
-)
+set(DEV_CONV3D_BWD_DATA_INSTANCES)
+if(DTYPES MATCHES "fp32" OR NOT DEFINED DTYPES)
+   list(APPEND DEV_CONV3D_BWD_DATA_INSTANCES device_conv3d_bwd_data_xdl_ndhwc_kzyxc_ndhwk_f32_instance.cpp)
+endif()
+if(DTYPES MATCHES "fp16" OR NOT DEFINED DTYPES)
+   list(APPEND DEV_CONV3D_BWD_DATA_INSTANCES device_conv3d_bwd_data_xdl_ndhwc_kzyxc_ndhwk_f16_instance.cpp)
+endif()
+if(DTYPES MATCHES "bf16" OR NOT DEFINED DTYPES)
+   list(APPEND DEV_CONV3D_BWD_DATA_INSTANCES device_conv3d_bwd_data_xdl_ndhwc_kzyxc_ndhwk_bf16_instance.cpp)
+endif()
+if(DTYPES MATCHES "int8" OR NOT DEFINED DTYPES)
+   list(APPEND DEV_CONV3D_BWD_DATA_INSTANCES device_conv3d_bwd_data_xdl_ndhwc_kzyxc_ndhwk_int8_instance.cpp)
+endif()
+
+add_instance_library(device_conv3d_bwd_data_instance ${DEV_CONV3D_BWD_DATA_INSTANCES})

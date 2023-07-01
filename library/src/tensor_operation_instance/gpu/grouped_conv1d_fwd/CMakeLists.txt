@@ -1,6 +1,15 @@
-add_instance_library(device_grouped_conv1d_fwd_instance
-   device_grouped_conv1d_fwd_xdl_gnwc_gkxc_gnwk_bf16_instance.cpp
-   device_grouped_conv1d_fwd_xdl_gnwc_gkxc_gnwk_f16_instance.cpp
-   device_grouped_conv1d_fwd_xdl_gnwc_gkxc_gnwk_f32_instance.cpp
-   device_grouped_conv1d_fwd_xdl_gnwc_gkxc_gnwk_int8_instance.cpp
-)
+set(DEV_GR_CONV1D_FWD_INSTANCES)
+if(DTYPES MATCHES "fp32" OR NOT DEFINED DTYPES)
+   list(APPEND DEV_GR_CONV1D_FWD_INSTANCES device_grouped_conv1d_fwd_xdl_gnwc_gkxc_gnwk_f32_instance.cpp)
+endif()
+if(DTYPES MATCHES "fp16" OR NOT DEFINED DTYPES)
+   list(APPEND DEV_GR_CONV1D_FWD_INSTANCES device_grouped_conv1d_fwd_xdl_gnwc_gkxc_gnwk_f16_instance.cpp)
+endif()
+if(DTYPES MATCHES "bf16" OR NOT DEFINED DTYPES)
+   list(APPEND DEV_GR_CONV1D_FWD_INSTANCES device_grouped_conv1d_fwd_xdl_gnwc_gkxc_gnwk_bf16_instance.cpp)
+endif()
+if(DTYPES MATCHES "int8" OR NOT DEFINED DTYPES)
+   list(APPEND DEV_GR_CONV1D_FWD_INSTANCES device_grouped_conv1d_fwd_xdl_gnwc_gkxc_gnwk_int8_instance.cpp)
+endif()
+
+add_instance_library(device_grouped_conv1d_fwd_instance ${DEV_GR_CONV1D_FWD_INSTANCES})
