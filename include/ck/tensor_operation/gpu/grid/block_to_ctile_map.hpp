@@ -271,7 +271,7 @@ struct BlockToCTileMap_KSplit_M00_N0_M01Adapt
 
     __host__ constexpr index_t CalculateGridSize(const CGridDesc_M_N& c_grid_desc_m_n) const
     {
-        const auto M0 = math::integer_divide_ceil(c_grid_desc_m_n.GetLength(I0), MPerBlock);
+        const auto M0 = 1; // math::integer_divide_ceil(c_grid_desc_m_n.GetLength(I0), MPerBlock);
         const auto N0 = math::integer_divide_ceil(c_grid_desc_m_n.GetLength(I1), NPerBlock);
 
         const index_t grid_size = M0 * N0 * KSplit_;
@@ -284,7 +284,7 @@ struct BlockToCTileMap_KSplit_M00_N0_M01Adapt
     {
         auto block_1d_id = idx_top[I0];
 
-        const auto M0 = math::integer_divide_ceil(c_grid_desc_m_n_.GetLength(I0), MPerBlock);
+        const auto M0 = 1; // math::integer_divide_ceil(c_grid_desc_m_n_.GetLength(I0), MPerBlock);
         const auto N0 = math::integer_divide_ceil(c_grid_desc_m_n_.GetLength(I1), NPerBlock);
 
         block_1d_id = block_1d_id % (M0 * N0 * KSplit_); // hide groups

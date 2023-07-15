@@ -36,6 +36,7 @@ __global__ void
 #endif
         kernel_grouped_gemm_xdl_splitk(const void* gemm_desc_const,
                                        const index_t group_count,
+                                       const index_t block_size,
                                        const index_t k_batch)
 {
 #if(!defined(__HIP_DEVICE_COMPILE__) || defined(__gfx908__) || defined(__gfx90a__) || \
@@ -43,50 +44,25 @@ __global__ void
     constexpr index_t shared_size = GridwiseGemm::GetSharedMemoryNumberOfByte();
     __shared__ uint8_t p_shared[shared_size];
 
+    ignore = group_count;
+
     const auto gemm_desc_ptr = reinterpret_cast<const GemmDesc*>(gemm_desc_const);
 
     const index_t block_id = get_block_1d_id();
 
-#if 0
-    index_t left     = 0;
-    index_t right    = group_count;
-    index_t group_id = index_t((left + right) / 2);
-    while((!(block_id >= gemm_desc_ptr[group_id].block_start_ &&
-             block_id < gemm_desc_ptr[group_id].block_end_)) &&
-          left <= right)
-    {
-        if(block_id < gemm_desc_ptr[group_id].block_start_)
-        {
-            right = group_id;
-        }
-        else
-        {
-            left = group_id;
-        }
-        group_id = index_t((left + right) / 2);
-    }
-#else
-    if(block_id >= gemm_desc_ptr[group_count - 1].block_end_)
-        return;
+    const index_t group_id = block_id / block_size;
 
-    index_t group_id = 0;
-    for(; group_id < group_count; group_id++)
-    {
-        if(block_id >= gemm_desc_ptr[group_id].block_start_ &&
-           block_id < gemm_desc_ptr[group_id].block_end_)
-        {
-            break;
-        }
-    }
-#endif
+    const auto M = gemm_desc_ptr[group_id].M;
+    const auto N = gemm_desc_ptr[group_id].N;
+    const auto K = gemm_desc_ptr[group_id].K;
+
+    if(M == 0 || N == 0 || K == 0)
+        return;
 
     const auto p_a_grid = reinterpret_cast<const FloatA*>(gemm_desc_ptr[group_id].p_a_grid);
     const auto p_b_grid = reinterpret_cast<const FloatB*>(gemm_desc_ptr[group_id].p_b_grid);
     const auto p_c_grid = reinterpret_cast<FloatC*>(gemm_desc_ptr[group_id].p_c_grid);
 
-    const auto M       = gemm_desc_ptr[group_id].M;
-    const auto N       = gemm_desc_ptr[group_id].N;
-    const auto K       = gemm_desc_ptr[group_id].K;
     const auto StrideA = gemm_desc_ptr[group_id].StrideA;
     const auto StrideB = gemm_desc_ptr[group_id].StrideB;
     const auto StrideC = gemm_desc_ptr[group_id].StrideC;
@@ -108,7 +84,7 @@ __global__ void
     const auto c_grid_desc_m_n    = GridwiseGemm::MakeCGridDescriptor_M_N(M, N, StrideC);
     const auto local_b2c_tile_map = Block2ETileMapKSplit{c_grid_desc_m_n, B2E_M01, k_batch};
     const auto block_2_ctile_map =
-        GroupedGemmBlock2ETileMap(local_b2c_tile_map, gemm_desc_ptr[group_id].block_start_);
+        GroupedGemmBlock2ETileMap(local_b2c_tile_map, group_id * block_size);
 
     GridwiseGemm::template Run<HasMainKBlockLoop, CGlobalMemoryDataOperation>(
         p_a_grid,
@@ -144,7 +120,7 @@ template <typename ALayout,
           typename DsDataType,
           typename EDataType,
           typename AElementwiseOperation,
-          ypename BElementwiseOperation,
+          typename BElementwiseOperation,
           typename CDEElementwiseOperation,
           GemmSpecialization GemmSpec,
           ck::index_t NumGemmKPrefetchStage,
@@ -414,83 +390,17 @@ struct DeviceGroupedGemmXdlSplitKCShuffle : public DeviceGroupedGemmSplitK<ALayo
             index_t StrideA;
             index_t StrideB;
             index_t StrideC;
-
-	    //do not need after loop M implemented
-            index_t block_start_;
-            index_t block_end_;
         };
 
-        float Run(const Argument& arg, const StreamConfig& stream_config = StreamConfig{})
+        float Run(const Argument& arg,
+                  const void* gemm_descs_dev,
+                  const StreamConfig& stream_config = StreamConfig{})
         {
-            std::vector<SimpleGemmArgument> simple_gemm_kernel_args_;
-            simple_gemm_kernel_args_.reserve(arg.gemm_kernel_args_.size());
+            using GemmArgumentType = SimpleGemmArgument;
 
             index_t K0                       = arg.gemm_kernel_args_[0].karg_.K0;
             bool all_have_kbatch_gt_one      = arg.gemm_kernel_args_[0].karg_.k_batch > 1;
             bool all_have_main_k0_block_loop = GridwiseGemm::CalculateHasMainK0BlockLoop(K0);
-
-            for(std::size_t i = 0; i < arg.gemm_kernel_args_.size(); ++i)
-            {
-                const auto& karg = arg.gemm_kernel_args_[i].karg_;
-                if(stream_config.log_level_ > 0)
-                {
-                    karg.Print();
-                }
-
-                auto kbatch = karg.k_batch;
-
-                if(!GridwiseGemm::CheckValidity(karg))
-                {
-                    std::ostringstream err;
-                    err << "Group id: " << i << " has invalid GridwiseGemm settings!" << __FILE__
-                        << ":" << __LINE__ << ", in function: " << __func__;
-                    throw std::runtime_error(err.str());
-                }
-
-                K0 = karg.K0;
-                bool not_all_have_main_k0_block_loop_same =
-                    all_have_main_k0_block_loop xor GridwiseGemm::CalculateHasMainK0BlockLoop(K0);
-                bool not_all_have_kbatch_value_same = all_have_kbatch_gt_one xor (kbatch > 1);
-
-                if(not_all_have_main_k0_block_loop_same)
-                {
-                    std::ostringstream err;
-                    err << "Not all gemms have same value for main_k0_block_loop! in " << __FILE__
-                        << ":" << __LINE__ << ", in function: " << __func__;
-                    throw std::runtime_error(err.str());
-                }
-
-                if(not_all_have_kbatch_value_same)
-                {
-                    std::ostringstream err;
-                    err << "Not all gemms have same kbatch value (=1 or >1)! "
-                        << "group [" << i << "], kbatch: " << kbatch
-                        << ", group [0], kbatch: " << arg.gemm_kernel_args_[0].karg_.k_batch
-                        << " in " << __FILE__ << ":" << __LINE__ << ", in function: " << __func__;
-                    throw std::runtime_error(err.str());
-                }
-
-                simple_gemm_kernel_args_.push_back({karg.p_a_grid,
-                                                    karg.p_b_grid,
-                                                    karg.p_c_grid,
-                                                    karg.M,
-                                                    karg.N,
-                                                    karg.K,
-                                                    karg.StrideA,
-                                                    karg.StrideB,
-                                                    karg.StrideC,
-                                                    arg.gemm_kernel_args_[i].block_start_,
-                                                    arg.gemm_kernel_args_[i].block_end_});
-            }
-
-            using GemmArgumentType = SimpleGemmArgument;
-
-            hip_check_error(
-                hipMemcpyWithStream(arg.p_workspace_,
-                                    simple_gemm_kernel_args_.data(),
-                                    simple_gemm_kernel_args_.size() * sizeof(GemmArgumentType),
-                                    hipMemcpyHostToDevice,
-                                    stream_config.stream_id_));
 
             float ave_time = 0;
 
@@ -510,8 +420,10 @@ struct DeviceGroupedGemmXdlSplitKCShuffle : public DeviceGroupedGemmSplitK<ALayo
                                                   dim3(arg.grid_size_),
                                                   dim3(BlockSize),
                                                   0,
-                                                  arg.p_workspace_,
+                                                  gemm_descs_dev,
                                                   arg.gemm_kernel_args_.size(),
+                                                  arg.gemm_kernel_args_[0].block_end_ -
+                                                      arg.gemm_kernel_args_[0].block_start_,
                                                   arg.gemm_kernel_args_[0].karg_.k_batch);
             };
 
@@ -573,6 +485,86 @@ struct DeviceGroupedGemmXdlSplitKCShuffle : public DeviceGroupedGemmSplitK<ALayo
                     Run(kernel);
                 }
             }
+
+            return ave_time;
+        }
+
+        float Run(const Argument& arg, const StreamConfig& stream_config = StreamConfig{})
+        {
+            std::vector<SimpleGemmArgument> simple_gemm_kernel_args_;
+            simple_gemm_kernel_args_.reserve(arg.gemm_kernel_args_.size());
+
+            index_t K0                       = arg.gemm_kernel_args_[0].karg_.K0;
+            bool all_have_kbatch_gt_one      = arg.gemm_kernel_args_[0].karg_.k_batch > 1;
+            bool all_have_main_k0_block_loop = GridwiseGemm::CalculateHasMainK0BlockLoop(K0);
+
+            for(std::size_t i = 0; i < arg.gemm_kernel_args_.size(); ++i)
+            {
+                const auto& karg = arg.gemm_kernel_args_[i].karg_;
+                if(stream_config.log_level_ > 0)
+                {
+                    karg.Print();
+                }
+
+                auto kbatch = karg.k_batch;
+
+                std::cout << "Group id: " << i << " block_size: "
+                          << arg.gemm_kernel_args_[i].block_end_ -
+                                 arg.gemm_kernel_args_[i].block_start_
+                          << std::endl;
+
+                if(!GridwiseGemm::CheckValidity(karg))
+                {
+                    std::ostringstream err;
+                    err << "Group id: " << i << " has invalid GridwiseGemm settings!" << __FILE__
+                        << ":" << __LINE__ << ", in function: " << __func__;
+                    throw std::runtime_error(err.str());
+                }
+
+                K0 = karg.K0;
+                bool not_all_have_main_k0_block_loop_same =
+                    all_have_main_k0_block_loop xor GridwiseGemm::CalculateHasMainK0BlockLoop(K0);
+                bool not_all_have_kbatch_value_same = all_have_kbatch_gt_one xor (kbatch > 1);
+
+                if(not_all_have_main_k0_block_loop_same)
+                {
+                    std::ostringstream err;
+                    err << "Not all gemms have same value for main_k0_block_loop! in " << __FILE__
+                        << ":" << __LINE__ << ", in function: " << __func__;
+                    throw std::runtime_error(err.str());
+                }
+
+                if(not_all_have_kbatch_value_same)
+                {
+                    std::ostringstream err;
+                    err << "Not all gemms have same kbatch value (=1 or >1)! "
+                        << "group [" << i << "], kbatch: " << kbatch
+                        << ", group [0], kbatch: " << arg.gemm_kernel_args_[0].karg_.k_batch
+                        << " in " << __FILE__ << ":" << __LINE__ << ", in function: " << __func__;
+                    throw std::runtime_error(err.str());
+                }
+
+                simple_gemm_kernel_args_.push_back({karg.p_a_grid,
+                                                    karg.p_b_grid,
+                                                    karg.p_c_grid,
+                                                    karg.M,
+                                                    karg.N,
+                                                    karg.K,
+                                                    karg.StrideA,
+                                                    karg.StrideB,
+                                                    karg.StrideC});
+            }
+
+            using GemmArgumentType = SimpleGemmArgument;
+
+            hip_check_error(
+                hipMemcpyWithStream(arg.p_workspace_,
+                                    simple_gemm_kernel_args_.data(),
+                                    simple_gemm_kernel_args_.size() * sizeof(GemmArgumentType),
+                                    hipMemcpyHostToDevice,
+                                    stream_config.stream_id_));
+
+            float ave_time = Run(arg, arg.p_workspace_, stream_config);
 
             return ave_time;
         }
