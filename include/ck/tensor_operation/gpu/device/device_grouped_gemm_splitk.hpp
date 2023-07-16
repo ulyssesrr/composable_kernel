@@ -8,6 +8,20 @@ namespace ck {
 namespace tensor_operation {
 namespace device {
 
+struct GemmKernelArgument
+{
+    const void* p_a_grid;
+    const void* p_b_grid;
+    void* p_c_grid;
+
+    index_t M;
+    index_t N;
+    index_t K;
+    index_t StrideA;
+    index_t StrideB;
+    index_t StrideC;
+};
+
 template <typename ALayout,
           typename BLayout,
           typename DsLayout,

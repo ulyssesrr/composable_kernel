@@ -79,27 +79,15 @@ struct ExecutionConfig final
 
 bool run_grouped_gemm(const ProblemSize& problem_size, const ExecutionConfig& config)
 {
-    int group_count = problem_size.group_count;
+    auto group_count = problem_size.group_count;
 
     // GEMM shape
     std::vector<ck::tensor_operation::device::GemmDesc> gemm_descs;
-    std::vector<const void*> p_a, p_b;
-    std::vector<void*> p_c;
+    std::vector<void*> p_Cs;
 
     gemm_descs.reserve(group_count);
 
-    for(int i = 0; i < group_count; i++)
-    {
-        int M = problem_size.Ms[i];
-        int N = problem_size.Ns[i];
-        int K = problem_size.Ks[i];
-
-        int stride_A = problem_size.stride_As[i];
-        int stride_B = problem_size.stride_Bs[i];
-        int stride_C = problem_size.stride_Cs[i];
-
-        gemm_descs.push_back({M, N, K, stride_A, stride_B, stride_C, {}});
-    }
+    int sum_of_m = 0;
 
     auto f_host_tensor_descriptor =
         [](std::size_t row, std::size_t col, std::size_t stride, auto layout) {
@@ -135,21 +123,22 @@ bool run_grouped_gemm(const ProblemSize& problem_size, const ExecutionConfig& co
 
     std::size_t flop = 0, num_btype = 0;
 
-    for(std::size_t i = 0; i < gemm_descs.size(); i++)
+    for(int i = 0; i < group_count; i++)
     {
+        sum_of_m += problem_size.Ms[i];
         a_tensors.push_back(Tensor<ADataType>(f_host_tensor_descriptor(
-            gemm_descs[i].M_, gemm_descs[i].K_, gemm_descs[i].stride_A_, ALayout{})));
+            problem_size.Ms[i], problem_size.Ks[i], problem_size.stride_As[i], ALayout{})));
         b_tensors.push_back(Tensor<BDataType>(f_host_tensor_descriptor(
-            gemm_descs[i].K_, gemm_descs[i].N_, gemm_descs[i].stride_B_, BLayout{})));
+            problem_size.Ks[i], problem_size.Ns[i], problem_size.stride_Bs[i], BLayout{})));
         c_host_tensors.push_back(Tensor<EDataType>(f_host_tensor_descriptor(
-            gemm_descs[i].M_, gemm_descs[i].N_, gemm_descs[i].stride_C_, ELayout{})));
+            problem_size.Ms[i], problem_size.Ns[i], problem_size.stride_Cs[i], ELayout{})));
         c_device_tensors.push_back(Tensor<EDataType>(f_host_tensor_descriptor(
-            gemm_descs[i].M_, gemm_descs[i].N_, gemm_descs[i].stride_C_, ELayout{})));
+            problem_size.Ms[i], problem_size.Ns[i], problem_size.stride_Cs[i], ELayout{})));
         std::cout << "gemm[" << i << "] a_m_k: " << a_tensors[i].mDesc
                   << " b_k_n: " << b_tensors[i].mDesc << " c_m_n: " << c_device_tensors[i].mDesc
                   << std::endl;
 
-        flop += std::size_t(2) * gemm_descs[i].M_ * gemm_descs[i].K_ * gemm_descs[i].N_;
+        flop += std::size_t(2) * problem_size.Ms[i] * problem_size.Ks[i] * problem_size.Ns[i];
         num_btype += sizeof(ADataType) * a_tensors[i].mDesc.GetElementSize() +
                      sizeof(BDataType) * b_tensors[i].mDesc.GetElementSize() +
                      sizeof(EDataType) * c_device_tensors[i].mDesc.GetElementSize();
@@ -171,22 +160,47 @@ bool run_grouped_gemm(const ProblemSize& problem_size, const ExecutionConfig& co
         }
     }
 
-    for(std::size_t i = 0; i < gemm_descs.size(); i++)
-    {
-        a_tensors_device.emplace_back(std::make_unique<DeviceMem>(
-            sizeof(ADataType) * a_tensors[i].mDesc.GetElementSpaceSize()));
-        b_tensors_device.emplace_back(std::make_unique<DeviceMem>(
-            sizeof(BDataType) * b_tensors[i].mDesc.GetElementSpaceSize()));
-        c_tensors_device.emplace_back(std::make_unique<DeviceMem>(
-            sizeof(EDataType) * c_device_tensors[i].mDesc.GetElementSpaceSize()));
+    using GemmKernelArgument = ck::tensor_operation::device::GemmKernelArgument;
 
-        a_tensors_device[i]->ToDevice(a_tensors[i].mData.data());
-        b_tensors_device[i]->ToDevice(b_tensors[i].mData.data());
+    std::vector<GemmKernelArgument> simple_gemm_kernel_args_;
+    simple_gemm_kernel_args_.reserve(group_count);
+
+    for(int i = 0; i < group_count; i++)
+    {
+        a_tensors_device.emplace_back(
+            std::make_unique<DeviceMem>(sizeof(ADataType) * sum_of_m * problem_size.Ks[i]));
+
+        b_tensors_device.emplace_back(std::make_unique<DeviceMem>(
+            sizeof(BDataType) * problem_size.Ns[i] * problem_size.Ks[i]));
+
+        c_tensors_device.emplace_back(
+            std::make_unique<DeviceMem>(sizeof(EDataType) * sum_of_m * problem_size.Ns[i]));
+
+        a_tensors_device[i]->ToDevice(a_tensors[i].mData.data(),
+                                      a_tensors[i].mDesc.GetElementSpaceSize() * sizeof(ADataType));
+        b_tensors_device[i]->ToDevice(b_tensors[i].mData.data(),
+                                      b_tensors[i].mDesc.GetElementSpaceSize() * sizeof(BDataType));
         c_tensors_device[i]->SetZero();
 
-        p_a.push_back(a_tensors_device[i]->GetDeviceBuffer());
-        p_b.push_back(b_tensors_device[i]->GetDeviceBuffer());
-        p_c.push_back(c_tensors_device[i]->GetDeviceBuffer());
+        p_Cs.push_back(c_tensors_device[i]->GetDeviceBuffer());
+
+        gemm_descs.push_back({sum_of_m,
+                              problem_size.Ns[i],
+                              problem_size.Ks[i],
+                              problem_size.stride_As[i],
+                              problem_size.stride_Bs[i],
+                              problem_size.stride_Cs[i],
+                              {}});
+
+        simple_gemm_kernel_args_.push_back({a_tensors_device[i]->GetDeviceBuffer(),
+                                            b_tensors_device[i]->GetDeviceBuffer(),
+                                            c_tensors_device[i]->GetDeviceBuffer(),
+                                            problem_size.Ms[i],
+                                            problem_size.Ns[i],
+                                            problem_size.Ks[i],
+                                            problem_size.stride_As[i],
+                                            problem_size.stride_Bs[i],
+                                            problem_size.stride_Cs[i]});
     }
 
     auto a_element_op = AElementOp{};
@@ -196,17 +210,24 @@ bool run_grouped_gemm(const ProblemSize& problem_size, const ExecutionConfig& co
     auto gemm    = DeviceGemmInstance{};
     auto invoker = gemm.MakeInvoker();
 
+    std::vector<const void*> p_As                = {};
+    std::vector<const void*> p_Bs                = {};
     std::vector<std::array<const void*, 0>> p_Ds = {};
 
     // do GEMM
     auto argument = gemm.MakeArgument(
-        p_a, p_b, p_Ds, p_c, gemm_descs, a_element_op, b_element_op, c_element_op);
+        p_As, p_Bs, p_Ds, p_Cs, gemm_descs, a_element_op, b_element_op, c_element_op);
 
     DeviceMem gemm_desc_workspace(gemm.GetWorkSpaceSize(&argument));
 
     gemm.SetWorkSpacePointer(&argument, gemm_desc_workspace.GetDeviceBuffer());
 
-    gemm.SetKBatchSize(argument, 8);
+    hip_check_error(hipMemcpy(gemm_desc_workspace.GetDeviceBuffer(),
+                              simple_gemm_kernel_args_.data(),
+                              gemm.GetWorkSpaceSize(&argument),
+                              hipMemcpyHostToDevice));
+
+    gemm.SetKBatchSize(argument, 4);
 
     if(!gemm.IsSupportedArgument(argument))
     {
@@ -215,7 +236,7 @@ bool run_grouped_gemm(const ProblemSize& problem_size, const ExecutionConfig& co
             "not support this GEMM problem");
     }
 
-    invoker.Run(argument, StreamConfig{nullptr, false});
+    invoker.Run(argument, gemm_desc_workspace.GetDeviceBuffer(), StreamConfig{nullptr, false});
 
     bool pass = true;
     if(config.do_verification)
@@ -230,7 +251,9 @@ bool run_grouped_gemm(const ProblemSize& problem_size, const ExecutionConfig& co
 
         for(std::size_t i = 0; i < gemm_descs.size(); i++)
         {
-            c_tensors_device[i]->FromDevice(c_device_tensors[i].mData.data());
+            c_tensors_device[i]->FromDevice(c_device_tensors[i].mData.data(),
+                                            c_device_tensors[i].mDesc.GetElementSize() *
+                                                sizeof(EDataType));
             auto ref_gemm    = ReferenceGemmInstance{};
             auto ref_invoker = ref_gemm.MakeInvoker();
 
@@ -249,7 +272,9 @@ bool run_grouped_gemm(const ProblemSize& problem_size, const ExecutionConfig& co
 
     if(config.time_kernel)
     {
-        float ave_time   = invoker.Run(argument, StreamConfig{nullptr, config.time_kernel});
+        float ave_time   = invoker.Run(argument,
+                                     gemm_desc_workspace.GetDeviceBuffer(),
+                                     StreamConfig{nullptr, config.time_kernel});
         float tflops     = static_cast<float>(flop) / 1.E9 / ave_time;
         float gb_per_sec = num_btype / 1.E6 / ave_time;
 
@@ -267,7 +292,8 @@ int main(int argc, char* argv[])
 
     problem_size.group_count = 16;
 
-    problem_size.Ms = {0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0};
+    problem_size.Ms = {
+        167, 183, 177, 181, 153, 139, 156, 173, 163, 150, 204, 184, 168, 156, 168, 148};
 
     for(int i = 0; i < problem_size.group_count; i++)
     {

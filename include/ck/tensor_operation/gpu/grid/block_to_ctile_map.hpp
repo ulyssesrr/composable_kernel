@@ -315,6 +315,11 @@ struct BlockToCTileMap_KSplit_M00_N0_M01Adapt
 
     __host__ bool CheckValidity(const CGridDesc_M_N& /* c_grid_desc_m_n */) const { return true; }
 
+    __device__ index_t CalculateMLoops(const CGridDesc_M_N& c_grid_desc_m_n) const
+    {
+        return math::integer_divide_ceil(c_grid_desc_m_n.GetLength(I0), MPerBlock);
+    }
+
     private:
     index_t M01_;
     index_t KSplit_;
@@ -586,17 +591,22 @@ struct OffsettedBlockToCTileMap
     using underlying_type = UnderlyingBlockToCTileMap;
 
     __host__ __device__ OffsettedBlockToCTileMap(UnderlyingBlockToCTileMap block_to_ctile_map,
-                                                 index_t block_start)
+                                                 index_t block_start,
+                                                 index_t mblock_id_off = 0)
     {
         block_to_ctile_map_ = block_to_ctile_map;
         block_start_        = block_start;
+        mblock_id_off_      = mblock_id_off;
     }
 
     template <typename TopIdx>
     __host__ __device__ constexpr auto CalculateBottomIndex(const TopIdx& idx_top) const
     {
-        return block_to_ctile_map_.CalculateBottomIndex(
+        auto idx_bot = block_to_ctile_map_.CalculateBottomIndex(
             make_multi_index(idx_top[Number<0>{}] - block_start_));
+
+        return make_tuple(
+            idx_bot[Number<0>{}], idx_bot[Number<1>{}] + mblock_id_off_, idx_bot[Number<2>{}]);
     }
 
     template <typename CTileIdx, typename CTileDim>
@@ -620,6 +630,7 @@ struct OffsettedBlockToCTileMap
 
     UnderlyingBlockToCTileMap block_to_ctile_map_;
     index_t block_start_;
+    index_t mblock_id_off_;
 };
 
 /**
