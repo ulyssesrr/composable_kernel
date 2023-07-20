@@ -85,7 +85,7 @@ template <index_t BlockSize,
           index_t CBlockTransferScalarPerVector_NWaveNPerXDL,
           typename CBlockTransferClusterLengths_MBlock_MPerBlock_NBlock_NPerBlock,
           LoopScheduler LoopSched     = make_default_loop_scheduler(),
-          PipelineVersion PipelineVer = PipelineVersion::v1>
+          PipelineVersion PipelineVer = PipelineVersion::v2>
 struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4r2
 {
     static constexpr auto I0 = Number<0>{};
@@ -711,7 +711,8 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4r2
                                                 1,
                                                 1,
                                                 AThreadTransferSrcResetCoordinateAfterRun,
-                                                true>(
+                                                true,
+                                                NumGemmKPrefetchStage>(
                 a_b_k0_m_k1_grid_desc,
                 make_multi_index(k_batch_id, 0, m_block_data_idx_on_grid, 0),
                 a_element_op,
@@ -741,7 +742,8 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4r2
                                                 1,
                                                 1,
                                                 BThreadTransferSrcResetCoordinateAfterRun,
-                                                true>(
+                                                true,
+                                                NumGemmKPrefetchStage>(
                 b_b_k0_n_k1_grid_desc,
                 make_multi_index(k_batch_id, 0, n_block_data_idx_on_grid, 0),
                 b_element_op,
