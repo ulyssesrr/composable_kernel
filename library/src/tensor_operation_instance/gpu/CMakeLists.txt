@@ -1,9 +1,25 @@
 function(add_instance_library INSTANCE_NAME)
-    message("adding instance ${INSTANCE_NAME}")
-    add_library(${INSTANCE_NAME} OBJECT ${ARGN})
-    target_compile_features(${INSTANCE_NAME} PUBLIC)
-    set_target_properties(${INSTANCE_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-    clang_tidy_check(${INSTANCE_NAME})
+      message("adding instance ${INSTANCE_NAME}")
+      foreach(source in "${ARGN}")
+        if(DEFINED DTYPES AND
+                (NOT DTYPES MATCHES "fp8" AND source MATCHES "fp8") OR
+                (NOT DTYPES MATCHES "fp16" AND source MATCHES "fp16") OR
+                (NOT DTYPES MATCHES "fp32" AND source MATCHES "fp32") OR
+                (NOT DTYPES MATCHES "fp64" AND source MATCHES "fp64") OR
+                (NOT DTYPES MATCHES "bf16" AND source MATCHES "bf16") OR
+                (NOT DTYPES MATCHES "int8" AND source MATCHES "int8"))
+                        message("removing instance ${source} ")
+                        list(REMOVE_ITEM ARGN "${source}")
+        endif()
+        if(NOT DEFINED DL_KERNELS AND source MATCHES "_dl")
+                message("removing instance ${source} ")
+                list(REMOVE_ITEM ARGN "${source}")
+        endif()
+      endforeach()
+      add_library(${INSTANCE_NAME} OBJECT ${ARGN})
+      target_compile_features(${INSTANCE_NAME} PUBLIC)
+      set_target_properties(${INSTANCE_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+      clang_tidy_check(${INSTANCE_NAME})
 endfunction(add_instance_library INSTANCE_NAME)
 
 
