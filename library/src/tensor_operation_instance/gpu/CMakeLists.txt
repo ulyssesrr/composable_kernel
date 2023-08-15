@@ -1,18 +1,19 @@
 function(add_instance_library INSTANCE_NAME)
       message("adding instance ${INSTANCE_NAME}")
-      foreach(source in "${ARGN}")
+      foreach(source IN LISTS ARGN)
         if(DEFINED DTYPES AND
                 (NOT DTYPES MATCHES "fp8" AND source MATCHES "fp8") OR
                 (NOT DTYPES MATCHES "fp16" AND source MATCHES "fp16") OR
                 (NOT DTYPES MATCHES "fp32" AND source MATCHES "fp32") OR
                 (NOT DTYPES MATCHES "fp64" AND source MATCHES "fp64") OR
                 (NOT DTYPES MATCHES "bf16" AND source MATCHES "bf16") OR
-                (NOT DTYPES MATCHES "int8" AND source MATCHES "int8"))
+                (NOT DTYPES MATCHES "int8" AND source MATCHES "int8") OR
+                (NOT DTYPES MATCHES "int8" AND source MATCHES "_i8"))
                         message("removing instance ${source} ")
                         list(REMOVE_ITEM ARGN "${source}")
         endif()
         if(NOT DEFINED DL_KERNELS AND source MATCHES "_dl")
-                message("removing instance ${source} ")
+                message("removing dl instance ${source} ")
                 list(REMOVE_ITEM ARGN "${source}")
         endif()
       endforeach()
@@ -55,7 +56,7 @@ IF(IS_DIRECTORY "${subdir_path}")
             #message("int8 instance found!")
             set(add_inst 1)
     endif()
-    if(NOT "${cmake_instance}" MATCHES "DTYPES" OR NOT DEFINED DTYPES)
+    if(NOT DEFINED DTYPES)
             #message("instance should be built for all types!")
             set(add_inst 1)
     endif()
