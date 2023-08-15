@@ -79,9 +79,7 @@ set(GEMM_INSTANCES)
 
 add_instance_library(device_gemm_instance ${GEMM_INSTANCES})
 
-
-if(DTYPES MATCHES "fp16" OR NOT DEFINED DTYPES)
-  set(ENABLE_PIPELINE_V2_OPT OFF)
+set(ENABLE_PIPELINE_V2_OPT OFF)
 
   if (ENABLE_PIPELINE_V2_OPT)
     set(MAX_ILP_OPTS
@@ -113,5 +111,4 @@ if(DTYPES MATCHES "fp16" OR NOT DEFINED DTYPES)
     set_source_files_properties(device_gemm_xdl_f16_f16_f16/mk_nk_mn_default_pipeline_v2_opt_instance.cpp PROPERTIES
        COMPILE_OPTIONS "${MAX_ILP_OPTS}"
        COMPILE_DEFINITIONS "${WAVES_PER_EU_DEFS};${IGLP_OPT_DEFS}")
-  endif(ENABLE_PIPELINE_V2_OPT)
-endif(DTYPES MATCHES "fp16" OR NOT DEFINED DTYPES)
+endif(ENABLE_PIPELINE_V2_OPT)
