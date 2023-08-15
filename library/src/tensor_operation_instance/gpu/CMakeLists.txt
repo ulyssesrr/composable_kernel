@@ -1,17 +1,20 @@
 function(add_instance_library INSTANCE_NAME)
       message("adding instance ${INSTANCE_NAME}")
-      foreach(source IN LISTS ARGN)
-        if(DEFINED DTYPES AND
-                (NOT DTYPES MATCHES "fp8" AND source MATCHES "fp8") OR
-                (NOT DTYPES MATCHES "fp16" AND source MATCHES "fp16") OR
-                (NOT DTYPES MATCHES "fp32" AND source MATCHES "fp32") OR
-                (NOT DTYPES MATCHES "fp64" AND source MATCHES "fp64") OR
-                (NOT DTYPES MATCHES "bf16" AND source MATCHES "bf16") OR
+      if(DEFINED DTYPES)
+        foreach(source IN LISTS ARGN)
+         if((NOT DTYPES MATCHES "fp8" AND source MATCHES "f8") OR
+                (NOT DTYPES MATCHES "fp16" AND source MATCHES "f16") OR
+                (NOT DTYPES MATCHES "fp32" AND source MATCHES "f32") OR
+                (NOT DTYPES MATCHES "fp64" AND source MATCHES "f64") OR
+                (NOT DTYPES MATCHES "bf16" AND source MATCHES "b16") OR
                 (NOT DTYPES MATCHES "int8" AND source MATCHES "int8") OR
                 (NOT DTYPES MATCHES "int8" AND source MATCHES "_i8"))
                         message("removing instance ${source} ")
                         list(REMOVE_ITEM ARGN "${source}")
-        endif()
+         endif()
+        endforeach()
+      endif()
+      foreach(source IN LISTS ARGN)
         if(NOT DEFINED DL_KERNELS AND source MATCHES "_dl")
                 message("removing dl instance ${source} ")
                 list(REMOVE_ITEM ARGN "${source}")
@@ -39,20 +42,24 @@ IF(IS_DIRECTORY "${subdir_path}")
             #message("fp8 instance found!")
             set(add_inst 1)
     endif()
-    if("${cmake_instance}" MATCHES "fp16" AND DTYPES MATCHES "fp16")
+    if("${cmake_instance}" MATCHES "f16" AND DTYPES MATCHES "fp16")
             #message("fp16 instance found!")
             set(add_inst 1)
     endif()
-    if("${cmake_instance}" MATCHES "fp32" AND DTYPES MATCHES "fp32")
+    if("${cmake_instance}" MATCHES "f32" AND DTYPES MATCHES "fp32")
             #message("fp32 instance found!")
             set(add_inst 1)
     endif()
-    if("${cmake_instance}" MATCHES "fp64" AND DTYPES MATCHES "fp64")
+    if("${cmake_instance}" MATCHES "f64" AND DTYPES MATCHES "fp64")
             #message("fp64 instance found!")
             set(add_inst 1)
     endif()
     if("${cmake_instance}" MATCHES "bf16" AND DTYPES MATCHES "bf16")
             #message("bf16 instance found!")
+            set(add_inst 1)
+    endif()
+    if("${cmake_instance}" MATCHES "_i8" AND DTYPES MATCHES "int8")
+            #message("int8 instance found!")
             set(add_inst 1)
     endif()
     if("${cmake_instance}" MATCHES "int8" AND DTYPES MATCHES "int8")
