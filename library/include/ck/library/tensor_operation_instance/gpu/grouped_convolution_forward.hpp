@@ -216,7 +216,8 @@ void add_device_grouped_conv3d_fwd_xdl_gndhwc_gkzyxc_gndhwk_bf16_instances(
                                                               PassThrough,
                                                               PassThrough,
                                                               PassThrough>>>& instances);
-
+#endif
+#ifdef __fp16__
 void add_device_grouped_conv3d_fwd_xdl_gndhwc_gkzyxc_gndhwk_f16_instances(
     std::vector<std::unique_ptr<DeviceGroupedConvFwdMultipleD<3,
                                                               GNDHWC,
