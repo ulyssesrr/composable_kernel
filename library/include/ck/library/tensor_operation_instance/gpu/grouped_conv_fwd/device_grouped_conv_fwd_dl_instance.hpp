@@ -7,7 +7,7 @@
 #include "ck/tensor_operation/gpu/device/convolution_forward_specialization.hpp"
 #include "ck/tensor_operation/gpu/device/gemm_specialization.hpp"
 #include "ck/tensor_operation/gpu/element/element_wise_operation.hpp"
-
+#ifdef DL_KERNELS
 namespace ck {
 namespace tensor_operation {
 namespace device {
@@ -79,3 +79,4 @@ using device_grouped_conv2d_fwd_dl_f32_instances = std::tuple<
 } // namespace device
 } // namespace tensor_operation
 } // namespace ck
+#endif

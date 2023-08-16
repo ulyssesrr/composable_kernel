@@ -3,7 +3,7 @@
 
 #include "ck/library/tensor_operation_instance/add_device_operation_instance.hpp"
 #include "ck/library/tensor_operation_instance/gpu/grouped_conv_fwd/device_grouped_conv_fwd_dl_instance.hpp"
-
+#ifdef DL_KERNELS
 namespace ck {
 namespace tensor_operation {
 namespace device {
@@ -55,3 +55,4 @@ void add_device_grouped_conv2d_fwd_dl_gnhwc_gkyxc_gnhwk_f16_instances(
 } // namespace device
 } // namespace tensor_operation
 } // namespace ck
+#endif
