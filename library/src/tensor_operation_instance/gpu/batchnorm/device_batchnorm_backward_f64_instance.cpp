@@ -7,7 +7,7 @@
 #include "ck/utility/data_type.hpp"
 
 #include "ck/library/tensor_operation_instance/add_device_operation_instance.hpp"
-
+#ifdef __fp64__
 namespace ck {
 namespace tensor_operation {
 namespace device {
@@ -143,3 +143,4 @@ void add_device_batchnorm_backward_rank_4_3_f64_instances(
 } // namespace device
 } // namespace tensor_operation
 } // namespace ck
+#endif

@@ -7,7 +7,7 @@
 #include "ck/tensor_operation/gpu/element/element_wise_operation.hpp"
 #include "ck/tensor_operation/gpu/device/impl/device_elementwise_impl.hpp"
 #include "ck/library/tensor_operation_instance/add_device_operation_instance.hpp"
-
+#ifdef __fp64__
 namespace ck {
 namespace tensor_operation {
 namespace device {
@@ -45,3 +45,4 @@ void add_device_batchnorm_infer_rank_4_f64_instances(
 } // namespace device
 } // namespace tensor_operation
 } // namespace ck
+#endif

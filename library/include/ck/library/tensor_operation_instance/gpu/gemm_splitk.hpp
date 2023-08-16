@@ -16,7 +16,7 @@ namespace ck {
 namespace tensor_operation {
 namespace device {
 namespace instance {
-
+#ifdef __fp16__
 void add_device_gemm_xdl_splitk_f16_f16_f16_km_kn_mn_instances(
     std::vector<std::unique_ptr<
         DeviceGemmSplitK<Col, Row, Row, F16, F16, F16, PassThrough, PassThrough, PassThrough>>>&
@@ -36,7 +36,8 @@ void add_device_gemm_xdl_splitk_f16_f16_f16_mk_nk_mn_instances(
     std::vector<std::unique_ptr<
         DeviceGemmSplitK<Row, Col, Row, F16, F16, F16, PassThrough, PassThrough, PassThrough>>>&
         instances);
-
+#endif
+#ifdef __fp32__
 void add_device_gemm_xdl_splitk_f32_f32_f32_km_kn_mn_instances(
     std::vector<std::unique_ptr<
         DeviceGemmSplitK<Col, Row, Row, F32, F32, F32, PassThrough, PassThrough, PassThrough>>>&
@@ -56,7 +57,7 @@ void add_device_gemm_xdl_splitk_f32_f32_f32_mk_nk_mn_instances(
     std::vector<std::unique_ptr<
         DeviceGemmSplitK<Row, Col, Row, F32, F32, F32, PassThrough, PassThrough, PassThrough>>>&
         instances);
-
+#endif
 template <typename ADataType,
           typename BDataType,
           typename CDataType,
@@ -87,7 +88,7 @@ struct DeviceOperationInstanceFactory<
     static auto GetInstances()
     {
         std::vector<std::unique_ptr<DeviceOp>> op_ptrs;
-
+#ifdef __fp16__
         if constexpr(is_same_v<ADataType, float> && is_same_v<BDataType, float> &&
                      is_same_v<CDataType, float>)
         {
@@ -112,6 +113,8 @@ struct DeviceOperationInstanceFactory<
                 add_device_gemm_xdl_splitk_f32_f32_f32_km_nk_mn_instances(op_ptrs);
             }
         }
+#endif
+#ifdef __fp16__
         else if constexpr(is_same_v<ADataType, half_t> && is_same_v<BDataType, half_t> &&
                           is_same_v<CDataType, half_t>)
         {
@@ -136,7 +139,7 @@ struct DeviceOperationInstanceFactory<
                 add_device_gemm_xdl_splitk_f16_f16_f16_km_nk_mn_instances(op_ptrs);
             }
         }
-
+#endif
         return op_ptrs;
     }
 };

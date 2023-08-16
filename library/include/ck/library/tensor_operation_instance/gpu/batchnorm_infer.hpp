@@ -15,7 +15,7 @@ namespace ck {
 namespace tensor_operation {
 namespace device {
 namespace instance {
-
+#ifdef __fp16__
 // FP16
 void add_device_batchnorm_infer_rank_4_f16_instances(
     std::vector<std::unique_ptr<ck::tensor_operation::device::DeviceElementwise<
@@ -23,7 +23,8 @@ void add_device_batchnorm_infer_rank_4_f16_instances(
         ck::Tuple<F16>,
         ck::tensor_operation::element_wise::NormalizeInInfer,
         4>>>&);
-
+#endif
+#ifdef __fp32__
 // FP32
 void add_device_batchnorm_infer_rank_4_f32_instances(
     std::vector<std::unique_ptr<ck::tensor_operation::device::DeviceElementwise<
@@ -31,7 +32,8 @@ void add_device_batchnorm_infer_rank_4_f32_instances(
         ck::Tuple<F32>,
         ck::tensor_operation::element_wise::NormalizeInInfer,
         4>>>&);
-
+#endif
+#ifdef __bf16__
 // BF16
 void add_device_batchnorm_infer_rank_4_bf16_instances(
     std::vector<std::unique_ptr<ck::tensor_operation::device::DeviceElementwise<
@@ -39,7 +41,8 @@ void add_device_batchnorm_infer_rank_4_bf16_instances(
         ck::Tuple<BF16>,
         ck::tensor_operation::element_wise::NormalizeInInfer,
         4>>>&);
-
+#endif
+#ifdef __fp64__
 // FP64
 void add_device_batchnorm_infer_rank_4_f64_instances(
     std::vector<std::unique_ptr<ck::tensor_operation::device::DeviceElementwise<
@@ -47,7 +50,7 @@ void add_device_batchnorm_infer_rank_4_f64_instances(
         ck::Tuple<F64>,
         ck::tensor_operation::element_wise::NormalizeInInfer,
         4>>>&);
-
+#endif
 template <typename XDataType,
           typename YDataType,
           typename ScaleDataType,
@@ -69,7 +72,7 @@ struct DeviceOperationInstanceFactory<ck::tensor_operation::device::DeviceElemen
     static auto GetInstances()
     {
         std::vector<std::unique_ptr<DeviceOp>> op_ptrs;
-
+#ifdef __fp16__
         if constexpr(is_same_v<XDataType, F16> && is_same_v<YDataType, F16> &&
                      is_same_v<ScaleDataType, F16> && is_same_v<BiasDataType, F16> &&
                      is_same_v<MeanVarDataType, F32>)
@@ -79,6 +82,8 @@ struct DeviceOperationInstanceFactory<ck::tensor_operation::device::DeviceElemen
                 add_device_batchnorm_infer_rank_4_f16_instances(op_ptrs);
             }
         }
+#endif
+#ifdef __fp32__
         else if constexpr(is_same_v<XDataType, F32> && is_same_v<YDataType, F32> &&
                           is_same_v<ScaleDataType, F32> && is_same_v<BiasDataType, F32> &&
                           is_same_v<MeanVarDataType, F32>)
@@ -88,6 +93,8 @@ struct DeviceOperationInstanceFactory<ck::tensor_operation::device::DeviceElemen
                 add_device_batchnorm_infer_rank_4_f32_instances(op_ptrs);
             }
         }
+#endif
+#ifdef __bf16__
         else if constexpr(is_same_v<XDataType, BF16> && is_same_v<YDataType, BF16> &&
                           is_same_v<ScaleDataType, BF16> && is_same_v<BiasDataType, BF16> &&
                           is_same_v<MeanVarDataType, F32>)
@@ -97,6 +104,8 @@ struct DeviceOperationInstanceFactory<ck::tensor_operation::device::DeviceElemen
                 add_device_batchnorm_infer_rank_4_bf16_instances(op_ptrs);
             }
         }
+#endif
+#ifdef __fp64__
         else if constexpr(is_same_v<XDataType, F64> && is_same_v<YDataType, F64> &&
                           is_same_v<ScaleDataType, F64> && is_same_v<BiasDataType, F64> &&
                           is_same_v<MeanVarDataType, F64>)
@@ -106,7 +115,7 @@ struct DeviceOperationInstanceFactory<ck::tensor_operation::device::DeviceElemen
                 add_device_batchnorm_infer_rank_4_f64_instances(op_ptrs);
             }
         }
-
+#endif
         return op_ptrs;
     }
 };

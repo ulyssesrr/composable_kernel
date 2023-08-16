@@ -11,7 +11,7 @@
 #include "ck/tensor_operation/gpu/element/element_wise_operation.hpp"
 
 #include "ck/library/tensor_operation_instance/add_device_operation_instance.hpp"
-
+#ifdef __fp16__
 namespace ck {
 namespace tensor_operation {
 namespace device {
@@ -82,3 +82,4 @@ auto get_device_gemm_add_add_mean_squaremean_instances()
 } // namespace device
 } // namespace tensor_operation
 } // namespace ck
+#endif

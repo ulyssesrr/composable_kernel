@@ -16,7 +16,7 @@ namespace ck {
 namespace tensor_operation {
 namespace device {
 namespace instance {
-
+#ifdef __bf16__
 // grouped conv1d forward, GNWC/GKXC/GNWK
 void add_device_grouped_conv1d_fwd_xdl_gnwc_gkxc_gnwk_bf16_instances(
     std::vector<std::unique_ptr<DeviceGroupedConvFwdMultipleD<1,
@@ -31,7 +31,8 @@ void add_device_grouped_conv1d_fwd_xdl_gnwc_gkxc_gnwk_bf16_instances(
                                                               PassThrough,
                                                               PassThrough,
                                                               PassThrough>>>& instances);
-
+#endif
+#ifdef __fp16__
 void add_device_grouped_conv1d_fwd_xdl_gnwc_gkxc_gnwk_f16_instances(
     std::vector<std::unique_ptr<DeviceGroupedConvFwdMultipleD<1,
                                                               GNWC,
@@ -45,7 +46,8 @@ void add_device_grouped_conv1d_fwd_xdl_gnwc_gkxc_gnwk_f16_instances(
                                                               PassThrough,
                                                               PassThrough,
                                                               PassThrough>>>& instances);
-
+#endif
+#ifdef __fp32__
 void add_device_grouped_conv1d_fwd_xdl_gnwc_gkxc_gnwk_f32_instances(
     std::vector<std::unique_ptr<DeviceGroupedConvFwdMultipleD<1,
                                                               GNWC,
@@ -59,7 +61,8 @@ void add_device_grouped_conv1d_fwd_xdl_gnwc_gkxc_gnwk_f32_instances(
                                                               PassThrough,
                                                               PassThrough,
                                                               PassThrough>>>& instances);
-
+#endif
+#ifdef __int8__
 void add_device_grouped_conv1d_fwd_xdl_gnwc_gkxc_gnwk_int8_instances(
     std::vector<std::unique_ptr<DeviceGroupedConvFwdMultipleD<1,
                                                               GNWC,
@@ -73,7 +76,8 @@ void add_device_grouped_conv1d_fwd_xdl_gnwc_gkxc_gnwk_int8_instances(
                                                               PassThrough,
                                                               PassThrough,
                                                               PassThrough>>>& instances);
-
+#endif
+#ifdef __bf16__
 // grouped conv2d forward, GNHWC/GKYXC/GNHWK
 void add_device_grouped_conv1d_fwd_xdl_gnhwc_gkyxc_gnhwk_bf16_instances(
     std::vector<std::unique_ptr<DeviceGroupedConvFwdMultipleD<2,
@@ -88,7 +92,8 @@ void add_device_grouped_conv1d_fwd_xdl_gnhwc_gkyxc_gnhwk_bf16_instances(
                                                               PassThrough,
                                                               PassThrough,
                                                               PassThrough>>>& instances);
-
+#endif
+#ifdef __fp16__
 void add_device_grouped_conv2d_fwd_xdl_gnhwc_gkyxc_gnhwk_f16_instances(
     std::vector<std::unique_ptr<DeviceGroupedConvFwdMultipleD<2,
                                                               GNHWC,
@@ -102,7 +107,8 @@ void add_device_grouped_conv2d_fwd_xdl_gnhwc_gkyxc_gnhwk_f16_instances(
                                                               PassThrough,
                                                               PassThrough,
                                                               PassThrough>>>& instances);
-
+#endif
+#ifdef __fp32__
 void add_device_grouped_conv2d_fwd_xdl_gnhwc_gkyxc_gnhwk_f32_instances(
     std::vector<std::unique_ptr<DeviceGroupedConvFwdMultipleD<2,
                                                               GNHWC,
@@ -116,7 +122,9 @@ void add_device_grouped_conv2d_fwd_xdl_gnhwc_gkyxc_gnhwk_f32_instances(
                                                               PassThrough,
                                                               PassThrough,
                                                               PassThrough>>>& instances);
+#endif
 #ifdef DL_KERNELS
+#ifdef __fp16__
 void add_device_grouped_conv2d_fwd_dl_gnhwc_gkyxc_gnhwk_f16_instances(
     std::vector<std::unique_ptr<DeviceGroupedConvFwdMultipleD<2,
                                                               GNHWC,
@@ -130,7 +138,8 @@ void add_device_grouped_conv2d_fwd_dl_gnhwc_gkyxc_gnhwk_f16_instances(
                                                               PassThrough,
                                                               PassThrough,
                                                               PassThrough>>>& instances);
-
+#endif
+#ifdef __fp32__
 void add_device_grouped_conv2d_fwd_dl_gnhwc_gkyxc_gnhwk_f32_instances(
     std::vector<std::unique_ptr<DeviceGroupedConvFwdMultipleD<2,
                                                               GNHWC,
@@ -145,6 +154,8 @@ void add_device_grouped_conv2d_fwd_dl_gnhwc_gkyxc_gnhwk_f32_instances(
                                                               PassThrough,
                                                               PassThrough>>>& instances);
 #endif
+#endif
+#ifdef __bf16__
 // grouped conv2d forward, NHWGC/GKYXC/NHWGK
 void add_device_grouped_conv2d_fwd_xdl_nhwgc_gkyxc_nhwgk_bf16_instances(
     std::vector<std::unique_ptr<DeviceGroupedConvFwdMultipleD<2,
@@ -159,7 +170,8 @@ void add_device_grouped_conv2d_fwd_xdl_nhwgc_gkyxc_nhwgk_bf16_instances(
                                                               PassThrough,
                                                               PassThrough,
                                                               PassThrough>>>& instances);
-
+#endif
+#ifdef __fp16__
 void add_device_grouped_conv2d_fwd_xdl_nhwgc_gkyxc_nhwgk_f16_instances(
     std::vector<std::unique_ptr<DeviceGroupedConvFwdMultipleD<2,
                                                               NHWGC,
@@ -173,7 +185,8 @@ void add_device_grouped_conv2d_fwd_xdl_nhwgc_gkyxc_nhwgk_f16_instances(
                                                               PassThrough,
                                                               PassThrough,
                                                               PassThrough>>>& instances);
-
+#endif
+#ifdef __fp32__
 void add_device_grouped_conv2d_fwd_xdl_nhwgc_gkyxc_nhwgk_f32_instances(
     std::vector<std::unique_ptr<DeviceGroupedConvFwdMultipleD<2,
                                                               NHWGC,
@@ -187,7 +200,8 @@ void add_device_grouped_conv2d_fwd_xdl_nhwgc_gkyxc_nhwgk_f32_instances(
                                                               PassThrough,
                                                               PassThrough,
                                                               PassThrough>>>& instances);
-
+#endif
+#ifdef __bf16__
 // grouped conv3d forward, GNDHWC/GKZYXC/GNDHWK
 void add_device_grouped_conv3d_fwd_xdl_gndhwc_gkzyxc_gndhwk_bf16_instances(
     std::vector<std::unique_ptr<DeviceGroupedConvFwdMultipleD<3,
@@ -216,7 +230,8 @@ void add_device_grouped_conv3d_fwd_xdl_gndhwc_gkzyxc_gndhwk_f16_instances(
                                                               PassThrough,
                                                               PassThrough,
                                                               PassThrough>>>& instances);
-
+#endif
+#ifdef __fp32__
 void add_device_grouped_conv3d_fwd_xdl_gndhwc_gkzyxc_gndhwk_f32_instances(
     std::vector<std::unique_ptr<DeviceGroupedConvFwdMultipleD<3,
                                                               GNDHWC,
@@ -230,7 +245,8 @@ void add_device_grouped_conv3d_fwd_xdl_gndhwc_gkzyxc_gndhwk_f32_instances(
                                                               PassThrough,
                                                               PassThrough,
                                                               PassThrough>>>& instances);
-
+#endif
+#ifdef __int8__
 void add_device_grouped_conv3d_fwd_xdl_gndhwc_gkzyxc_gndhwk_int8_instances(
     std::vector<std::unique_ptr<DeviceGroupedConvFwdMultipleD<3,
                                                               GNDHWC,
@@ -244,7 +260,8 @@ void add_device_grouped_conv3d_fwd_xdl_gndhwc_gkzyxc_gndhwk_int8_instances(
                                                               PassThrough,
                                                               PassThrough,
                                                               PassThrough>>>& instances);
-
+#endif
+#ifdef __bf16__
 // grouped conv3d forward, NDHWGC/GKZYXC/NDHWGK
 void add_device_grouped_conv3d_fwd_xdl_ndhwgc_gkzyxc_ndhwgk_bf16_instances(
     std::vector<std::unique_ptr<DeviceGroupedConvFwdMultipleD<3,
@@ -259,7 +276,8 @@ void add_device_grouped_conv3d_fwd_xdl_ndhwgc_gkzyxc_ndhwgk_bf16_instances(
                                                               PassThrough,
                                                               PassThrough,
                                                               PassThrough>>>& instances);
-
+#endif
+#ifdef __fp16__
 void add_device_grouped_conv3d_fwd_xdl_ndhwgc_gkzyxc_ndhwgk_f16_instances(
     std::vector<std::unique_ptr<DeviceGroupedConvFwdMultipleD<3,
                                                               NDHWGC,
@@ -273,7 +291,8 @@ void add_device_grouped_conv3d_fwd_xdl_ndhwgc_gkzyxc_ndhwgk_f16_instances(
                                                               PassThrough,
                                                               PassThrough,
                                                               PassThrough>>>& instances);
-
+#endif
+#ifdef __fp32__
 void add_device_grouped_conv3d_fwd_xdl_ndhwgc_gkzyxc_ndhwgk_f32_instances(
     std::vector<std::unique_ptr<DeviceGroupedConvFwdMultipleD<3,
                                                               NDHWGC,
@@ -287,7 +306,8 @@ void add_device_grouped_conv3d_fwd_xdl_ndhwgc_gkzyxc_ndhwgk_f32_instances(
                                                               PassThrough,
                                                               PassThrough,
                                                               PassThrough>>>& instances);
-
+#endif
+#ifdef __int8__
 void add_device_grouped_conv3d_fwd_xdl_ndhwgc_gkzyxc_ndhwgk_int8_instances(
     std::vector<std::unique_ptr<DeviceGroupedConvFwdMultipleD<3,
                                                               NDHWGC,
@@ -301,7 +321,7 @@ void add_device_grouped_conv3d_fwd_xdl_ndhwgc_gkzyxc_ndhwgk_int8_instances(
                                                               PassThrough,
                                                               PassThrough,
                                                               PassThrough>>>& instances);
-
+#endif
 template <ck::index_t NumDimSpatial,
           typename InLayout,
           typename WeiLayout,
@@ -343,31 +363,40 @@ struct DeviceOperationInstanceFactory<ck::tensor_operation::device::DeviceGroupe
         if constexpr(NumDimSpatial == 1 && is_same_v<InLayout, GNWC> &&
                      is_same_v<WeiLayout, GKXC> && is_same_v<OutLayout, GNWK>)
         {
+#ifdef __fp32__
             if constexpr(is_same_v<InDataType, float> && is_same_v<WeiDataType, float> &&
                          is_same_v<OutDataType, float>)
             {
                 add_device_grouped_conv1d_fwd_xdl_gnwc_gkxc_gnwk_f32_instances(op_ptrs);
             }
+#endif
+#ifdef __fp16__
             else if constexpr(is_same_v<InDataType, half_t> && is_same_v<WeiDataType, half_t> &&
                               is_same_v<OutDataType, half_t>)
             {
                 add_device_grouped_conv1d_fwd_xdl_gnwc_gkxc_gnwk_f16_instances(op_ptrs);
             }
+#endif
+#ifdef __bf16__
             else if constexpr(is_same_v<InDataType, ck::bhalf_t> &&
                               is_same_v<WeiDataType, ck::bhalf_t> &&
                               is_same_v<OutDataType, ck::bhalf_t>)
             {
                 add_device_grouped_conv1d_fwd_xdl_gnwc_gkxc_gnwk_bf16_instances(op_ptrs);
             }
+#endif
+#ifdef __int8__
             else if constexpr(is_same_v<InDataType, int8_t> && is_same_v<WeiDataType, int8_t> &&
                               is_same_v<OutDataType, int8_t>)
             {
                 add_device_grouped_conv1d_fwd_xdl_gnwc_gkxc_gnwk_int8_instances(op_ptrs);
             }
+#endif
         }
         else if constexpr(NumDimSpatial == 2 && is_same_v<InLayout, GNHWC> &&
                           is_same_v<WeiLayout, GKYXC> && is_same_v<OutLayout, GNHWK>)
         {
+#ifdef __fp32__
             if constexpr(is_same_v<InDataType, float> && is_same_v<WeiDataType, float> &&
                          is_same_v<OutDataType, float>)
             {
@@ -376,6 +405,8 @@ struct DeviceOperationInstanceFactory<ck::tensor_operation::device::DeviceGroupe
                 add_device_grouped_conv2d_fwd_dl_gnhwc_gkyxc_gnhwk_f32_instances(op_ptrs);
 #endif
             }
+#endif
+#ifdef __fp16__
             else if constexpr(is_same_v<InDataType, half_t> && is_same_v<WeiDataType, half_t> &&
                               is_same_v<OutDataType, half_t>)
             {
@@ -384,82 +415,107 @@ struct DeviceOperationInstanceFactory<ck::tensor_operation::device::DeviceGroupe
                 add_device_grouped_conv2d_fwd_dl_gnhwc_gkyxc_gnhwk_f16_instances(op_ptrs);
 #endif
             }
+#endif
+#ifdef __bf16__
             else if constexpr(is_same_v<InDataType, ck::bhalf_t> &&
                               is_same_v<WeiDataType, ck::bhalf_t> &&
                               is_same_v<OutDataType, ck::bhalf_t>)
             {
                 add_device_grouped_conv1d_fwd_xdl_gnhwc_gkyxc_gnhwk_bf16_instances(op_ptrs);
             }
+#endif
         }
         else if constexpr(NumDimSpatial == 2 && is_same_v<InLayout, NHWGC> &&
                           is_same_v<WeiLayout, GKYXC> && is_same_v<OutLayout, NHWGK>)
         {
+#ifdef __fp32__
             if constexpr(is_same_v<InDataType, float> && is_same_v<WeiDataType, float> &&
                          is_same_v<OutDataType, float>)
             {
                 add_device_grouped_conv2d_fwd_xdl_nhwgc_gkyxc_nhwgk_f32_instances(op_ptrs);
             }
+#endif
+#ifdef __fp16__
             else if constexpr(is_same_v<InDataType, half_t> && is_same_v<WeiDataType, half_t> &&
                               is_same_v<OutDataType, half_t>)
             {
                 add_device_grouped_conv2d_fwd_xdl_nhwgc_gkyxc_nhwgk_f16_instances(op_ptrs);
             }
+#endif
+#ifdef __bf16__
             else if constexpr(is_same_v<InDataType, ck::bhalf_t> &&
                               is_same_v<WeiDataType, ck::bhalf_t> &&
                               is_same_v<OutDataType, ck::bhalf_t>)
             {
                 add_device_grouped_conv2d_fwd_xdl_nhwgc_gkyxc_nhwgk_bf16_instances(op_ptrs);
             }
+#endif
         }
         else if constexpr(NumDimSpatial == 3 && is_same_v<InLayout, GNDHWC> &&
                           is_same_v<WeiLayout, GKZYXC> && is_same_v<OutLayout, GNDHWK>)
         {
+#ifdef __fp32__
             if constexpr(is_same_v<InDataType, float> && is_same_v<WeiDataType, float> &&
                          is_same_v<OutDataType, float>)
             {
                 add_device_grouped_conv3d_fwd_xdl_gndhwc_gkzyxc_gndhwk_f32_instances(op_ptrs);
             }
+#endif
+#ifdef __fp16__
             else if constexpr(is_same_v<InDataType, half_t> && is_same_v<WeiDataType, half_t> &&
                               is_same_v<OutDataType, half_t>)
             {
                 add_device_grouped_conv3d_fwd_xdl_gndhwc_gkzyxc_gndhwk_f16_instances(op_ptrs);
             }
+#endif
+#ifdef __bf16__
             else if constexpr(is_same_v<InDataType, ck::bhalf_t> &&
                               is_same_v<WeiDataType, ck::bhalf_t> &&
                               is_same_v<OutDataType, ck::bhalf_t>)
             {
                 add_device_grouped_conv3d_fwd_xdl_gndhwc_gkzyxc_gndhwk_bf16_instances(op_ptrs);
             }
+#endif
+#ifdef __int8__
             else if constexpr(is_same_v<InDataType, int8_t> && is_same_v<WeiDataType, int8_t> &&
                               is_same_v<OutDataType, int8_t>)
             {
                 add_device_grouped_conv3d_fwd_xdl_gndhwc_gkzyxc_gndhwk_int8_instances(op_ptrs);
             }
+#endif
         }
         else if constexpr(NumDimSpatial == 3 && is_same_v<InLayout, NDHWGC> &&
                           is_same_v<WeiLayout, GKZYXC> && is_same_v<OutLayout, NDHWGK>)
         {
+#ifdef __fp32__
             if constexpr(is_same_v<InDataType, float> && is_same_v<WeiDataType, float> &&
                          is_same_v<OutDataType, float>)
             {
                 add_device_grouped_conv3d_fwd_xdl_ndhwgc_gkzyxc_ndhwgk_f32_instances(op_ptrs);
             }
+#endif
+#ifdef __fp16__
             else if constexpr(is_same_v<InDataType, half_t> && is_same_v<WeiDataType, half_t> &&
                               is_same_v<OutDataType, half_t>)
             {
                 add_device_grouped_conv3d_fwd_xdl_ndhwgc_gkzyxc_ndhwgk_f16_instances(op_ptrs);
             }
+#endif
+#ifdef __bf16__
             else if constexpr(is_same_v<InDataType, ck::bhalf_t> &&
                               is_same_v<WeiDataType, ck::bhalf_t> &&
                               is_same_v<OutDataType, ck::bhalf_t>)
             {
                 add_device_grouped_conv3d_fwd_xdl_ndhwgc_gkzyxc_ndhwgk_bf16_instances(op_ptrs);
             }
+#endif
+#ifdef __int8__
             else if constexpr(is_same_v<InDataType, int8_t> && is_same_v<WeiDataType, int8_t> &&
                               is_same_v<OutDataType, int8_t>)
             {
                 add_device_grouped_conv3d_fwd_xdl_ndhwgc_gkzyxc_ndhwgk_int8_instances(op_ptrs);
             }
+#endif
         }
 
         return op_ptrs;
