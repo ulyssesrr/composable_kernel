@@ -85,8 +85,8 @@ struct DeviceOperationInstanceFactory<
 #endif
 #ifdef __fp32__
         if constexpr(is_same_v<XDataType, F32> && is_same_v<YDataType, F32> &&
-                          is_same_v<AccDataType, F32> && is_same_v<ScaleDataType, F32> &&
-                          is_same_v<BiasDataType, F32> && is_same_v<MeanVarDataType, F32>)
+                     is_same_v<AccDataType, F32> && is_same_v<ScaleDataType, F32> &&
+                     is_same_v<BiasDataType, F32> && is_same_v<MeanVarDataType, F32>)
         {
             if constexpr(Rank == 4 && NumReduceDim == 3 && is_same_v<YElementwiseOp, PassThrough>)
             {
@@ -96,8 +96,8 @@ struct DeviceOperationInstanceFactory<
 #endif
 #ifdef __bf16__
         if constexpr(is_same_v<XDataType, BF16> && is_same_v<YDataType, BF16> &&
-                          is_same_v<AccDataType, F32> && is_same_v<ScaleDataType, BF16> &&
-                          is_same_v<BiasDataType, BF16> && is_same_v<MeanVarDataType, F32>)
+                     is_same_v<AccDataType, F32> && is_same_v<ScaleDataType, BF16> &&
+                     is_same_v<BiasDataType, BF16> && is_same_v<MeanVarDataType, F32>)
         {
             if constexpr(Rank == 4 && NumReduceDim == 3 && is_same_v<YElementwiseOp, PassThrough>)
             {
@@ -107,8 +107,8 @@ struct DeviceOperationInstanceFactory<
 #endif
 #ifdef __fp64__
         if constexpr(is_same_v<XDataType, F64> && is_same_v<YDataType, F64> &&
-                          is_same_v<AccDataType, F64> && is_same_v<ScaleDataType, F64> &&
-                          is_same_v<BiasDataType, F64> && is_same_v<MeanVarDataType, F64>)
+                     is_same_v<AccDataType, F64> && is_same_v<ScaleDataType, F64> &&
+                     is_same_v<BiasDataType, F64> && is_same_v<MeanVarDataType, F64>)
         {
             if constexpr(Rank == 4 && NumReduceDim == 3 && is_same_v<YElementwiseOp, PassThrough>)
             {
