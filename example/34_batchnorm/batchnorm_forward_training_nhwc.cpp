@@ -362,7 +362,7 @@ bool bnorm_fwd_nhwc_test(bool do_verification,
     else
         (void)invoker_ptr->Run(argument_ptr.get(), StreamConfig{nullptr, time_kernel});
 
-    bool pass = true;
+ck::utils::CorrectnessValidator validator;
 
     if(do_verification)
     {
@@ -414,7 +414,7 @@ bool bnorm_fwd_nhwc_test(bool do_verification,
         (void)invoker_ptr_ref->Run(argument_ptr_ref.get());
 
         y_dev.FromDevice(y.mData.data());
-        pass = pass && ck::utils::check_err(y, y_ref, "Incorrect normalized output values");
+        validator.check_err(y, y_ref, "Incorrect normalized output values");
 
         if(updateMovingAverage)
         {
@@ -424,10 +424,10 @@ bool bnorm_fwd_nhwc_test(bool do_verification,
             resultRunningMean_dev.FromDevice(resultRunningMean.mData.data());
             resultRunningVariance_dev.FromDevice(resultRunningVariance.mData.data());
 
-            pass = pass && ck::utils::check_err(resultRunningMean,
+            validator.check_err(resultRunningMean,
                                                 resultRunningMean_ref,
                                                 "Incorrect running mean values");
-            pass = pass && ck::utils::check_err(resultRunningVariance,
+            validator.check_err(resultRunningVariance,
                                                 resultRunningVariance_ref,
                                                 "Incorrect running variance values");
         };
@@ -442,15 +442,15 @@ bool bnorm_fwd_nhwc_test(bool do_verification,
             resultSaveMean_dev.FromDevice(resultSaveMean.mData.data());
             resultSaveInvVariance_dev.FromDevice(resultSaveInvVariance.mData.data());
 
-            pass = pass && ck::utils::check_err(
+            validator.check_err(
                                resultSaveMean, resultSaveMean_ref, "Incorrect saved mean values");
-            pass = pass && ck::utils::check_err(resultSaveInvVariance,
+            validator.check_err(resultSaveInvVariance,
                                                 resultSaveInvVariance_ref,
                                                 "Incorrect saved invvariance values");
         };
     };
 
-    return (pass);
+    return validator.is_success();
 };
 
 const double epsilon              = std::numeric_limits<float>::epsilon();
@@ -584,7 +584,7 @@ int main(int argc, char* argv[])
                                                             averageFactor,
                                                             epsilon);
 
-        pass = pass && bnorm_fwd_nhwc_test<ck::half_t, float, false>(true,
+        bnorm_fwd_nhwc_test<ck::half_t, float, false>(true,
                                                                      2,
                                                                      false, // don't time kernel
                                                                      {128, 16, 3, 1024},

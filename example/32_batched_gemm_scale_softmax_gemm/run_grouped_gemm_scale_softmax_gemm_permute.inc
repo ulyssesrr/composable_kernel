@@ -223,7 +223,7 @@ int run(int argc, char* argv[])
     std::cout << "Perf: " << ave_time << " ms, " << tflops << " TFlops, " << gb_per_sec << " GB/s, "
               << gemm.GetTypeString() << std::endl;
 
-    bool pass = true;
+    ck::utils::CorrectnessValidator validator;
     if(do_verification)
     {
         for(std::size_t i = 0; i < group_count; i++)
@@ -309,11 +309,9 @@ int run(int argc, char* argv[])
                 self(idx) = c_g_m_o_host_result(g, idx[2], idx[3]);
             });
 
-            bool pass_ =
-                ck::utils::check_err(c_gs_ms_os_device_result.mData, c_gs_ms_os_host_result.mData);
-            pass &= pass_;
+                validator.check_err(c_gs_ms_os_device_result.mData, c_gs_ms_os_host_result.mData);
         }
     }
 
-    return pass ? 0 : 1;
+    return !validator.is_success();
 }

@@ -39,7 +39,7 @@ bool profile_grouped_gemm_fastgelu_impl(int do_verification,
                                         const std::vector<int>& StrideCs)
 {
 
-    bool pass = true;
+ck::utils::CorrectnessValidator validator;
 
     auto f_host_tensor_descriptor =
         [](std::size_t row, std::size_t col, std::size_t stride, auto layout) {
@@ -238,8 +238,7 @@ bool profile_grouped_gemm_fastgelu_impl(int do_verification,
                     ref_invoker.Run(ref_argument);
 
                     bool group_pass =
-                        ck::utils::check_err(c_m_n_device_results[i], c_m_n_host_result);
-                    pass = pass && group_pass;
+                        validator.check_err(c_m_n_device_results[i], c_m_n_host_result);
 
                     std::cout << "group: " << i << " verification result: " << std::boolalpha
                               << group_pass << std::endl;
@@ -267,13 +266,13 @@ bool profile_grouped_gemm_fastgelu_impl(int do_verification,
 
     if(do_verification)
     {
-        std::cout << "Verification: " << (pass ? "SUCCESS" : "FAILURE") << std::endl;
+        std::cout << "Verification: " << (validator.is_success() ? "SUCCESS" : "FAILURE") << std::endl;
     }
 
     std::cout << "Best Perf: " << best_ave_time << " ms, " << best_tflops << " TFlops, "
               << best_gb_per_sec << " GB/s, " << best_gemm_name << std::endl;
 
-    return pass;
+    return validator.is_success();
 }
 
 } // namespace profiler

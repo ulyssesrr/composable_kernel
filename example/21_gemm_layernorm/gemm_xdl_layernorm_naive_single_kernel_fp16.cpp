@@ -274,14 +274,14 @@ int main(int argc, char* argv[])
 
         if constexpr(std::is_same<CShuffleDataType, F32>::value)
         {
-            pass &= ck::utils::check_err(
+            validator.check_err(
                 c_m_n_device_result, c_m_n_host_result, "Error: Incorrect results c");
         }
         else if constexpr(std::is_same<CShuffleDataType, F16>::value)
         {
-            pass &= ck::utils::check_err(
+            validator.check_err(
                 c_m_n_device_result, c_m_n_host_result, "Error: Incorrect results c", 1e-2, 1e-2);
         }
     }
-    return pass ? 0 : 1;
+    return !validator.is_success();
 }

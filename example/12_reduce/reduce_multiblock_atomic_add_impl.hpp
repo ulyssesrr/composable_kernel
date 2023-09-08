@@ -244,8 +244,8 @@ int reduce_multiblock_atomic_add_impl(bool do_verification,
     if(do_verification)
     {
         out_dev.FromDevice(out.mData.data());
-        pass = pass && ck::utils::check_err(out, out_ref);
+        validator.check_err(out, out_ref);
     };
 
-    return (pass ? 0 : 1);
+    return !validator.is_success();
 }

@@ -308,17 +308,17 @@ bool bnorm_infer_nhwc_test(bool do_verification,
         (void)invoker_ptr_ref->Run(argument_ptr_ref.get());
 
         y_dev.FromDevice(y.mData.data());
-        pass = pass && ck::utils::check_err(y, y_ref);
+        validator.check_err(y, y_ref);
     };
 
-    return (pass);
+    return validator.is_success();
 };
 
 static const double epsilon = std::numeric_limits<float>::epsilon();
 
 int main(int argc, char* argv[])
 {
-    bool pass = true;
+ck::utils::CorrectnessValidator validator;
 
     if(argc > 1)
     {

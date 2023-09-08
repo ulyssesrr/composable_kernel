@@ -240,13 +240,12 @@ int main(int argc, char* argv[])
 
     auto invoker_ptr = device_instance.MakeInvokerPointer();
 
-    bool pass = true;
     if(args.do_verification)
     {
         invoker_ptr->Run(argument_ptr.get(), StreamConfig{nullptr, false});
         out_dev.FromDevice(out.mData.data());
         // LogRangeAsType<float>(std::cout << "tensor out: " , out.mData, ",") << std::endl;
-        pass = pass && ck::utils::check_err(out, out_ref);
+        validator.check_err(out, out_ref);
     };
 
     float avg_time = invoker_ptr->Run(argument_ptr.get(), StreamConfig{nullptr, args.time_kernel});
@@ -260,5 +259,5 @@ int main(int argc, char* argv[])
     std::cout << "Perf: " << avg_time << " ms, " << gb_per_sec << " GB/s, " << instance_name
               << std::endl;
 
-    return (pass ? 0 : 1);
+    return !validator.is_success();
 }

@@ -150,7 +150,7 @@ bool profile_pool3d_fwd_impl(int do_verification,
         ref_invoker.Run(ref_argument);
     }
 
-    int num_kernel = 0;
+ck::utils::CorrectnessValidator validator;
 
     for(auto& inst_ptr : instance_ptrs)
     {
@@ -213,7 +213,7 @@ bool profile_pool3d_fwd_impl(int do_verification,
         {
             out_device_buf.FromDevice(out_n_c_do_ho_wo_device.mData.data());
 
-            bool pass = ck::utils::check_err(out_n_c_do_ho_wo_device.mData,
+            bool pass = validator.check_err(out_n_c_do_ho_wo_device.mData,
                                              out_n_c_do_ho_wo_host.mData,
                                              "Error: Incorrect results",
                                              1e-3,
@@ -223,7 +223,7 @@ bool profile_pool3d_fwd_impl(int do_verification,
             {
                 out_indices_device_buf.FromDevice(out_indices_n_c_do_ho_wo_device.mData.data());
 
-                pass = pass && ck::utils::check_err(out_indices_n_c_do_ho_wo_device,
+                pass = pass && validator.check_err(out_indices_n_c_do_ho_wo_device,
                                                     out_indices_n_c_do_ho_wo_host);
             }
 
@@ -250,7 +250,6 @@ bool profile_pool3d_fwd_impl(int do_verification,
             {
                 std::cout << inst_ptr->GetTypeString() << " failed verification: ";
                 LogRange(std::cout << "lengths = [", in_length, ", ") << "]." << std::endl;
-                return false;
             }
             else
             {
@@ -267,13 +266,7 @@ bool profile_pool3d_fwd_impl(int do_verification,
                   << best_instance_name << std::endl;
     }
 
-    if(num_kernel == 0)
-    {
-        std::cout << "Error: No kernel is applicable" << std::endl;
-        return false;
-    }
-
-    return true;
+    return validator.is_success();
 }
 
 } // namespace profiler

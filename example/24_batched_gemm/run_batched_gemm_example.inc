@@ -146,7 +146,6 @@ bool run_batched_gemm(const ProblemSize& problem_size, const ExecutionConfig& co
     }
 
     invoker.Run(argument, StreamConfig{nullptr, false});
-    bool pass = true;
 
     if(config.do_verification)
     {
@@ -174,10 +173,10 @@ bool run_batched_gemm(const ProblemSize& problem_size, const ExecutionConfig& co
 
 #ifdef BUILD_INT4_EXAMPLE
         const Tensor<EDataType> e_device_result_converted(e_g_m_n_device_result);
-        pass &= ck::utils::check_err(e_device_result_converted, e_g_m_n_host_result);
+        validator.check_err(e_device_result_converted, e_g_m_n_host_result);
 
 #else
-        pass = ck::utils::check_err(
+        validator.check_err(
             e_g_m_n_device_result, e_g_m_n_host_result, "Error: Incorrect results c");
 #endif
     }
@@ -197,7 +196,7 @@ bool run_batched_gemm(const ProblemSize& problem_size, const ExecutionConfig& co
                   << " GB/s, " << gemm.GetTypeString() << std::endl;
     }
 
-    return pass ? 0 : 1;
+    return !validator.is_success();
 }
 
 bool run_batched_gemm_example(int argc, char* argv[])

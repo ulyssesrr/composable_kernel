@@ -120,7 +120,7 @@ bool pool3d_bwd_test(bool do_verification,
     float ave_time = invoker_ptr->Run(argument_ptr.get(), StreamConfig{nullptr, time_kernel});
     std::cout << "Perf: " << ave_time << std::endl;
 
-    bool pass = true;
+ck::utils::CorrectnessValidator validator;
 
     if(do_verification)
     {
@@ -140,8 +140,8 @@ bool pool3d_bwd_test(bool do_verification,
         ref_invoker.Run(ref_argument);
 
         din_device_buf.FromDevice(din_dev.mData.data());
-        pass = ck::utils::check_err(din_dev, din_host);
+        validator.check_err(din_dev, din_host);
     }
 
-    return pass;
+    return validator.is_success();
 }

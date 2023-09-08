@@ -254,7 +254,8 @@ int run(int argc, char* argv[])
 
         ref_gemm1_invoker.Run(ref_gemm1_argument);
 
-        return ck::utils::check_err(c_g_m_o_device_result.mData, c_g_m_o_host_result.mData) ? 0 : 1;
+         validator.check_err(c_g_m_o_device_result.mData, c_g_m_o_host_result.mData);
+         return !validator.is_success();
     }
 
     return 0;

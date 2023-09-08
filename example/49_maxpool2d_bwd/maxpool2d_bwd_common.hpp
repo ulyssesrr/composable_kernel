@@ -174,7 +174,7 @@ bool maxpool_bwd_test(bool do_verification,
     std::cout << "Pool fwd perf: " << ave_time_fwd << " ms" << std::endl;
     std::cout << "Pool bwd perf: " << ave_time_bwd << " ms" << std::endl;
 
-    bool pass = true;
+ck::utils::CorrectnessValidator validator;
 
     if(do_verification)
     {
@@ -219,10 +219,10 @@ bool maxpool_bwd_test(bool do_verification,
         indices_device_buf.FromDevice(indices_n_c_ho_wo_device.mData.data());
         din_device_buf.FromDevice(din_n_c_hi_wi_device.mData.data());
 
-        pass = pass && ck::utils::check_err(out_n_c_ho_wo_device, out_n_c_ho_wo_host);
-        pass = pass && ck::utils::check_err(indices_n_c_ho_wo_device, indices_n_c_ho_wo_host);
-        pass = pass && ck::utils::check_err(din_n_c_hi_wi_device, din_n_c_hi_wi_host);
+        validator.check_err(out_n_c_ho_wo_device, out_n_c_ho_wo_host);
+        validator.check_err(indices_n_c_ho_wo_device, indices_n_c_ho_wo_host);
+        validator.check_err(din_n_c_hi_wi_device, din_n_c_hi_wi_host);
     }
 
-    return (pass);
+    return validator.is_success();
 };

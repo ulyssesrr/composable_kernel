@@ -148,11 +148,11 @@ bool run_grouped_conv_fwd(bool do_verification,
 
         out_device_buf.FromDevice(out_device.mData.data());
 
-        pass &=
-            ck::utils::check_err(out_device, out_host, "Error: incorrect results!", 1e-5f, 1e-4f);
+ck::utils::CorrectnessValidator validator;
+            validator.check_err(out_device, out_host, "Error: incorrect results!", 1e-5f, 1e-4f);
     }
 
-    return (pass ? 0 : 1);
+    return !validator.is_success();
 }
 
 int run_conv2d_fwd_bias_perlayer_quantization_example(const OutElementOp& out_element_op)

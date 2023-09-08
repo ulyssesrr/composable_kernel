@@ -123,7 +123,9 @@ bool run_gemm_add_multiply(const ProblemSize& problem_size, const ExecutionConfi
 
         e_device_buf.FromDevice(e_m_n_device_result.mData.data());
 
-        return ck::utils::check_err(e_m_n_device_result, e_m_n_host_result);
+ck::utils::CorrectnessValidator validator;
+        validator.check_err(e_m_n_device_result, e_m_n_host_result);
+        return validator.is_success();
     }
 
     return true;

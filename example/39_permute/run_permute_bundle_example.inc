@@ -64,12 +64,13 @@ bool run_permute_bundle(const Problem& problem)
     {
         return false;
     }
-
-    return ck::utils::check_err(output_bundle_tensor.AsSpan<const DataType>(),
+ck::utils::CorrectnessValidator validator;
+    validator.check_err(output_bundle_tensor.AsSpan<const DataType>(),
                                 output_tensor.AsSpan<const DataType>(),
                                 "Error: incorrect results in output tensor",
                                 1e-6,
                                 1e-6);
+    return validator.is_success();
 }
 
 bool run_permute_bundle_example(const Problem::Shape& shape, const Problem::Axes& axes)

@@ -121,7 +121,7 @@ bool run_splitK_gemm(const ProblemSize& problem_size, const ExecutionConfig& con
     }
 
     invoker.Run(argument, StreamConfig{nullptr, false});
-    bool pass = true;
+ck::utils::CorrectnessValidator validator;
 
     if(config.do_verification)
     {
@@ -146,12 +146,12 @@ bool run_splitK_gemm(const ProblemSize& problem_size, const ExecutionConfig& con
 
         if(std::is_same<CDataType, ck::half_t>::value)
         {
-            pass &= ck::utils::check_err(
+            validator.check_err(
                 c_m_n_device_result, c_m_n_host_result, "fp16 incorrect result", 3e-3, 1e-3);
         }
         else
         {
-            pass &= ck::utils::check_err(c_m_n_device_result, c_m_n_host_result);
+            validator.check_err(c_m_n_device_result, c_m_n_host_result);
         }
     }
 
@@ -169,7 +169,7 @@ bool run_splitK_gemm(const ProblemSize& problem_size, const ExecutionConfig& con
                   << " GB/s, " << gemm.GetTypeString() << std::endl;
     }
 
-    return pass;
+    return validator.is_success();
 }
 
 bool run_splitK_gemm_example(int argc, char* argv[])

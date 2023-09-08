@@ -160,6 +160,7 @@ bool profile_grouped_conv_bwd_weight_impl(int do_verification,
     range_copy(conv_param.input_left_pads_, begin(input_left_pads));
     range_copy(conv_param.input_right_pads_, begin(input_right_pads));
 
+ck::utils::CorrectnessValidator validator;
     for(auto& op_ptr : op_ptrs)
     {
         auto argument_ptr =
@@ -214,14 +215,12 @@ bool profile_grouped_conv_bwd_weight_impl(int do_verification,
             {
                 wei_device_buf.FromDevice(weight_device_result.mData.data());
 
-                bool pass = ck::utils::check_err(weight_device_result, weight_host_result);
+                validator.check_err(weight_device_result, weight_host_result);
 
-                if(!pass)
+                if(!validator.is_success())
                 {
                     std::cout << "Fail info: " << op_ptr->GetTypeString() << std::endl;
                 }
-
-                all_pass &= pass;
 
                 if(do_log)
                 {
@@ -250,7 +249,7 @@ bool profile_grouped_conv_bwd_weight_impl(int do_verification,
               << "\nname: " << best_op_name << "\navg_time: " << best_avg_time
               << "\ntflops: " << best_tflops << "\nGB/s: " << best_gb_per_sec << std::endl;
 
-    return all_pass;
+    return validator.is_success();
 }
 
 } // namespace profiler

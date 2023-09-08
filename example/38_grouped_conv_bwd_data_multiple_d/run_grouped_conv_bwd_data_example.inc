@@ -137,8 +137,8 @@ bool run_conv_bwd_data(const ExecutionConfig& config,
         ref_invoker.Run(ref_argument);
 
         in_device_buf.FromDevice(in_device.mData.data());
-
-        return ck::utils::check_err(in_device.mData, in_host.mData);
+ck::utils::CorrectnessValidator validator;
+        return validator.check_err(in_device.mData, in_host.mData);
     }
 
     return true;

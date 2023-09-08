@@ -72,7 +72,7 @@ bool profile_batched_gemm_reduce_impl(int do_verification,
                                       int StrideC,
                                       int BatchCount)
 {
-    bool pass = true;
+ck::utils::CorrectnessValidator validator;
 
     auto f_host_tensor_descriptor = [](std::size_t batch_count,
                                        std::size_t row,
@@ -316,13 +316,9 @@ bool profile_batched_gemm_reduce_impl(int do_verification,
                 reduce0_device_buf.FromDevice(d0_g_m_device_result.mData.data());
                 reduce1_device_buf.FromDevice(d1_g_m_device_result.mData.data());
 
-                bool c_error  = ck::utils::check_err(c_g_m_n_device_result, c_g_m_n_host_result);
-                bool d0_error = ck::utils::check_err(d0_g_m_device_result, d0_g_m_host_result);
-                bool d1_error = ck::utils::check_err(d1_g_m_device_result, d1_g_m_host_result);
-
-                pass = pass && (c_error == true);
-                pass = pass && (d0_error == true);
-                pass = pass && (d1_error == true);
+                validator.check_err(c_g_m_n_device_result, c_g_m_n_host_result);
+                validator.check_err(d0_g_m_device_result, d0_g_m_host_result);
+                validator.check_err(d1_g_m_device_result, d1_g_m_host_result);
 
                 if(do_log)
                 {
@@ -355,7 +351,7 @@ bool profile_batched_gemm_reduce_impl(int do_verification,
     std::cout << "Best Perf: " << best_ave_time << " ms, " << best_tflops << " TFlops, "
               << best_gb_per_sec << " GB/s, " << best_gemm_name << std::endl;
 
-    return pass;
+    return validator.is_success();
 }
 
 } // namespace profiler

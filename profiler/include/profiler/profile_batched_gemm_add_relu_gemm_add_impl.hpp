@@ -76,7 +76,7 @@ bool profile_batched_gemm_add_relu_gemm_add_impl(bool do_verification,
     using RefAcc0DataType = float;
     using RefAcc1DataType = float;
 
-    bool pass = true;
+ck::utils::CorrectnessValidator validator;
 
     const int DefaultStrideA0 = ck::is_same_v<A0Layout, Row> ? K : M;
     const int DefaultStrideB0 = ck::is_same_v<B0Layout, Row> ? N : K;
@@ -331,7 +331,7 @@ bool profile_batched_gemm_add_relu_gemm_add_impl(bool do_verification,
             {
                 e1_g_m_o_device_buf.FromDevice(e1_g_m_o_device_result.mData.data());
 
-                pass = pass & ck::utils::check_err(e1_g_m_o_device_result, e1_g_m_o_host_result);
+                validator.check_err(e1_g_m_o_device_result, e1_g_m_o_host_result);
 
                 if(do_log)
                 {
@@ -353,7 +353,7 @@ bool profile_batched_gemm_add_relu_gemm_add_impl(bool do_verification,
     std::cout << "Best Perf: " << best_ave_time << " ms, " << best_tflops << " TFlops, "
               << best_gb_per_sec << " GB/s, " << best_op_name << std::endl;
 
-    return pass;
+    return validator.is_success();
 }
 
 } // namespace profiler

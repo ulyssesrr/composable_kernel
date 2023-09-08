@@ -50,7 +50,7 @@ int profile_contraction_impl(ck::index_t do_verification,
                              const std::vector<ck::index_t>& StridesE,
                              const std::vector<ck::index_t>& StridesD)
 {
-    bool pass = true;
+ck::utils::CorrectnessValidator validator;
 
     auto f_host_tensor_descriptor = [](const std::vector<ck::index_t>& dims01,
                                        const std::vector<ck::index_t>& dims23,
@@ -274,7 +274,7 @@ int profile_contraction_impl(ck::index_t do_verification,
 
                 float threshold =
                     static_cast<DataType>(nelems_k) * std::numeric_limits<DataType>::epsilon();
-                pass = pass & ck::utils::check_err(e_m_n_device_result,
+                validator.check_err(e_m_n_device_result,
                                                    e_m_n_host_result,
                                                    "Error: incorrect results!",
                                                    threshold,
@@ -338,7 +338,7 @@ int profile_contraction_impl(ck::index_t do_verification,
               << " ms, " << best_tflops << " TFlops, " << best_gb_per_sec << " GB/s, "
               << best_op_name << std::endl;
 
-    return pass;
+    return validator.is_success();
 }
 
 } // namespace profiler

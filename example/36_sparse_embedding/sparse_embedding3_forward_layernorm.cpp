@@ -155,7 +155,7 @@ int main()
         auto invoker_ptr = device_instance.MakeInvokerPointer();
         float time_ms    = invoker_ptr->Run(argument_ptr.get(), StreamConfig{nullptr, time_kernel});
 
-        bool pass = true;
+ck::utils::CorrectnessValidator validator;
         {
             Tensor<OutType> out_from_dev(f_host_tensor_desc_2d(index_length, current_dim));
             ReferenceInstance ref;
@@ -176,7 +176,7 @@ int main()
             ref_invoker.Run(ref_argument);
 
             out_dev.FromDevice(out_from_dev.mData.data());
-            pass &= ck::utils::check_err(out_from_dev, out, "Error: Incorrect results", 1e-3, 1e-3);
+            validator.check_err(out_from_dev, out, "Error: Incorrect results", 1e-3, 1e-3);
         }
 
         double total_read = current_dim * index_length * 3 * sizeof(EmbType) +
@@ -186,7 +186,7 @@ int main()
         double gbps        = (total_read + total_write) / time_ms / 1e6;
 
         std::cout << ", total bytes:" << (total_read + total_write) << ", time:" << time_ms
-                  << ", gbps:" << gbps << ", valid:" << (pass ? "y" : "n") << std::endl
+                  << ", gbps:" << gbps << ", valid:" << (validator.is_success() ? "y" : "n") << std::endl
                   << std::flush;
     });
 

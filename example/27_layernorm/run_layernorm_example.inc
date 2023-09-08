@@ -89,8 +89,8 @@ int run_groupnorm_example()
         ref_invoker.Run(ref_argument);
 
         y_dev.FromDevice(y.mData.data());
-        pass &= ck::utils::check_err(y, host_y, "Error: Incorrect results", 1e-3, 1e-3);
+        validator.check_err(y, host_y, "Error: Incorrect results", 1e-3, 1e-3);
     }
 
-    return (pass ? 0 : 1);
+    return !validator.is_success();
 }

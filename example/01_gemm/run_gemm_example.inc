@@ -236,15 +236,15 @@ bool run_gemm(const ProblemType& problem_size, const ExecutionConfig& config)
 
         c_m_n_device_result = c_m_n_device_result_converted.CopyAsType<CDataType>();
 
-        return ck::utils::check_err(c_m_n_device_result_converted, c_m_n_host_result);
+        validator.check_err(c_m_n_device_result_converted, c_m_n_host_result);
 #else
         c_m_n_device_buf.FromDevice(c_m_n_device_result.mData.data());
 
-        return ck::utils::check_err(c_m_n_device_result, c_m_n_host_result);
+        validator.check_err(c_m_n_device_result, c_m_n_host_result);
 #endif
     }
 
-    return true;
+    return validator.is_success();
 }
 
 bool run_gemm_example(int argc, char* argv[])

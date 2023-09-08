@@ -156,7 +156,7 @@ int main()
     std::cout << "Bandwidth is : " << bandwidth << "GB/s . " << std::endl;
     std::cout << "Time elapase is : " << ela_time << " ms . " << std::endl;
 
-    bool pass = true;
+ck::utils::CorrectnessValidator validator;
     {
         std::vector<std::size_t> mn = {static_cast<unsigned long>(M),
                                        static_cast<unsigned long>(N)};
@@ -184,12 +184,11 @@ int main()
         ref_invoker.Run(ref_argument);
 
         y_dev.FromDevice(y.mData.data());
-        pass &=
-            ck::utils::check_err(y.mData, host_y.mData, "Error: Incorrect results d1", 1e-3, 1e-3);
-        if(!(pass))
+            validator.check_err(y.mData, host_y.mData, "Error: Incorrect results d1", 1e-3, 1e-3);
+        if(!validator.is_success())
         {
             std::cout << "layernorm wrong" << std::endl;
         }
     }
-    return (pass ? 0 : 1);
+    return !validator.is_success();
 }

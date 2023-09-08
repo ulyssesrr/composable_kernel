@@ -69,7 +69,7 @@ int main()
 
     std::cout << "perf: " << ave_time << " ms" << std::endl;
 
-    bool pass = true;
+ck::utils::CorrectnessValidator validator;
     if(do_verification)
     {
         Tensor<YDataType> y_host(HostTensorDescriptor{N});
@@ -81,8 +81,8 @@ int main()
         }
 
         y_device_buf.FromDevice(y.mData.data());
-        pass = ck::utils::check_err(y, y_host);
+        validator.check_err(y, y_host);
     }
 
-    return (pass ? 0 : 1);
+    return !validator.is_success();
 }

@@ -122,7 +122,7 @@ bool profile_grouped_conv_bwd_data_impl(int do_verification,
     float best_gb_per_sec = 0;
 
     // profile device op instances
-    bool pass = true;
+ck::utils::CorrectnessValidator validator;
 
     auto run_impl = [&](auto& op_ptr, auto& argument_ptr) {
         if(op_ptr->IsSupportedArgument(argument_ptr.get()))
@@ -159,7 +159,7 @@ bool profile_grouped_conv_bwd_data_impl(int do_verification,
             {
                 in_device_buf.FromDevice(in_device.mData.data());
 
-                pass = pass & ck::utils::check_err(in_device, in_host);
+                validator.check_err(in_device, in_host);
 
                 if(do_log)
                 {
@@ -250,7 +250,7 @@ bool profile_grouped_conv_bwd_data_impl(int do_verification,
               << "\nname: " << best_op_name << "\navg_time: " << best_avg_time
               << "\ntflops: " << best_tflops << "\nGB/s: " << best_gb_per_sec << std::endl;
 
-    return pass;
+    return validator.is_success();
 }
 
 } // namespace profiler

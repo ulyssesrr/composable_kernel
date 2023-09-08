@@ -135,7 +135,7 @@ bool profile_conv_fwd_impl(int do_verification,
     float best_gb_per_sec = 0;
 
     // profile device op instances
-    bool pass = true;
+ck::utils::CorrectnessValidator validator;
 
     for(auto& op_ptr : op_ptrs)
     {
@@ -191,7 +191,7 @@ bool profile_conv_fwd_impl(int do_verification,
             {
                 out_device_buf.FromDevice(device_output.mData.data());
 
-                pass = pass & ck::utils::check_err(device_output, host_output);
+                validator.check_err(device_output, host_output);
 
                 if(do_log)
                 {
@@ -214,7 +214,7 @@ bool profile_conv_fwd_impl(int do_verification,
               << "\nname: " << best_op_name << "\navg_time: " << best_avg_time
               << "\ntflops: " << best_tflops << "\nGB/s: " << best_gb_per_sec << std::endl;
 
-    return pass;
+    return validator.is_success();
 }
 
 } // namespace profiler

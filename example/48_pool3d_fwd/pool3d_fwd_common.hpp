@@ -183,16 +183,18 @@ bool pool3d_test(bool do_verification,
 
         out_device_buf.FromDevice(out_n_c_do_ho_wo_device.mData.data());
 
-        pass = pass && ck::utils::check_err(out_n_c_do_ho_wo_device, out_n_c_do_ho_wo_host);
+ck::utils::CorrectnessValidator validator;
+        validator.check_err(out_n_c_do_ho_wo_device, out_n_c_do_ho_wo_host);
 
         if constexpr(OutputIndex)
         {
             out_indices_device_buf.FromDevice(out_indices_n_c_do_ho_wo_device.mData.data());
 
-            pass = pass && ck::utils::check_err(out_indices_n_c_do_ho_wo_device,
+ck::utils::CorrectnessValidator validator;
+            validator.check_err(out_indices_n_c_do_ho_wo_device,
                                                 out_indices_n_c_do_ho_wo_host);
         };
     }
 
-    return (pass);
+    return validator.is_success();
 };

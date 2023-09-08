@@ -83,7 +83,7 @@ bool profile_batched_gemm_bias_softmax_gemm_permute_impl(bool do_verification,
                                                                                 B1ElementOp,
                                                                                 CElementOp>;
 
-    bool pass = true;
+ck::utils::CorrectnessValidator validator;
 
     // A layout [G0, M, G1, K]
     std::vector<ck::index_t> a_gs_ms_ks_lengths{G0, G1, M, K};
@@ -355,7 +355,7 @@ bool profile_batched_gemm_bias_softmax_gemm_permute_impl(bool do_verification,
                     atol = 1e-2;
                 }
 
-                pass = pass & ck::utils::check_err(c_gs_ms_os_device_result,
+                validator.check_err(c_gs_ms_os_device_result,
                                                    c_gs_ms_os_host_result,
                                                    "Error: Incorrect results!",
                                                    rtol,
@@ -388,7 +388,7 @@ bool profile_batched_gemm_bias_softmax_gemm_permute_impl(bool do_verification,
     std::cout << "Best Perf: " << best_ave_time << " ms, " << best_tflops << " TFlops, "
               << best_gb_per_sec << " GB/s, " << best_op_name << std::endl;
 
-    return pass;
+    return validator.is_success();
 }
 
 } // namespace profiler

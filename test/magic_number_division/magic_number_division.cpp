@@ -114,7 +114,8 @@ int main(int, char*[])
         naive_result_dev_buf.FromDevice(naive_result_host.data());
         magic_result_dev_buf.FromDevice(magic_result_host.data());
 
-        bool res = ck::utils::check_err(magic_result_host, naive_result_host);
+ ck::utils::CorrectnessValidator validator;
+       bool res = validator.check_err(magic_result_host, naive_result_host);
 
         if(!res)
         {
@@ -128,7 +129,7 @@ int main(int, char*[])
                                   magic_result_host2.data(),
                                   num_dividend);
 
-        res = ck::utils::check_err(magic_result_host2, naive_result_host);
+        res = validator.check_err(magic_result_host2, naive_result_host);
 
         if(!res)
         {

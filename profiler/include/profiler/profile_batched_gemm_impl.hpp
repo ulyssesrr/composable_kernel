@@ -49,7 +49,7 @@ bool profile_batched_gemm_impl(int do_verification,
                                int StrideC,
                                int BatchCount)
 {
-    bool pass = true;
+ck::utils::CorrectnessValidator validator;
 
     auto f_host_tensor_descriptor = [](std::size_t batch_count,
                                        std::size_t row,
@@ -234,7 +234,7 @@ bool profile_batched_gemm_impl(int do_verification,
             {
                 c_device_buf.FromDevice(c_g_m_n_device_result.mData.data());
 
-                pass = pass & ck::utils::check_err(c_g_m_n_device_result, c_g_m_n_host_result);
+                validator.check_err(c_g_m_n_device_result, c_g_m_n_host_result);
 
                 if(do_log)
                 {
@@ -257,7 +257,7 @@ bool profile_batched_gemm_impl(int do_verification,
     std::cout << "Best Perf: " << best_ave_time << " ms, " << best_tflops << " TFlops, "
               << best_gb_per_sec << " GB/s, " << best_op_name << std::endl;
 
-    return pass;
+    return validator.is_success();
 }
 
 } // namespace profiler

@@ -110,7 +110,7 @@ bool profile_groupnorm_impl(int do_verification,
         ref_invoker.Run(ref_argument);
     }
 
-    int num_kernel = 0;
+ck::utils::CorrectnessValidator validator;
 
     for(auto& inst_ptr : instance_ptrs)
     {
@@ -169,7 +169,7 @@ bool profile_groupnorm_impl(int do_verification,
         {
             y_dev.FromDevice(y.mData.data());
 
-            bool pass = ck::utils::check_err(y, host_y, "Error: Incorrect results", 1e-3, 1e-3);
+            bool pass = validator.check_err(y, host_y, "Error: Incorrect results", 1e-3, 1e-3);
 
             if(do_log)
             {
@@ -182,7 +182,6 @@ bool profile_groupnorm_impl(int do_verification,
             {
                 std::cout << inst_ptr->GetTypeString() << " failed verification: ";
                 LogRange(std::cout << "lengths = [", length, ", ") << "]." << std::endl;
-                return false;
             }
             else
             {
@@ -198,14 +197,7 @@ bool profile_groupnorm_impl(int do_verification,
         std::cout << "best perf = " << best_avg_time << " ms, " << best_gb_per_sec << " GB/s, "
                   << best_instance_name << std::endl;
     }
-
-    if(num_kernel == 0)
-    {
-        std::cout << "Error: No kernel is applicable" << std::endl;
-        return false;
-    }
-
-    return true;
+    return validator.is_success();
 }
 
 } // namespace profiler

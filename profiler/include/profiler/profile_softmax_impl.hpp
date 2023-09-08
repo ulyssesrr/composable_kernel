@@ -123,7 +123,7 @@ bool profile_softmax_impl(int do_verification,
     std::string best_instance_name;
     float best_avg_time   = std::numeric_limits<float>::max();
     float best_gb_per_sec = 0;
-    std::vector<bool> instance_pass;
+ck::utils::CorrectnessValidator validator;
 
     for(auto& inst_ptr : instances)
     {
@@ -176,7 +176,7 @@ bool profile_softmax_impl(int do_verification,
             bool pass = true;
             if(std::is_same<InDataType, int8_t>::value)
             {
-                pass = pass && ck::utils::check_err(
+                pass = pass && validator.check_err(
                                    out.mData, out_ref.mData, "Error: Incorrect results!", 0, 1);
                 if(do_log)
                 {
@@ -188,7 +188,7 @@ bool profile_softmax_impl(int do_verification,
             }
             else
             {
-                pass = pass && ck::utils::check_err(out.mData, out_ref.mData);
+                pass = pass && validator.check_err(out.mData, out_ref.mData);
                 if(do_log)
                 {
                     LogRangeAsType<float>(std::cout << "in  : ", in.mData, ",") << std::endl;
@@ -219,8 +219,7 @@ bool profile_softmax_impl(int do_verification,
                   << "beta = " << beta << ", " << best_avg_time << " ms, " << best_gb_per_sec
                   << " GB/s, " << best_instance_name << std::endl;
     }
-    return std::all_of(
-        std::begin(instance_pass), std::end(instance_pass), [](bool p) { return p; });
+    return validator.is_success();
 }
 
 } // namespace profiler

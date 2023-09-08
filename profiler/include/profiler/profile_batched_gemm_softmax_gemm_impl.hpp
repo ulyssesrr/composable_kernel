@@ -86,7 +86,7 @@ bool profile_batched_gemm_softmax_gemm_impl(bool do_verification,
                                                                                 B1ElementOp,
                                                                                 CElementOp>;
 
-    bool pass = true;
+ck::utils::CorrectnessValidator validator;
 
     const int DefaultStrideA  = ck::is_same_v<ALayout, Row> ? K : M;
     const int DefaultStrideB0 = ck::is_same_v<B0Layout, Row> ? N : K;
@@ -312,7 +312,7 @@ bool profile_batched_gemm_softmax_gemm_impl(bool do_verification,
             {
                 c_g_m_o_device_buf.FromDevice(c_g_m_o_device_result.mData.data());
 
-                pass = pass & ck::utils::check_err(c_g_m_o_device_result, c_g_m_o_host_result);
+                validator.check_err(c_g_m_o_device_result, c_g_m_o_host_result);
 
                 if(do_log)
                 {
@@ -340,7 +340,7 @@ bool profile_batched_gemm_softmax_gemm_impl(bool do_verification,
     std::cout << "Best Perf: " << best_ave_time << " ms, " << best_tflops << " TFlops, "
               << best_gb_per_sec << " GB/s, " << best_op_name << std::endl;
 
-    return pass;
+    return validator.is_success();
 }
 
 } // namespace profiler

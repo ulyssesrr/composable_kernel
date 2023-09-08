@@ -191,12 +191,13 @@ bool run_grouped_conv_fwd(const ExecutionConfig& config,
 #ifdef BUILD_INT4_EXAMPLE
         const Tensor<OutUserDataType> out_device_converted(out_device);
 
-        return ck::utils::check_err(
+        validator.check_err(
             out_device_converted.mData, out_host.mData, "Error: incorrect results!", 1e-5f, 1e-4f);
 #else
-        return ck::utils::check_err(
+         validator.check_err(
             out_device.mData, out_host.mData, "Error: incorrect results!", 1e-5f, 1e-4f);
 #endif
+return validator.is_success();
     }
 
     return true;

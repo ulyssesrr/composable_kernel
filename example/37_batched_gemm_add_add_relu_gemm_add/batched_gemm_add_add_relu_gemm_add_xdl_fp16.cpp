@@ -513,8 +513,9 @@ int main(int argc, char* argv[])
         e1_g_m_o_host_result.ForEach([&](auto&, auto idx) {
             cde1_element_op(e1_g_m_o_host_result(idx), c1_g_m_o(idx), d1_g_m_o(idx));
         });
-
-        return ck::utils::check_err(e1_g_m_o_device_result, e1_g_m_o_host_result) ? 0 : 1;
+ck::utils::CorrectnessValidator validator;
+        validator.check_err(e1_g_m_o_device_result, e1_g_m_o_host_result);
+        return !validator.is_success();
     }
 
     return 0;

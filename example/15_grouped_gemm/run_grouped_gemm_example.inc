@@ -209,10 +209,10 @@ bool run_grouped_gemm(const ProblemSize& problem_size, const ExecutionConfig& co
 
 #ifdef BUILD_INT4_EXAMPLE
             const Tensor<EDataType> c_device_result_converted(c_device_tensors[i]);
-            pass &= ck::utils::check_err(c_device_result_converted, c_host_tensors[i]);
+            validator.check_err(c_device_result_converted, c_host_tensors[i]);
 
 #else
-            pass &= ck::utils::check_err(c_device_tensors[i], c_host_tensors[i]);
+            validator.check_err(c_device_tensors[i], c_host_tensors[i]);
 #endif
         }
     }
@@ -227,7 +227,7 @@ bool run_grouped_gemm(const ProblemSize& problem_size, const ExecutionConfig& co
                   << " GB/s, " << gemm.GetTypeString() << std::endl;
     }
 
-    return pass;
+    return validator.is_success();
 }
 
 bool run_grouped_gemm_example(int argc, char* argv[])

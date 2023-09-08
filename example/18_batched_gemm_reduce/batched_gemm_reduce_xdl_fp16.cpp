@@ -293,19 +293,19 @@ int main(int argc, char* argv[])
             }
         }
 
-        pass = ck::utils::check_err(
-                   c_g_m_n_host_result, c_g_m_n_device_result, "Error: Incorrect results c") &&
-               ck::utils::check_err(d0_g_m_device_result,
+        validator.check_err(
+                   c_g_m_n_host_result, c_g_m_n_device_result, "Error: Incorrect results c");
+               validator.check_err(d0_g_m_device_result,
                                     d0_g_m_host_result,
                                     "Error: Incorrect results! D0",
                                     1e-4,
-                                    1e-5) &&
-               ck::utils::check_err(d1_g_m_device_result,
+                                    1e-5);
+               validator.check_err(d1_g_m_device_result,
                                     d1_g_m_host_result,
                                     "Error: Incorrect results! D1",
                                     1e-3,
                                     1e-5);
     }
 
-    return pass ? 0 : 1;
+    return !validator.is_success();
 }

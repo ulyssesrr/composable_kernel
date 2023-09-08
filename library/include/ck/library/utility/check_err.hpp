@@ -23,195 +23,220 @@
 namespace ck {
 namespace utils {
 
-template <typename Range, typename RefRange>
-typename std::enable_if<
-    std::is_same_v<ranges::range_value_t<Range>, ranges::range_value_t<RefRange>> &&
-        std::is_floating_point_v<ranges::range_value_t<Range>> &&
-        !std::is_same_v<ranges::range_value_t<Range>, half_t>,
-    bool>::type
-check_err(const Range& out,
-          const RefRange& ref,
-          const std::string& msg = "Error: Incorrect results!",
-          double rtol            = 1e-5,
-          double atol            = 3e-6)
-{
-    if(out.size() != ref.size())
-    {
-        std::cerr << msg << " out.size() != ref.size(), :" << out.size() << " != " << ref.size()
-                  << std::endl;
-        return false;
+struct CorrectnessValidator {
+public:
+    CorrectnessValidator(bool pass_if_no_instance = false) : pass_if_no_instance_{pass_if_no_instance}, 
+    found_supporting_instance_{false},
+        correct_results_{true} {
+
     }
 
-    bool res{true};
-    int err_count  = 0;
-    double err     = 0;
-    double max_err = std::numeric_limits<double>::min();
-    for(std::size_t i = 0; i < ref.size(); ++i)
+    bool is_success() {
+        return (pass_if_no_instance_ || found_supporting_instance_) && correct_results_;
+    }
+
+    template <typename Range, typename RefRange>
+    typename std::enable_if<
+        std::is_same_v<ranges::range_value_t<Range>, ranges::range_value_t<RefRange>> &&
+            std::is_floating_point_v<ranges::range_value_t<Range>> &&
+            !std::is_same_v<ranges::range_value_t<Range>, half_t>,
+        bool>::type
+    check_err(const Range& out,
+            const RefRange& ref,
+            const std::string& msg = "Error: Incorrect results!",
+            double rtol            = 1e-5,
+            double atol            = 3e-6)
     {
-        const double o = *std::next(std::begin(out), i);
-        const double r = *std::next(std::begin(ref), i);
-        err            = std::abs(o - r);
-        if(err > atol + rtol * std::abs(r) || !std::isfinite(o) || !std::isfinite(r))
+        found_supporting_instance_ = true;
+        if(out.size() != ref.size())
         {
-            max_err = err > max_err ? err : max_err;
-            err_count++;
-            if(err_count < 5)
-            {
-                std::cerr << msg << std::setw(12) << std::setprecision(7) << " out[" << i
-                          << "] != ref[" << i << "]: " << o << " != " << r << std::endl;
-            }
-            res = false;
+            std::cerr << msg << " out.size() != ref.size(), :" << out.size() << " != " << ref.size()
+                    << std::endl;
+            return false;
         }
-    }
-    if(!res)
-    {
-        std::cerr << std::setw(12) << std::setprecision(7) << "max err: " << max_err << std::endl;
-    }
-    return res;
-}
 
-template <typename Range, typename RefRange>
-typename std::enable_if<
-    std::is_same_v<ranges::range_value_t<Range>, ranges::range_value_t<RefRange>> &&
-        std::is_same_v<ranges::range_value_t<Range>, bhalf_t>,
-    bool>::type
-check_err(const Range& out,
-          const RefRange& ref,
-          const std::string& msg = "Error: Incorrect results!",
-          double rtol            = 1e-3,
-          double atol            = 1e-3)
-{
-    if(out.size() != ref.size())
-    {
-        std::cerr << msg << " out.size() != ref.size(), :" << out.size() << " != " << ref.size()
-                  << std::endl;
-        return false;
-    }
-
-    bool res{true};
-    int err_count = 0;
-    double err    = 0;
-    // TODO: This is a hack. We should have proper specialization for bhalf_t data type.
-    double max_err = std::numeric_limits<float>::min();
-    for(std::size_t i = 0; i < ref.size(); ++i)
-    {
-        const double o = type_convert<float>(*std::next(std::begin(out), i));
-        const double r = type_convert<float>(*std::next(std::begin(ref), i));
-        err            = std::abs(o - r);
-        if(err > atol + rtol * std::abs(r) || !std::isfinite(o) || !std::isfinite(r))
+        bool res{true};
+        int err_count  = 0;
+        double err     = 0;
+        double max_err = std::numeric_limits<double>::min();
+        for(std::size_t i = 0; i < ref.size(); ++i)
         {
-            max_err = err > max_err ? err : max_err;
-            err_count++;
-            if(err_count < 5)
+            const double o = *std::next(std::begin(out), i);
+            const double r = *std::next(std::begin(ref), i);
+            err            = std::abs(o - r);
+            if(err > atol + rtol * std::abs(r) || !std::isfinite(o) || !std::isfinite(r))
             {
-                std::cerr << msg << std::setw(12) << std::setprecision(7) << " out[" << i
-                          << "] != ref[" << i << "]: " << o << " != " << r << std::endl;
+                max_err = err > max_err ? err : max_err;
+                err_count++;
+                if(err_count < 5)
+                {
+                    std::cerr << msg << std::setw(12) << std::setprecision(7) << " out[" << i
+                            << "] != ref[" << i << "]: " << o << " != " << r << std::endl;
+                }
+                res = false;
             }
-            res = false;
         }
-    }
-    if(!res)
-    {
-        std::cerr << std::setw(12) << std::setprecision(7) << "max err: " << max_err << std::endl;
-    }
-    return res;
-}
-
-template <typename Range, typename RefRange>
-typename std::enable_if<
-    std::is_same_v<ranges::range_value_t<Range>, ranges::range_value_t<RefRange>> &&
-        std::is_same_v<ranges::range_value_t<Range>, half_t>,
-    bool>::type
-check_err(const Range& out,
-          const RefRange& ref,
-          const std::string& msg = "Error: Incorrect results!",
-          double rtol            = 1e-3,
-          double atol            = 1e-3)
-{
-    if(out.size() != ref.size())
-    {
-        std::cerr << msg << " out.size() != ref.size(), :" << out.size() << " != " << ref.size()
-                  << std::endl;
-        return false;
-    }
-
-    bool res{true};
-    int err_count  = 0;
-    double err     = 0;
-    double max_err = std::numeric_limits<ranges::range_value_t<Range>>::min();
-    for(std::size_t i = 0; i < ref.size(); ++i)
-    {
-        const double o = type_convert<float>(*std::next(std::begin(out), i));
-        const double r = type_convert<float>(*std::next(std::begin(ref), i));
-        err            = std::abs(o - r);
-        if(err > atol + rtol * std::abs(r) || !std::isfinite(o) || !std::isfinite(r))
+        if(!res)
         {
-            max_err = err > max_err ? err : max_err;
-            err_count++;
-            if(err_count < 5)
-            {
-                std::cerr << msg << std::setw(12) << std::setprecision(7) << " out[" << i
-                          << "] != ref[" << i << "]: " << o << " != " << r << std::endl;
-            }
-            res = false;
+            std::cerr << std::setw(12) << std::setprecision(7) << "max err: " << max_err << std::endl;
         }
-    }
-    if(!res)
-    {
-        std::cerr << std::setw(12) << std::setprecision(7) << "max err: " << max_err << std::endl;
-    }
-    return res;
-}
-
-template <typename Range, typename RefRange>
-std::enable_if_t<(std::is_same_v<ranges::range_value_t<Range>, ranges::range_value_t<RefRange>> &&
-                  std::is_integral_v<ranges::range_value_t<Range>> &&
-                  !std::is_same_v<ranges::range_value_t<Range>, bhalf_t>)
-#ifdef CK_EXPERIMENTAL_BIT_INT_EXTENSION_INT4
-                     || std::is_same_v<ranges::range_value_t<Range>, int4_t>
-#endif
-                 ,
-                 bool>
-check_err(const Range& out,
-          const RefRange& ref,
-          const std::string& msg = "Error: Incorrect results!",
-          double                 = 0,
-          double atol            = 0)
-{
-    if(out.size() != ref.size())
-    {
-        std::cerr << msg << " out.size() != ref.size(), :" << out.size() << " != " << ref.size()
-                  << std::endl;
-        return false;
+        correct_results_ = correct_results_ && res;
+        return res;
     }
 
-    bool res{true};
-    int err_count   = 0;
-    int64_t err     = 0;
-    int64_t max_err = std::numeric_limits<int64_t>::min();
-    for(std::size_t i = 0; i < ref.size(); ++i)
+    template <typename Range, typename RefRange>
+    typename std::enable_if<
+        std::is_same_v<ranges::range_value_t<Range>, ranges::range_value_t<RefRange>> &&
+            std::is_same_v<ranges::range_value_t<Range>, bhalf_t>,
+        bool>::type
+    check_err(const Range& out,
+            const RefRange& ref,
+            const std::string& msg = "Error: Incorrect results!",
+            double rtol            = 1e-3,
+            double atol            = 1e-3)
     {
-        const int64_t o = *std::next(std::begin(out), i);
-        const int64_t r = *std::next(std::begin(ref), i);
-        err             = std::abs(o - r);
-
-        if(err > atol)
+        found_supporting_instance_ = true;
+        if(out.size() != ref.size())
         {
-            max_err = err > max_err ? err : max_err;
-            err_count++;
-            if(err_count < 5)
-            {
-                std::cerr << msg << " out[" << i << "] != ref[" << i << "]: " << o << " != " << r
-                          << std::endl;
-            }
-            res = false;
+            std::cerr << msg << " out.size() != ref.size(), :" << out.size() << " != " << ref.size()
+                    << std::endl;
+            return false;
         }
+
+        bool res{true};
+        int err_count = 0;
+        double err    = 0;
+        // TODO: This is a hack. We should have proper specialization for bhalf_t data type.
+        double max_err = std::numeric_limits<float>::min();
+        for(std::size_t i = 0; i < ref.size(); ++i)
+        {
+            const double o = type_convert<float>(*std::next(std::begin(out), i));
+            const double r = type_convert<float>(*std::next(std::begin(ref), i));
+            err            = std::abs(o - r);
+            if(err > atol + rtol * std::abs(r) || !std::isfinite(o) || !std::isfinite(r))
+            {
+                max_err = err > max_err ? err : max_err;
+                err_count++;
+                if(err_count < 5)
+                {
+                    std::cerr << msg << std::setw(12) << std::setprecision(7) << " out[" << i
+                            << "] != ref[" << i << "]: " << o << " != " << r << std::endl;
+                }
+                res = false;
+            }
+        }
+        if(!res)
+        {
+            std::cerr << std::setw(12) << std::setprecision(7) << "max err: " << max_err << std::endl;
+        }
+        correct_results_ = correct_results_ && res;
+        return res;
     }
-    if(!res)
+
+    template <typename Range, typename RefRange>
+    typename std::enable_if<
+        std::is_same_v<ranges::range_value_t<Range>, ranges::range_value_t<RefRange>> &&
+            std::is_same_v<ranges::range_value_t<Range>, half_t>,
+        bool>::type
+    check_err(const Range& out,
+            const RefRange& ref,
+            const std::string& msg = "Error: Incorrect results!",
+            double rtol            = 1e-3,
+            double atol            = 1e-3)
     {
-        std::cerr << "max err: " << max_err << std::endl;
+        found_supporting_instance_ = true;
+        if(out.size() != ref.size())
+        {
+            std::cerr << msg << " out.size() != ref.size(), :" << out.size() << " != " << ref.size()
+                    << std::endl;
+            return false;
+        }
+
+        bool res{true};
+        int err_count  = 0;
+        double err     = 0;
+        double max_err = std::numeric_limits<ranges::range_value_t<Range>>::min();
+        for(std::size_t i = 0; i < ref.size(); ++i)
+        {
+            const double o = type_convert<float>(*std::next(std::begin(out), i));
+            const double r = type_convert<float>(*std::next(std::begin(ref), i));
+            err            = std::abs(o - r);
+            if(err > atol + rtol * std::abs(r) || !std::isfinite(o) || !std::isfinite(r))
+            {
+                max_err = err > max_err ? err : max_err;
+                err_count++;
+                if(err_count < 5)
+                {
+                    std::cerr << msg << std::setw(12) << std::setprecision(7) << " out[" << i
+                            << "] != ref[" << i << "]: " << o << " != " << r << std::endl;
+                }
+                res = false;
+            }
+        }
+        if(!res)
+        {
+            std::cerr << std::setw(12) << std::setprecision(7) << "max err: " << max_err << std::endl;
+        }
+        correct_results_ = correct_results_ && res;
+        return res;
     }
-    return res;
+
+    template <typename Range, typename RefRange>
+    std::enable_if_t<(std::is_same_v<ranges::range_value_t<Range>, ranges::range_value_t<RefRange>> &&
+                    std::is_integral_v<ranges::range_value_t<Range>> &&
+                    !std::is_same_v<ranges::range_value_t<Range>, bhalf_t>)
+    #ifdef CK_EXPERIMENTAL_BIT_INT_EXTENSION_INT4
+                        || std::is_same_v<ranges::range_value_t<Range>, int4_t>
+    #endif
+                    ,
+                    bool>
+    check_err(const Range& out,
+            const RefRange& ref,
+            const std::string& msg = "Error: Incorrect results!",
+            double                 = 0,
+            double atol            = 0)
+    {
+        found_supporting_instance_ = true;
+        if(out.size() != ref.size())
+        {
+            std::cerr << msg << " out.size() != ref.size(), :" << out.size() << " != " << ref.size()
+                    << std::endl;
+            return false;
+        }
+
+        bool res{true};
+        int err_count   = 0;
+        int64_t err     = 0;
+        int64_t max_err = std::numeric_limits<int64_t>::min();
+        for(std::size_t i = 0; i < ref.size(); ++i)
+        {
+            const int64_t o = *std::next(std::begin(out), i);
+            const int64_t r = *std::next(std::begin(ref), i);
+            err             = std::abs(o - r);
+
+            if(err > atol)
+            {
+                max_err = err > max_err ? err : max_err;
+                err_count++;
+                if(err_count < 5)
+                {
+                    std::cerr << msg << " out[" << i << "] != ref[" << i << "]: " << o << " != " << r
+                            << std::endl;
+                }
+                res = false;
+            }
+        }
+        if(!res)
+        {
+            std::cerr << "max err: " << max_err << std::endl;
+        }
+        correct_results_ = correct_results_ && res;
+        return res;
+    }
+    private:
+        bool pass_if_no_instance_;
+        bool found_supporting_instance_;
+        bool correct_results_;
 }
 
 } // namespace utils

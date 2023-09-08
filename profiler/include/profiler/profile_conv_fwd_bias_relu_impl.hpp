@@ -183,6 +183,8 @@ void profile_conv_fwd_bias_relu_impl(int do_verification,
     float best_tflops     = 0;
     float best_gb_per_sec = 0;
 
+ck::utils::CorrectnessValidator validator;
+
     // profile device Conv instances
     for(auto& op_ptr : op_ptrs)
     {
@@ -239,7 +241,8 @@ void profile_conv_fwd_bias_relu_impl(int do_verification,
             {
                 out_device_buf.FromDevice(out_n_k_ho_wo_device_result.mData.data());
 
-                ck::utils::check_err(out_n_k_ho_wo_device_result, out_n_k_ho_wo_host_result);
+                validator.check_err(out_n_k_ho_wo_device_result, out_n_k_ho_wo_host_result);
+                validator.is_success();
 
                 if(do_log)
                 {

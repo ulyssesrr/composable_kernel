@@ -256,12 +256,13 @@ bool run_grouped_conv_fwd_bias_relu_add(const ExecutionConfig& config,
 #ifdef BUILD_INT4_EXAMPLE
         const Tensor<OutUserDataType> out_device_converted(out_device);
 
-        return ck::utils::check_err(
+        validator.check_err(
             out_device_converted, out_host, "Error: incorrect results!", 1e-5f, 1e-4f);
 #else
-        return ck::utils::check_err(
+        validator.check_err(
             out_device, out_host, "Error: incorrect results!", 1e-5f, 1e-4f);
 #endif
+return validator.is_success();
     }
 
     return true;

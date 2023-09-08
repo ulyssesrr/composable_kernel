@@ -345,7 +345,7 @@ int main()
                             N);
 
         layerNorm_device_buf.FromDevice(layerNorm_m_n.mData.data());
-        pass &= ck::utils::check_err(
+        validator.check_err(
             layerNorm_m_n, host_layerNorm_m_n, "Error: Incorrect results d1", 1e-3, 1e-3);
     }
 
@@ -370,5 +370,5 @@ int main()
                 gemm_reduce_mean_reduce_square_mean_ave_time, normalize_ave_time, M, N, K);
     }
 
-    return pass ? 0 : 1;
+    return !validator.is_success();
 }

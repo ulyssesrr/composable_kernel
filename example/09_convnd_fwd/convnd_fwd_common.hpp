@@ -164,8 +164,9 @@ bool run_grouped_conv_fwd(bool do_verification,
 
         out_device_buf.FromDevice(out_device.mData.data());
 
-        return ck::utils::check_err(
+         validator.check_err(
             out_device, out_host, "Error: incorrect results!", 1e-5f, 1e-4f);
+            return validator.is_success();
     }
 
     return true;

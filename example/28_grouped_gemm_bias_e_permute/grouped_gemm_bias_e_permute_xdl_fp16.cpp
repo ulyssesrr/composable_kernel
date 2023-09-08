@@ -458,9 +458,9 @@ int main(int argc, char* argv[])
                 }
             }
 
-            pass &= ck::utils::check_err(e_device_tensors[i], e_ms_ns_host_result);
+            validator.check_err(e_device_tensors[i], e_ms_ns_host_result);
         }
     }
 
-    return pass ? 0 : 1;
+    return !validator.is_success();
 }

@@ -300,15 +300,15 @@ int mean_meansquare_dual_reduce_test(size_t n,
     std::cout << "Perf: " << avg_time << " ms, " << gb_per_sec << " GB/s, " << reduce_name
               << std::endl;
 
-    bool pass = true;
+    ck::utils::CorrectnessValidator validator;
 
     if(do_verification)
     {
         mean_dev.FromDevice(mean.mData.data());
         meansquare_dev.FromDevice(meansquare.mData.data());
-        pass = pass && ck::utils::check_err(mean, mean_ref);
-        pass = pass && ck::utils::check_err(meansquare, meansquare_ref);
+        validator.check_err(mean, mean_ref);
+        validator.check_err(meansquare, meansquare_ref);
     };
 
-    return (pass ? 0 : 1);
+    return !validator.is_success();
 }

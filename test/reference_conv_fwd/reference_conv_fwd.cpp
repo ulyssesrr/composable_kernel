@@ -121,9 +121,10 @@ TEST(ReferenceConvolutionFWD, Conv2DGNHWC)
                                 472.5,
                                 490.5,
                                 508.5};
-    EXPECT_TRUE(ck::utils::check_err(
+ck::utils::CorrectnessValidator validator;
+    EXPECT_TRUE(validator.check_err(
         out_tensor.mDesc.GetLengths(), ref_dims, "Error: wrong output tensor dimensions!"));
-    EXPECT_TRUE(ck::utils::check_err(out_tensor, ref_data, "Error: incorrect results!"));
+    EXPECT_TRUE(validator.check_err(out_tensor, ref_data, "Error: incorrect results!"));
 }
 
 TEST(ReferenceConvolutionFWD, Conv2DGNHWCStridesDilationsPadding)
@@ -148,9 +149,10 @@ TEST(ReferenceConvolutionFWD, Conv2DGNHWCStridesDilationsPadding)
         747.,  747.,  1138.5, 1138.5, 1174.5, 1174.5, 1210.5, 1210.5, 1246.5, 1246.5,
         1035., 1035., 1570.5, 1570.5, 1606.5, 1606.5, 1642.5, 1642.5, 1678.5, 1678.5,
         1323., 1323., 2002.5, 2002.5, 2038.5, 2038.5, 2074.5, 2074.5, 2110.5, 2110.5};
-    EXPECT_TRUE(ck::utils::check_err(
+ck::utils::CorrectnessValidator validator;
+    EXPECT_TRUE(validator.check_err(
         out_tensor.mDesc.GetLengths(), ref_dims, "Error: wrong output tensor dimensions!"));
-    EXPECT_TRUE(ck::utils::check_err(out_tensor, ref_data, "Error: incorrect results!"));
+    EXPECT_TRUE(validator.check_err(out_tensor, ref_data, "Error: incorrect results!"));
 }
 
 TEST(ReferenceConvolutionFWD, Conv1DGNWC)
@@ -177,9 +179,10 @@ TEST(ReferenceConvolutionFWD, Conv1DGNWC)
                                           ck::tensor_layout::convolution::GNWK>(conv_param);
     std::vector<std::size_t> ref_dims{1, 1, 4, 1};
     std::vector<float> ref_data{7.5, 13.5, 19.5, 25.5};
-    EXPECT_TRUE(ck::utils::check_err(
+ck::utils::CorrectnessValidator validator;
+    EXPECT_TRUE(validator.check_err(
         out_tensor.mDesc.GetLengths(), ref_dims, "Error: wrong output tensor dimensions!"));
-    EXPECT_TRUE(ck::utils::check_err(out_tensor, ref_data, "Error: incorrect results!"));
+    EXPECT_TRUE(validator.check_err(out_tensor, ref_data, "Error: incorrect results!"));
 }
 
 TEST(ReferenceConvolutionFWD, Conv1DGNWCStridesDilationsPadding)
@@ -206,9 +209,10 @@ TEST(ReferenceConvolutionFWD, Conv1DGNWCStridesDilationsPadding)
                                           ck::tensor_layout::convolution::GNWK>(conv_param);
     std::vector<std::size_t> ref_dims{1, 1, 5, 2};
     std::vector<float> ref_data{9., 9., 19.5, 19.5, 31.5, 31.5, 43.5, 43.5, 55.5, 55.5};
-    EXPECT_TRUE(ck::utils::check_err(
+ck::utils::CorrectnessValidator validator;
+    EXPECT_TRUE(validator.check_err(
         out_tensor.mDesc.GetLengths(), ref_dims, "Error: wrong output tensor dimensions!"));
-    EXPECT_TRUE(ck::utils::check_err(out_tensor, ref_data, "Error: incorrect results!"));
+    EXPECT_TRUE(validator.check_err(out_tensor, ref_data, "Error: incorrect results!"));
 }
 
 TEST(ReferenceConvolutionFWD, Conv1DGNWCSameOutputSize)
@@ -300,9 +304,10 @@ TEST(ReferenceConvolutionFWD, Conv1DGNWCSameOutputSize)
         72.9,      72.9,      72.9,      72.9,      72.9,      72.9,      72.9,      72.9,
         49.4,      49.4,      49.4,      49.4,      49.4,      49.4,      49.4,      49.4,
         49.4,      49.4,      49.4,      49.4,      49.4,      49.4,      49.4,      49.4};
-    EXPECT_TRUE(ck::utils::check_err(
+ck::utils::CorrectnessValidator validator;
+    EXPECT_TRUE(validator.check_err(
         out_tensor2.mDesc.GetLengths(), ref_dims, "Error: wrong output tensor dimensions!"));
-    EXPECT_TRUE(ck::utils::check_err(out_tensor2, ref_data, "Error: incorrect results!"));
+    EXPECT_TRUE(validator.check_err(out_tensor2, ref_data, "Error: incorrect results!"));
 }
 #endif
 
@@ -338,10 +343,11 @@ TEST(ReferenceConvolutionFWD, Conv3DGNCDHW)
         634.5,     637.2,     639.9,     642.60004, 650.7,     653.4,     656.10004, 658.8,
         699.3,     702.,      704.7,     707.4,     715.5,     718.2,     720.9,     723.60004,
         731.7,     734.4001,  737.10004, 739.8,     747.9001,  750.60004, 753.3,     756.};
-    EXPECT_TRUE(ck::utils::check_err(out_tensor.mDesc.GetLengths(),
+ck::utils::CorrectnessValidator validator;
+    EXPECT_TRUE(validator.check_err(out_tensor.mDesc.GetLengths(),
                                      ref_dims,
                                      "Error [case 1]: wrong output tensor dimensions!"));
-    EXPECT_TRUE(ck::utils::check_err(out_tensor, ref_data, "Error [case 1]: incorrect results!"));
+    EXPECT_TRUE(validator.check_err(out_tensor, ref_data, "Error [case 1]: incorrect results!"));
 }
 
 TEST(ReferenceConvolutionFWD, Conv3DGNCDHWStridesDilations)
@@ -384,9 +390,10 @@ TEST(ReferenceConvolutionFWD, Conv3DGNCDHWStridesDilations)
         5283.9004, 5292.,     5300.0996, 5308.2,    5381.0996, 5389.2,    5397.3,    5405.4004,
         6255.9004, 6264.0005, 6272.1,    6280.2,    6353.1,    6361.2,    6369.301,  6377.4,
         6450.301,  6458.4,    6466.5,    6474.6,    6547.5,    6555.6,    6563.699,  6571.801};
-    EXPECT_TRUE(ck::utils::check_err(out_tensor.mDesc.GetLengths(),
+ck::utils::CorrectnessValidator validator;
+    EXPECT_TRUE(validator.check_err(out_tensor.mDesc.GetLengths(),
                                      ref_dims,
                                      "Error [case 2]: wrong output tensor dimensions!"));
-    EXPECT_TRUE(ck::utils::check_err(
+    EXPECT_TRUE(validator.check_err(
         out_tensor, ref_data, "Error [case 2]: incorrect results!", 1e-4f, 1e-6f));
 }

@@ -146,7 +146,8 @@ int run_conv_bwd_data(bool do_verification,
 
         in_device_buf.FromDevice(in_device.mData.data());
 
-        return ck::utils::check_err(in_device, in_host) ? 0 : 1;
+        validator.check_err(in_device, in_host);
+        return !validator.is_success()
     }
 
     return 0;

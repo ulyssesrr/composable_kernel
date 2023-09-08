@@ -227,30 +227,30 @@ struct TestGemm
         if(is_supported && do_verification)
         {
             // Assert
-            bool res = false;
+ck::utils::CorrectnessValidator validator;
             if(std::is_same<CDataType, float>::value)
             {
-                res = ck::utils::check_err(c_device, c_host);
+                res = validator.check_err(c_device, c_host);
                 std::cout << (res ? "SUCCESS" : "FAILURE") << std::endl;
             }
             else if(std::is_same<CDataType, ck::half_t>::value)
             {
-                res = ck::utils::check_err(c_device, c_host);
+                res = validator.check_err(c_device, c_host);
                 std::cout << (res ? "SUCCESS" : "FAILURE") << std::endl;
             }
             else if(std::is_same<CDataType, ck::bhalf_t>::value)
             {
-                res = ck::utils::check_err(c_device, c_host);
+                res = validator.check_err(c_device, c_host);
                 std::cout << (res ? "SUCCESS" : "FAILURE") << std::endl;
             }
             else if(std::is_same<CDataType, int8_t>::value)
             {
-                res = ck::utils::check_err(c_device, c_host);
+                res = validator.check_err(c_device, c_host);
                 std::cout << (res ? "SUCCESS" : "FAILURE") << std::endl;
             }
             else if(std::is_same<CDataType, double>::value)
             {
-                res = ck::utils::check_err(c_device, c_host);
+                res = validator.check_err(c_device, c_host);
                 std::cout << (res ? "SUCCESS" : "FAILURE") << std::endl;
             }
 

@@ -250,6 +250,8 @@ bool profile_gemm_reduce_impl(int do_verification,
     float best_tflops     = 0;
     float best_gb_per_sec = 0;
 
+ck::utils::CorrectnessValidator validator;
+
     // profile device GEMM instances
     for(auto& gemm_ptr : gemm_ptrs)
     {
@@ -310,9 +312,10 @@ bool profile_gemm_reduce_impl(int do_verification,
                 reduce0_device_buf.FromDevice(reduce0_m_device_result.mData.data());
                 reduce1_device_buf.FromDevice(reduce1_m_device_result.mData.data());
 
-                ck::utils::check_err(c_m_n_device_result, c_m_n_host_result);
-                ck::utils::check_err(reduce0_m_device_result, reduce0_m_host_result);
-                ck::utils::check_err(reduce1_m_device_result, reduce1_m_host_result);
+                validator.check_err(c_m_n_device_result, c_m_n_host_result);
+                validator.check_err(reduce0_m_device_result, reduce0_m_host_result);
+                validator.check_err(reduce1_m_device_result, reduce1_m_host_result);
+                validator.is_success();
 
                 if(do_log)
                 {
@@ -346,7 +349,7 @@ bool profile_gemm_reduce_impl(int do_verification,
     std::cout << "Best Perf: " << best_ave_time << " ms, " << best_tflops << " TFlops, "
               << best_gb_per_sec << " GB/s, " << best_gemm_name << std::endl;
 
-    return pass;
+    return validator.is_success();
 }
 
 } // namespace profiler

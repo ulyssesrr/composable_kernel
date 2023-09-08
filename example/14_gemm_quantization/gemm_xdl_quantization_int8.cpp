@@ -200,7 +200,8 @@ int main()
 
         ref_invoker.Run(ref_argument);
 
-        return ck::utils::check_err(e_m_n_device_result, e_m_n_host_result) ? 0 : 1;
+        validator.check_err(e_m_n_device_result, e_m_n_host_result);
+        return validator.is_success();
     }
 
     return 0;

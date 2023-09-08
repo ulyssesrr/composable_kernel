@@ -100,7 +100,7 @@ int main()
     std::cout << "Perf: " << ave_time << " ms, " << tflops << " TFlops, " << gb_per_sec << " GB/s"
               << std::endl;
 
-    bool pass = true;
+ck::utils::CorrectnessValidator validator;
 
     if(do_verification)
     {
@@ -108,9 +108,8 @@ int main()
         Tensor<BDataType> host_b(nhwc);
         host_elementwise4D(host_b, a, PassThrough{});
 
-        pass &=
-            ck::utils::check_err(b.mData, host_b.mData, "Error: Incorrect results b", 1e-3, 1e-3);
+            validator.check_err(b.mData, host_b.mData, "Error: Incorrect results b", 1e-3, 1e-3);
     }
 
-    return pass ? 0 : 1;
+    return !validator.is_success();
 }

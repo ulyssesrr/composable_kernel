@@ -231,7 +231,7 @@ bool profile_batchnorm_infer_impl(int do_verification,
     }
 
     int num_kernel = 0;
-    bool pass      = true;
+ck::utils::CorrectnessValidator validator;
 
     for(auto& inst_ptr : instance_ptrs)
     {
@@ -291,17 +291,15 @@ bool profile_batchnorm_infer_impl(int do_verification,
 
         if(do_verification)
         {
-            using ck::utils::check_err;
-            bool single_pass;
+            using ck::utils;
 
             y_dev.FromDevice(y.mData.data());
 
             if constexpr(ck::is_same_v<YDataType, ck::bhalf_t>)
-                single_pass = check_err(y.mData, y_ref.mData, "y results", 1e-2, 1e-2);
+                check_err(y.mData, y_ref.mData, "y results", 1e-2, 1e-2);
             else
-                single_pass = check_err(y.mData, y_ref.mData, "y results", 4e-3, 4e-3);
+                check_err(y.mData, y_ref.mData, "y results", 4e-3, 4e-3);
 
-            pass = pass && single_pass;
         };
 
         if(do_dumpout)
@@ -328,7 +326,7 @@ bool profile_batchnorm_infer_impl(int do_verification,
         return false;
     }
 
-    return pass;
+    return validator.is_success();
 }
 
 } // namespace profiler

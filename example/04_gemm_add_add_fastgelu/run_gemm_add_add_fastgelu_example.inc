@@ -147,13 +147,13 @@ bool run_gemm_add_add_fastgelu(const ProblemSize& problem_size, const ExecutionC
 #ifdef BUILD_INT4_EXAMPLE
         const Tensor<EDataType> e_m_n_device_result_converted(e_m_n_device_result);
 
-        return ck::utils::check_err(e_m_n_device_result_converted, e_m_n_host_result);
+        validator.check_err(e_m_n_device_result_converted, e_m_n_host_result);
 #else
-        return ck::utils::check_err(e_m_n_device_result, e_m_n_host_result);
+         validator.check_err(e_m_n_device_result, e_m_n_host_result);
 #endif
     }
 
-    return true;
+    return validator.is_success();
 }
 
 bool run_gemm_add_add_fastgelu_example(int argc, char* argv[])

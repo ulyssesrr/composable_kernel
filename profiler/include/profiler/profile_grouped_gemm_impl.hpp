@@ -44,7 +44,7 @@ bool profile_grouped_gemm_impl(int do_verification,
                                const std::vector<int>& StrideCs,
                                int kbatch = 1)
 {
-    bool pass = true;
+ck::utils::CorrectnessValidator validator;
 
     auto f_host_tensor_descriptor =
         [](std::size_t row, std::size_t col, std::size_t stride, auto layout) {
@@ -274,7 +274,7 @@ bool profile_grouped_gemm_impl(int do_verification,
                         if(std::is_same_v<CDataType, ck::half_t> && kbatch_curr > 1)
                         {
                             instance_pass =
-                                instance_pass && ck::utils::check_err(c_m_n_device_results[i],
+                                instance_pass && validator.check_err(c_m_n_device_results[i],
                                                                       c_m_n_host_results[i],
                                                                       "Error: Incorrect results!",
                                                                       0.06);
@@ -282,7 +282,7 @@ bool profile_grouped_gemm_impl(int do_verification,
                         else
                         {
                             instance_pass =
-                                instance_pass && ck::utils::check_err(c_m_n_device_results[i],
+                                instance_pass && validator.check_err(c_m_n_device_results[i],
                                                                       c_m_n_host_results[i]);
                         }
 
@@ -303,8 +303,6 @@ bool profile_grouped_gemm_impl(int do_verification,
 
                     std::cout << "Instance: " << gemm_name << " verification "
                               << (instance_pass ? "SUCCEED" : "FAILED") << std::endl;
-
-                    pass = pass && instance_pass;
                 }
 
                 float ave_time =
@@ -354,7 +352,7 @@ bool profile_grouped_gemm_impl(int do_verification,
                   << std::endl;
     }
 
-    return pass;
+    return validator.is_success();
 }
 
 } // namespace profiler

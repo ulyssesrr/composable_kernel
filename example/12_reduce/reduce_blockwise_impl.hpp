@@ -326,8 +326,6 @@ int reduce_blockwise_impl(bool do_verification,
     std::cout << "Perf: " << avg_time << " ms, " << gb_per_sec << " GB/s, " << reduce_name
               << std::endl;
 
-    bool pass = true;
-
     if(do_verification)
     {
 #ifdef CK_EXPERIMENTAL_BIT_INT_EXTENSION_INT4
@@ -343,14 +341,14 @@ int reduce_blockwise_impl(bool do_verification,
 #endif
             out_dev.FromDevice(out.mData.data());
 
-        pass = pass && ck::utils::check_err(out, out_ref);
+        validator.check_err(out, out_ref);
 
         if(OutputIndex)
         {
             out_index_dev.FromDevice(out_indices.mData.data());
-            pass = pass && ck::utils::check_err(out_indices, out_indices_ref);
+            validator.check_err(out_indices, out_indices_ref);
         };
     };
 
-    return (pass ? 0 : 1);
+    return !validator.is_success();
 }

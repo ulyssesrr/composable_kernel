@@ -242,7 +242,7 @@ int main(int argc, char* argv[])
             show_2d_matrix(std::cout << "c_host  :", c_m_n_host_result) << std::endl;
         }
 #endif
-        ck::utils::check_err(c_m_n_device_result, c_m_n_host_result);
+        validator.check_err(c_m_n_device_result, c_m_n_host_result);
     }
 
     return 0;

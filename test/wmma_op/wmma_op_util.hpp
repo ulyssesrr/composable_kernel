@@ -362,33 +362,33 @@ struct TestWmma
         if(is_supported)
         {
             // Assert
-            bool res = false;
+ck::utils::CorrectnessValidator validator;
             if(std::is_same<CDataType, float>::value)
             {
-                res = ck::utils::check_err(c_device.mData, c_host.mData);
+                res = validator.check_err(c_device.mData, c_host.mData);
                 std::cout << (res ? "SUCCESS" : "FAILURE") << std::endl;
             }
             else if(std::is_same<CDataType, ck::half_t>::value)
             {
-                res = ck::utils::check_err(c_device.mData, c_host.mData);
+                res = validator.check_err(c_device.mData, c_host.mData);
                 std::cout << (res ? "SUCCESS" : "FAILURE") << std::endl;
             }
             else if(std::is_same<CDataType, ck::bhalf_t>::value)
             {
                 // 0.5 Pixel Error Tolerance is introduced by Accumulator difference.
                 // BF16 WMMA Accumulator is in BF16 Type while On Host-side Accumulator is Float.
-                res = ck::utils::check_err(
+                res = validator.check_err(
                     c_device.mData, c_host.mData, "Error: Incorrect results!", 0, 1.0);
                 std::cout << (res ? "SUCCESS" : "FAILURE") << std::endl;
             }
             else if(std::is_same<CDataType, int8_t>::value)
             {
-                res = ck::utils::check_err(c_device.mData, c_host.mData);
+                res = validator.check_err(c_device.mData, c_host.mData);
                 std::cout << (res ? "SUCCESS" : "FAILURE") << std::endl;
             }
             else if(std::is_same<CDataType, double>::value)
             {
-                res = ck::utils::check_err(c_device.mData, c_host.mData);
+                res = validator.check_err(c_device.mData, c_host.mData);
                 std::cout << (res ? "SUCCESS" : "FAILURE") << std::endl;
             }
             else

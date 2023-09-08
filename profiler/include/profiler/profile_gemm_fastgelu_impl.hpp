@@ -147,7 +147,7 @@ bool profile_gemm_fastgelu_impl(int do_verification,
     float best_tflops     = 0;
     float best_gb_per_sec = 0;
 
-    bool pass = true;
+ck::utils::CorrectnessValidator validator;
 
     // profile device operation instances
     for(auto& op_ptr : op_ptrs)
@@ -203,7 +203,7 @@ bool profile_gemm_fastgelu_impl(int do_verification,
             {
                 e_device_buf.FromDevice(e_m_n_device_result.mData.data());
 
-                pass = pass && ck::utils::check_err(e_m_n_device_result, e_m_n_host_result);
+                validator.check_err(e_m_n_device_result, e_m_n_host_result);
             }
         }
         else
@@ -215,7 +215,7 @@ bool profile_gemm_fastgelu_impl(int do_verification,
     std::cout << "Best Perf: " << best_ave_time << " ms, " << best_tflops << " TFlops, "
               << best_gb_per_sec << " GB/s, " << best_op_name << std::endl;
 
-    return pass;
+    return validator.is_success();
 }
 
 } // namespace profiler

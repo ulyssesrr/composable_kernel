@@ -157,7 +157,7 @@ bool run_grouped_conv_bwd_weight(const ExecutionConfig& config,
 
         wei_device_buf.FromDevice(wei_device_result.mData.data());
 
-        return ck::utils::check_err(wei_device_result.mData, wei_host_result.mData);
+        return validator.check_err(wei_device_result.mData, wei_host_result.mData);
     }
 
     return true;

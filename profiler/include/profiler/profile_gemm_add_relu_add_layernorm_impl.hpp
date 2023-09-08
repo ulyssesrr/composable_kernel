@@ -250,7 +250,7 @@ bool profile_gemm_add_relu_add_layernorm_impl(int do_verification,
     float best_ave_time   = std::numeric_limits<float>::max();
     float best_gb_per_sec = 0;
 
-    bool pass      = true;
+ck::utils::CorrectnessValidator validator;
     int num_kernel = 0;
 
     // profile device operation instances
@@ -316,7 +316,7 @@ bool profile_gemm_add_relu_add_layernorm_impl(int do_verification,
             {
                 h_device_buf.FromDevice(h_m_n.mData.data());
 
-                pass = pass && ck::utils::check_err(
+                validator.check_err(
                                    h_m_n, h_m_n_host, "Error: Incorrect results h_m_n", 1e-2, 1e-2);
             }
         }
@@ -327,19 +327,14 @@ bool profile_gemm_add_relu_add_layernorm_impl(int do_verification,
         }
     }
 
-    if(num_kernel == 0)
-    {
-        std::cout << "Error: No kernel is applicable" << std::endl;
-        pass = false;
-    }
-    else
+    if(num_kernel != 0)
     {
         if(time_kernel)
             std::cout << "Best Perf: " << best_ave_time << " ms, " << best_gb_per_sec << " GB/s, "
                       << best_op_name << std::endl;
     }
 
-    return pass;
+    return validator.is_success();
 }
 
 } // namespace profiler

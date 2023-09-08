@@ -43,7 +43,7 @@ bool profile_gemm_streamk_impl(int do_verification,
                                int StrideC,
                                uint32_t NumSKBlocks = 0xffffffff)
 {
-    bool pass = true;
+ck::utils::CorrectnessValidator validator;
 
     auto f_host_tensor_descriptor =
         [](std::size_t row, std::size_t col, std::size_t stride, auto layout) {
@@ -176,7 +176,7 @@ bool profile_gemm_streamk_impl(int do_verification,
             {
                 c_device_buf.FromDevice(c_m_n_device_result.mData.data());
 
-                pass = pass & ck::utils::check_err(c_m_n_device_result, c_m_n_host_result);
+                validator.check_err(c_m_n_device_result, c_m_n_host_result);
 
                 if(do_log)
                 {
@@ -260,7 +260,7 @@ bool profile_gemm_streamk_impl(int do_verification,
               << " ms, " << best_tflops << " TFlops, " << best_gb_per_sec << " GB/s, "
               << best_op_name << std::endl;
 
-    return pass;
+    return validator.is_success();
 }
 
 } // namespace profiler

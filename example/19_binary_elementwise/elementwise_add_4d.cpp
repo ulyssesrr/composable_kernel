@@ -104,7 +104,6 @@ int main()
 
     std::cout << "Perf: " << ave_time << " ms" << std::endl;
 
-    bool pass = true;
     if(do_verification)
     {
         c_device_buf.FromDevice(c.mData.data());
@@ -113,8 +112,8 @@ int main()
         host_elementwise4D<Tensor<ABDataType>, Tensor<ABDataType>, Tensor<CDataType>, Add>(
             host_c, a, b, nchw, Add{});
 
-        pass &= ck::utils::check_err(c, host_c, "Error: Incorrect results c", 1e-3, 1e-3);
+        validator.check_err(c, host_c, "Error: Incorrect results c", 1e-3, 1e-3);
     }
 
-    return pass ? 0 : 1;
+    return !validator.is_success();
 }

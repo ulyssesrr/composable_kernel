@@ -265,13 +265,12 @@ int run(int argc, char* argv[])
             atol = 1e-2;
         }
 
-        return ck::utils::check_err(c_gs_ms_os_device_result.mData,
+        validator.check_err(c_gs_ms_os_device_result.mData,
                                     c_gs_ms_os_host_result.mData,
                                     "Error: Incorrect results!",
                                     rtol,
-                                    atol)
-                   ? 0
-                   : 1;
+                                    atol);
+        return !validator.is_success();
     }
 
     return 0;

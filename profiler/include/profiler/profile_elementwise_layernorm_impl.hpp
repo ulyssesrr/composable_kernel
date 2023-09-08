@@ -164,6 +164,7 @@ bool profile_elementwise_layernorm_impl(int do_verification,
     }
 
     int num_kernel = 0;
+ck::utils::CorrectnessValidator validator;
 
     for(auto& inst_ptr : instance_ptrs)
     {
@@ -221,8 +222,7 @@ bool profile_elementwise_layernorm_impl(int do_verification,
         {
             y_dev.FromDevice(y.mData.data());
 
-            bool pass =
-                ck::utils::check_err(y.mData, host_y.mData, "Error: Incorrect results", 1e-3, 1e-3);
+                validator.check_err(y.mData, host_y.mData, "Error: Incorrect results", 1e-3, 1e-3);
 
             if(do_log)
             {
@@ -232,7 +232,7 @@ bool profile_elementwise_layernorm_impl(int do_verification,
                 LogRangeAsType<float>(std::cout << "y  : ", y.mData, ",") << std::endl;
             }
 
-            if(!pass)
+            if(!validator.is_success())
             {
                 std::cout << inst_ptr->GetTypeString() << " failed verification: ";
                 LogRange(std::cout << "lengths = [", length, ", ") << "]." << std::endl;
@@ -253,13 +253,7 @@ bool profile_elementwise_layernorm_impl(int do_verification,
                   << best_gb_per_sec << " GB/s, " << best_instance_name << std::endl;
     }
 
-    if(num_kernel == 0)
-    {
-        std::cout << "Error: No kernel is tested" << std::endl;
-        return false;
-    }
-
-    return true;
+    return validator.is_success();
 }
 
 } // namespace profiler

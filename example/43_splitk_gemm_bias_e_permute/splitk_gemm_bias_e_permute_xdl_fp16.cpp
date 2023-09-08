@@ -398,9 +398,9 @@ int main(int argc, char* argv[])
             cde_element_op(e_gs_ms_ns_host_result(idx), c_ms_ns_host_result(idx), d_gs_ms_ns(idx));
         });
 
-        return ck::utils::check_err(e_gs_ms_ns_device_result.mData, e_gs_ms_ns_host_result.mData)
-                   ? 0
-                   : 1;
+ck::utils::CorrectnessValidator validator;
+        validator.check_err(e_gs_ms_ns_device_result.mData, e_gs_ms_ns_host_result.mData);
+        return !validator.is_success();
     }
 
     return 0;

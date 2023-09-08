@@ -396,13 +396,13 @@ int main(int argc, char* argv[])
         double rtol = 1e-3;
         double atol = 1e-3;
 
-        return ck::utils::check_err(c_gs_ms_os_device_result.mData,
+ck::utils::CorrectnessValidator validator;
+        validator.check_err(c_gs_ms_os_device_result.mData,
                                     c_gs_ms_os_host_result.mData,
                                     "Error: Incorrect results!",
                                     rtol,
-                                    atol)
-                   ? 0
-                   : 1;
+                                    atol);
+        return !validator.is_success();
     }
 
     return 0;

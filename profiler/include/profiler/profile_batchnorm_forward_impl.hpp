@@ -259,7 +259,7 @@ bool profile_batchnorm_forward_impl(int do_verification,
     }
 
     int num_kernel = 0;
-    bool pass      = true;
+ck::utils::CorrectnessValidator validator;
 
     for(auto& inst_ptr : instance_ptrs)
     {
@@ -336,15 +336,15 @@ bool profile_batchnorm_forward_impl(int do_verification,
 
         if(do_verification)
         {
-            using ck::utils::check_err;
+            using ck::utils;
             bool single_pass;
 
             y_dev.FromDevice(y.mData.data());
 
             if constexpr(ck::is_same_v<YDataType, ck::bhalf_t>)
-                single_pass = check_err(y.mData, y_ref.mData, "y results", 1e-2, 1e-2);
+                check_err(y.mData, y_ref.mData, "y results", 1e-2, 1e-2);
             else
-                single_pass = check_err(y.mData, y_ref.mData, "y results", 4e-3, 4e-3);
+                check_err(y.mData, y_ref.mData, "y results", 4e-3, 4e-3);
 
             if(updateMovingAverage)
             {
@@ -352,8 +352,8 @@ bool profile_batchnorm_forward_impl(int do_verification,
                 resultRunningVariance_dev.FromDevice(resultRunningVariance.mData.data());
 
                 // clang-format off
-                single_pass = single_pass && check_err(resultRunningMean.mData, resultRunningMean_ref.mData, "average mean results", 1.5e-5, 1.5e-5);
-                single_pass = single_pass && check_err(resultRunningVariance.mData, resultRunningVariance_ref.mData, "average variance results", 1e-5, 1e-5);
+                check_err(resultRunningMean.mData, resultRunningMean_ref.mData, "average mean results", 1.5e-5, 1.5e-5);
+                 check_err(resultRunningVariance.mData, resultRunningVariance_ref.mData, "average variance results", 1e-5, 1e-5);
                 // clang-format on
             };
 
@@ -363,12 +363,11 @@ bool profile_batchnorm_forward_impl(int do_verification,
                 resultSaveInvVariance_dev.FromDevice(resultSaveInvVariance.mData.data());
 
                 // clang-format off
-                single_pass = single_pass && check_err(resultSaveMean.mData, resultSaveMean_ref.mData, "mean results", 3e-5, 3e-5);
-                single_pass = single_pass && check_err(resultSaveInvVariance.mData, resultSaveInvVariance_ref.mData, "inv-variance results", 7e-5, 7e-5);
+                 check_err(resultSaveMean.mData, resultSaveMean_ref.mData, "mean results", 3e-5, 3e-5);
+                check_err(resultSaveInvVariance.mData, resultSaveInvVariance_ref.mData, "inv-variance results", 7e-5, 7e-5);
                 // clang-format on
             };
 
-            pass = pass && single_pass;
         };
 
         if(do_dumpout)
@@ -405,7 +404,7 @@ bool profile_batchnorm_forward_impl(int do_verification,
         return false;
     }
 
-    return pass;
+    return validator.is_success();
 }
 
 } // namespace profiler

@@ -338,7 +338,7 @@ bool bnorm_bwd_nhwc_test(bool do_verification,
     else
         (void)invoker_ptr->Run(argument_ptr.get(), StreamConfig{nullptr, time_kernel});
 
-    bool pass = true;
+    ck::utils::CorrectnessValidator validator;
 
     if(do_verification)
     {
@@ -394,20 +394,20 @@ bool bnorm_bwd_nhwc_test(bool do_verification,
         dbias_dev.FromDevice(dbias.data());
 
         // clang-format off
-        pass = pass && ck::utils::check_err(dbias.mData, dbias_ref.mData, "dBias result:", 2e-4, 2e-4);
-        pass = pass && ck::utils::check_err(dscale.mData, dscale_ref.mData, "dScale result:", 2e-4, 2e-4);
-        pass = pass && ck::utils::check_err(dx.mData, dx_ref.mData, "dx result:");
+        validator.check_err(dbias.mData, dbias_ref.mData, "dBias result:", 2e-4, 2e-4);
+        validator.check_err(dscale.mData, dscale_ref.mData, "dScale result:", 2e-4, 2e-4);
+        validator.check_err(dx.mData, dx_ref.mData, "dx result:");
         // clang-format on
     };
 
-    return (pass);
+    return validator.is_success();
 };
 
 static const double epsilon = std::numeric_limits<float>::epsilon();
 
 int main(int argc, char* argv[])
 {
-    bool pass = true;
+    ck::utils::CorrectnessValidator validator;
 
     if(argc > 1)
     {

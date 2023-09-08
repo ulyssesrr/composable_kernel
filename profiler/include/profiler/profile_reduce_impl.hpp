@@ -196,7 +196,7 @@ bool profile_reduce_impl_impl(bool do_verification,
                                      invalid_reduce_4 || invalid_reduce_5 || invalid_reduce_6);
 
     int num_kernel = 0;
-    bool pass      = true;
+ck::utils::CorrectnessValidator validator;
 
     if constexpr(!invalid_reduce)
     {
@@ -403,12 +403,12 @@ bool profile_reduce_impl_impl(bool do_verification,
                 bool single_pass;
 
                 out_dev.FromDevice(out.mData.data());
-                single_pass = ck::utils::check_err(out, out_ref);
+                single_pass = validator.check_err(out, out_ref);
 
                 if(OutputIndex)
                 {
                     out_indices_dev.FromDevice(out_indices.mData.data());
-                    single_pass = single_pass && ck::utils::check_err(out_indices, out_indices_ref);
+                    single_pass = single_pass && validator.check_err(out_indices, out_indices_ref);
                 };
 
                 if(!single_pass)
@@ -416,7 +416,6 @@ bool profile_reduce_impl_impl(bool do_verification,
                     std::cout << "Fail Info: " << reduce_ptr->GetTypeString() << std::endl;
                 }
 
-                pass = pass && single_pass;
             };
 
             if(do_dumpout)
@@ -447,13 +446,7 @@ bool profile_reduce_impl_impl(bool do_verification,
             "The requested reduction operation is not supported, please check!");
     };
 
-    if(num_kernel == 0)
-    {
-        std::cout << "Error: No kernel is applicable" << std::endl;
-        return false;
-    };
-
-    return pass;
+    return validator.is_success();
 };
 
 template <typename InDataType, typename AccDataType, typename OutDataType>

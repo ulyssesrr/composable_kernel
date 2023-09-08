@@ -307,13 +307,11 @@ int main(int argc, char* argv[])
     std::cout << "Perf: " << avg_time_1 + avg_time_2 << " ms, " << gb_per_sec << " GB/s, "
               << reduce_1.GetTypeString() << " => " << reduce_2.GetTypeString() << std::endl;
 
-    bool pass = true;
-
     if(do_verify)
     {
         out_dev.FromDevice(out.mData.data());
-        pass = pass && ck::utils::check_err(out, out_ref);
+        validator.check_err(out, out_ref);
     };
 
-    return (pass ? 0 : 1);
+    return !validator.is_success();
 }

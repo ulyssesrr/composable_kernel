@@ -265,7 +265,7 @@ bool profile_batchnorm_backward_impl(bool do_verification,
     }
 
     int num_kernel = 0;
-    bool pass      = true;
+ck::utils::CorrectnessValidator validator;
 
     for(auto& inst_ptr : instance_ptrs)
     {
@@ -340,20 +340,17 @@ bool profile_batchnorm_backward_impl(bool do_verification,
 
         if(do_verification)
         {
-            using ck::utils::check_err;
-            bool single_pass = true;
+            using ck::utils;
 
             dx_dev.FromDevice(dx.mData.data());
             dscale_dev.FromDevice(dscale.data());
             dbias_dev.FromDevice(dbias.data());
 
             // clang-format off
-            single_pass = single_pass && ck::utils::check_err(dx.mData, dx_ref.mData, "dx result:", 5e-4, 5e-4);
-            single_pass = single_pass && ck::utils::check_err(dscale.mData, dscale_ref.mData, "dScale result:", 3e-3, 3e-3);
-            single_pass = single_pass && ck::utils::check_err(dbias.mData, dbias_ref.mData, "dBias result:", 3e-3, 3e-3);
+            validator.check_err(dx.mData, dx_ref.mData, "dx result:", 5e-4, 5e-4);
+            validator.check_err(dscale.mData, dscale_ref.mData, "dScale result:", 3e-3, 3e-3);
+            validator.check_err(dbias.mData, dbias_ref.mData, "dBias result:", 3e-3, 3e-3);
             // clang-format on
-
-            pass = pass && single_pass;
         };
 
         if(do_dumpout)
@@ -383,7 +380,7 @@ bool profile_batchnorm_backward_impl(bool do_verification,
         return false;
     }
 
-    return pass;
+    return validator.is_success();
 }
 
 } // namespace profiler

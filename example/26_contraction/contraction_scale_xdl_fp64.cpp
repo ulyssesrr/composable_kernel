@@ -269,7 +269,8 @@ int main(int argc, char* argv[])
             }
         }
 
-        return ck::utils::check_err(e_ms_ns_device_result, e_ms_ns_host_result) ? 0 : 1;
+        validator.check_err(e_ms_ns_device_result, e_ms_ns_host_result);
+        return !validator.is_success();
     }
 
     return 0;

@@ -43,7 +43,7 @@ bool profile_gemm_splitk_impl(int do_verification,
                               int StrideC,
                               int KBatch)
 {
-    bool pass = true;
+ck::utils::CorrectnessValidator validator;
 
     auto f_host_tensor_descriptor =
         [](std::size_t row, std::size_t col, std::size_t stride, auto layout) {
@@ -181,7 +181,7 @@ bool profile_gemm_splitk_impl(int do_verification,
                 {
                     c_device_buf.FromDevice(c_m_n_device_result.mData.data());
 
-                    pass = pass & ck::utils::check_err(c_m_n_device_result, c_m_n_host_result);
+                    validator.check_err(c_m_n_device_result, c_m_n_host_result);
 
                     if(do_log)
                     {
@@ -221,12 +221,12 @@ bool profile_gemm_splitk_impl(int do_verification,
                     std::string msg = "Error: Incorrect results!";
                     double rtol     = 1e-1;
                     double atol     = 1e-1;
-                    pass            = pass & ck::utils::check_err(
+                    validator.check_err(
                                       c_m_n_device_result, c_m_n_host_result, msg, rtol, atol);
                 }
                 else
                 {
-                    pass = pass & ck::utils::check_err(c_m_n_device_result, c_m_n_host_result);
+                    validator.check_err(c_m_n_device_result, c_m_n_host_result);
                 }
 
                 if(tflops > best_tflops)
@@ -286,7 +286,7 @@ bool profile_gemm_splitk_impl(int do_verification,
               << " : " << best_ave_time << " ms, " << best_tflops << " TFlops, " << best_gb_per_sec
               << " GB/s, " << best_op_name << std::endl;
 
-    return pass;
+    return validator.is_success();
 }
 
 } // namespace profiler

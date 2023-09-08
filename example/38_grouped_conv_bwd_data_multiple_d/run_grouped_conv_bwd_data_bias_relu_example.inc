@@ -156,8 +156,9 @@ bool run_conv_bwd_data_bias_relu(const ExecutionConfig& config,
             [&](auto&, auto idx) { in_element_op(in_host(idx), c_host(idx), bias(idx)); });
 
         in_device_buf.FromDevice(in_device.mData.data());
-
-        return ck::utils::check_err(in_device, in_host);
+ck::utils::CorrectnessValidator validator;
+        validator.check_err(in_device, in_host);
+        return validator.is_success();
     }
 
     return true;

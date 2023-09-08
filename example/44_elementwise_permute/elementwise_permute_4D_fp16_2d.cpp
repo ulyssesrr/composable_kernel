@@ -110,7 +110,7 @@ int main()
     std::cout << "Perf: " << ave_time << " ms, " << tflops << " TFlops, " << gb_per_sec << " GB/s"
               << std::endl;
 
-    bool pass = true;
+ck::utils::CorrectnessValidator validator;
 
     if(do_verification)
     {
@@ -122,9 +122,8 @@ int main()
             host_b, a, nchw, PassThrough{});
 
         // LogRangeAsType<float>(std::cout << "Host b  : ", host_b.mData, ",") << std::endl;
-        pass &=
-            ck::utils::check_err(b.mData, host_b.mData, "Error: Incorrect results b", 1e-3, 1e-3);
+            validator.check_err(b.mData, host_b.mData, "Error: Incorrect results b", 1e-3, 1e-3);
     }
 
-    return pass ? 0 : 1;
+    return !validator.is_success();
 }

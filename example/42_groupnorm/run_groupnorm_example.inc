@@ -89,7 +89,7 @@ int run_groupnorm_example(int argc, char* argv[])
     std::cout << "Perf: " << ave_time << " ms, " << gb_per_sec << " GB/s, "
               << device_instance.GetTypeString() << std::endl;
 
-    bool pass = true;
+ck::utils::CorrectnessValidator validator;
     {
         Tensor<YDataType> host_y({N, H, W, G, C});
         using ReferenceInstance = ck::tensor_operation::host::ReferenceGroupnorm<XDataType,
@@ -106,8 +106,8 @@ int run_groupnorm_example(int argc, char* argv[])
         ref_invoker.Run(ref_argument);
 
         y_dev.FromDevice(y.mData.data());
-        pass &= ck::utils::check_err(y, host_y, "Error: Incorrect results", 1e-3, 1e-3);
+        validator.check_err(y, host_y, "Error: Incorrect results", 1e-3, 1e-3);
     }
 
-    return (pass ? 0 : 1);
+    return !validator.is_success();
 }
