@@ -492,6 +492,7 @@ struct GridwiseGemmMultipleD_xdl_cshuffle
         // B matrix in LDS memory, dst of blockwise copy
         constexpr auto b_block_desc_bk0_n_bk1 = GetBBlockDescriptor_BK0PerBlock_NPerBlock_BK1();
 
+#if 0
         // A matrix blockwise copy
         auto a_blockwise_copy =
             ThreadGroupTensorSliceTransfer_v4r1<ThisThreadBlock,
@@ -522,7 +523,33 @@ struct GridwiseGemmMultipleD_xdl_cshuffle
                 a_block_desc_ak0_m_ak1,
                 make_multi_index(0, 0, 0),
                 ck::tensor_operation::element_wise::PassThrough{});
+#endif
 
+        auto a_blockwise_copy = ThreadGroupTensorSliceTransfer_v7<
+            ThisThreadBlock,
+            Tuple<ADataType>,
+            Tuple<ComputeDataType>,
+            decltype(tie(a_grid_desc_ak0_m_ak1)),
+            decltype(tie(a_block_desc_ak0_m_ak1)),
+            ck::tensor_operation::element_wise::PassThrough, // AElementwiseOperation,
+            Sequence<static_cast<index_t>(InMemoryDataOperationEnum::Set)>,
+            Sequence<AK0PerBlock, MPerBlock, AK1>,
+            ABlockTransferThreadClusterLengths_AK0_M_AK1,
+            ABlockTransferThreadClusterArrangeOrder,
+            ABlockTransferSrcAccessOrder,
+            Sequence<1, 0, 2>,
+            ABlockTransferSrcVectorDim,
+            2,
+            ABlockTransferSrcScalarPerVector,
+            ABlockTransferDstScalarPerVector_AK1,
+            Sequence<true>,
+            Sequence<true>>{tie(a_grid_desc_ak0_m_ak1),
+                            make_tuple(make_multi_index(0, m_block_data_idx_on_grid, 0)),
+                            tie(a_block_desc_ak0_m_ak1),
+                            make_tuple(make_multi_index(0, 0, 0)),
+                            a_element_op};
+
+#if 0
         // B matrix blockwise copy
         auto b_blockwise_copy =
             ThreadGroupTensorSliceTransfer_v4r1<ThisThreadBlock,
@@ -553,6 +580,31 @@ struct GridwiseGemmMultipleD_xdl_cshuffle
                 b_block_desc_bk0_n_bk1,
                 make_multi_index(0, 0, 0),
                 ck::tensor_operation::element_wise::PassThrough{});
+#endif
+
+        auto b_blockwise_copy = ThreadGroupTensorSliceTransfer_v7<
+            ThisThreadBlock,
+            Tuple<BDataType>,
+            Tuple<ComputeDataType>,
+            decltype(tie(b_grid_desc_bk0_n_bk1)),
+            decltype(tie(b_block_desc_bk0_n_bk1)),
+            ck::tensor_operation::element_wise::PassThrough, // AElementwiseOperation,
+            Sequence<static_cast<index_t>(InMemoryDataOperationEnum::Set)>,
+            Sequence<BK0PerBlock, NPerBlock, BK1>,
+            BBlockTransferThreadClusterLengths_BK0_N_BK1,
+            BBlockTransferThreadClusterArrangeOrder,
+            BBlockTransferSrcAccessOrder,
+            Sequence<1, 0, 2>,
+            BBlockTransferSrcVectorDim,
+            2,
+            BBlockTransferSrcScalarPerVector,
+            BBlockTransferDstScalarPerVector_BK1,
+            Sequence<true>,
+            Sequence<true>>{tie(b_grid_desc_bk0_n_bk1),
+                            make_tuple(make_multi_index(0, n_block_data_idx_on_grid, 0)),
+                            tie(b_block_desc_bk0_n_bk1),
+                            make_tuple(make_multi_index(0, 0, 0)),
+                            b_element_op};
 
         // GEMM definition
         //   c_mtx += transpose(a_mtx) * b_mtx
@@ -594,13 +646,81 @@ struct GridwiseGemmMultipleD_xdl_cshuffle
         constexpr auto a_block_slice_copy_step = make_multi_index(KPerBlock / AK1, 0, 0);
         constexpr auto b_block_slice_copy_step = make_multi_index(KPerBlock / BK1, 0, 0);
 
-        // gridwise GEMM pipeline
-        const auto gridwise_gemm_pipeline =
-            GridwiseGemmPipeline_Selector<PipelineVer, NumGemmKPrefetchStage, LoopSched>();
-
         const index_t num_k_block_main_loop = __builtin_amdgcn_readfirstlane(
             (a_grid_desc_ak0_m_ak1.GetLength(I0) * a_grid_desc_ak0_m_ak1.GetLength(I2)) /
             KPerBlock);
+
+#if 1
+        {
+            const auto a_grid_desc = tie(a_grid_desc_ak0_m_ak1);
+            const auto b_grid_desc = tie(b_grid_desc_bk0_n_bk1);
+
+            const auto a_block_copy_step = a_block_slice_copy_step;
+            const auto b_block_copy_step = b_block_slice_copy_step;
+
+            const auto a_block_desc = tie(a_block_desc_ak0_m_ak1);
+            const auto b_block_desc = tie(b_block_desc_bk0_n_bk1);
+
+            const auto a_block_buf_ = tie(a_block_buf);
+            const auto b_block_buf_ = tie(b_block_buf);
+
+            const auto a_grid_buf_ = tie(a_grid_buf);
+            const auto b_grid_buf_ = tie(b_grid_buf);
+
+            // preload data into LDS
+            a_blockwise_copy.RunRead(a_grid_desc, a_grid_buf_);
+            b_blockwise_copy.RunRead(b_grid_desc, b_grid_buf_);
+
+            a_blockwise_copy.MoveSrcSliceWindow(a_grid_desc, I0, a_block_copy_step);
+            b_blockwise_copy.MoveSrcSliceWindow(b_grid_desc, I0, b_block_copy_step);
+
+            // Initialize C
+            c_thread_buf.Clear();
+
+            a_blockwise_copy.RunWrite(a_block_desc, a_block_buf_);
+            b_blockwise_copy.RunWrite(b_block_desc, b_block_buf_);
+
+            const auto num_loop = num_k_block_main_loop;
+
+            // main body
+            if constexpr(HasMainKBlockLoop)
+            {
+                index_t i = 0;
+
+                do
+                {
+                    a_blockwise_copy.RunRead(a_grid_desc, a_grid_buf_);
+
+                    block_sync_lds();
+
+                    b_blockwise_copy.RunRead(b_grid_desc, b_grid_buf_);
+
+                    blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
+
+                    block_sync_lds();
+
+                    a_blockwise_copy.MoveSrcSliceWindow(a_grid_desc, I0, a_block_copy_step);
+                    b_blockwise_copy.MoveSrcSliceWindow(b_grid_desc, I0, b_block_copy_step);
+
+                    a_blockwise_copy.RunWrite(a_block_desc, a_block_buf_);
+                    b_blockwise_copy.RunWrite(b_block_desc, b_block_buf_);
+
+                    ++i;
+                } while(i < (num_loop - 1));
+            }
+
+            // tail
+            {
+                block_sync_lds();
+
+                blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
+            }
+        }
+#endif
+#if 0
+        // gridwise GEMM pipeline
+        const auto gridwise_gemm_pipeline =
+            GridwiseGemmPipeline_Selector<PipelineVer, NumGemmKPrefetchStage, LoopSched>();
 
         gridwise_gemm_pipeline.template Run<HasMainKBlockLoop>(a_grid_desc_ak0_m_ak1,
                                                                a_block_desc_ak0_m_ak1,
@@ -617,6 +737,7 @@ struct GridwiseGemmMultipleD_xdl_cshuffle
                                                                blockwise_gemm,
                                                                c_thread_buf,
                                                                num_k_block_main_loop);
+#endif
 
         // shuffle C and write out
         {
@@ -773,7 +894,10 @@ struct GridwiseGemmMultipleD_xdl_cshuffle
                 CDEBlockTransferClusterLengths_MBlock_MPerBlock_NBlock_NPerBlock,
                 Sequence<0, 1, 2, 3>, // typename ThreadClusterArrangeOrder,
                 Sequence<0, 1, 2, 3>, // typename DimAccessOrder,
+                Sequence<0, 1, 2, 3>, // typename DimAccessOrder,
                 3,                    // index_t VectorDim,
+                3,                    // index_t VectorDim,
+                CDEShuffleBlockTransferScalarPerVector_NPerBlock,
                 CDEShuffleBlockTransferScalarPerVector_NPerBlock,
                 sequence_merge_t<
                     Sequence<true>,

@@ -33,9 +33,12 @@ template <typename ThreadGroup,
           typename SliceLengths,
           typename ThreadClusterLengths,
           typename ThreadClusterArrangeOrder,
-          typename DimAccessOrder,
-          index_t VectorDim,
-          index_t ScalarPerVector,
+          typename SrcDimAccessOrder,
+          typename DstDimAccessOrder,
+          index_t SrcVectorDim,
+          index_t DstVectorDim,
+          index_t SrcScalarPerVector,
+          index_t DstScalarPerVector,
           typename ThreadTransferSrcResetCoordinateAfterRunFlags,
           typename ThreadTransferDstResetCoordinateAfterRunFlags>
 struct ThreadGroupTensorSliceTransfer_v7
@@ -82,7 +85,7 @@ struct ThreadGroupTensorSliceTransfer_v7
 
         static_assert(nDim == ThreadClusterLengths::Size() &&
                           nDim == ThreadClusterArrangeOrder::Size() &&
-                          nDim == DimAccessOrder::Size(),
+                          nDim == SrcDimAccessOrder::Size() && nDim == DstDimAccessOrder::Size(),
                       "wrong! nDim not consistent");
 
         static_assert(
@@ -113,6 +116,26 @@ struct ThreadGroupTensorSliceTransfer_v7
         }
     }
 
+    template <typename SrcBuffers>
+    __device__ void RunRead(const SrcDescs& src_descs, const SrcBuffers& src_bufs)
+    {
+        if(ThreadGroup::GetNumOfThread() == thread_cluster_desc_.GetElementSize() or
+           ThreadGroup::GetThreadId() < thread_cluster_desc_.GetElementSize())
+        {
+            threadwise_transfer_.RunRead(src_descs, src_bufs);
+        }
+    }
+
+    template <typename DstBuffers>
+    __device__ void RunWrite(const DstDescs& dst_descs, DstBuffers dst_bufs)
+    {
+        if(ThreadGroup::GetNumOfThread() == thread_cluster_desc_.GetElementSize() or
+           ThreadGroup::GetThreadId() < thread_cluster_desc_.GetElementSize())
+        {
+            threadwise_transfer_.RunWrite(dst_descs, dst_bufs);
+        }
+    }
+
     template <typename SrcBuffers, typename DstBuffers>
     __device__ void Run(const SrcDescs& src_descs,
                         const SrcBuffers& src_bufs,
@@ -122,7 +145,8 @@ struct ThreadGroupTensorSliceTransfer_v7
         if(ThreadGroup::GetNumOfThread() == thread_cluster_desc_.GetElementSize() or
            ThreadGroup::GetThreadId() < thread_cluster_desc_.GetElementSize())
         {
-            threadwise_transfer_.Run(src_descs, src_bufs, dst_descs, dst_bufs);
+            RunRead(src_descs, src_bufs);
+            RunWrite(dst_descs, dst_bufs);
         }
     }
 
@@ -160,9 +184,12 @@ struct ThreadGroupTensorSliceTransfer_v7
                                          ElementwiseOperation,
                                          DstInMemOps,
                                          decltype(thread_slice_lengths),
-                                         DimAccessOrder,
-                                         VectorDim,
-                                         ScalarPerVector,
+                                         SrcDimAccessOrder,
+                                         DstDimAccessOrder,
+                                         SrcVectorDim,
+                                         DstVectorDim,
+                                         SrcScalarPerVector,
+                                         DstScalarPerVector,
                                          ThreadTransferSrcResetCoordinateAfterRunFlags,
                                          ThreadTransferDstResetCoordinateAfterRunFlags>;
 

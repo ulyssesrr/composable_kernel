@@ -32,9 +32,12 @@ template <typename SrcDatas,
           typename ElementwiseOperation,
           typename DstInMemOps, // Sequence<InMemoryDataOperationEnum ...>
           typename SliceLengths,
-          typename DimAccessOrder,
-          index_t VectorDim,
-          index_t ScalarPerVector,
+          typename SrcDimAccessOrder,
+          typename DstDimAccessOrder,
+          index_t SrcVectorDim,
+          index_t DstVectorDim,
+          index_t SrcScalarPerVector,
+          index_t DstScalarPerVector,
           typename SrcResetCoordinateAfterRunFlags, // Sequence<bool ...>
           typename DstResetCoordinateAfterRunFlags> // Sequence<bool ...>
 struct ThreadwiseTensorSliceTransfer_v7
@@ -63,11 +66,19 @@ struct ThreadwiseTensorSliceTransfer_v7
 
     // scalar per access on each dim
     // FIXME: don't use lambda_scalar_per_access
-    static constexpr auto scalar_per_access = generate_sequence(
-        detail::lambda_scalar_per_access<VectorDim, ScalarPerVector>{}, Number<nDim>{});
+    static constexpr auto src_scalar_per_access = generate_sequence(
+        detail::lambda_scalar_per_access<SrcVectorDim, SrcScalarPerVector>{}, Number<nDim>{});
 
-    using SpaceFillingCurve =
-        SpaceFillingCurve<SliceLengths, DimAccessOrder, remove_cv_t<decltype(scalar_per_access)>>;
+    using SrcSpaceFillingCurve = SpaceFillingCurve<SliceLengths,
+                                                   SrcDimAccessOrder,
+                                                   remove_cv_t<decltype(src_scalar_per_access)>>;
+
+    static constexpr auto dst_scalar_per_access = generate_sequence(
+        detail::lambda_scalar_per_access<DstVectorDim, DstScalarPerVector>{}, Number<nDim>{});
+
+    using DstSpaceFillingCurve = SpaceFillingCurve<SliceLengths,
+                                                   DstDimAccessOrder,
+                                                   remove_cv_t<decltype(dst_scalar_per_access)>>;
 
     __device__ constexpr ThreadwiseTensorSliceTransfer_v7(
         const SrcDescs& src_descs,
@@ -79,7 +90,10 @@ struct ThreadwiseTensorSliceTransfer_v7
           dst_coords_(MakeCoordinates(dst_descs, dst_slice_origins)),
           element_op_(element_op)
     {
-        static_assert(SliceLengths::At(Number<VectorDim>{}) % ScalarPerVector == 0,
+        static_assert(SliceLengths::At(Number<SrcVectorDim>{}) % SrcScalarPerVector == 0,
+                      "wrong! cannot evenly divide");
+
+        static_assert(SliceLengths::At(Number<DstVectorDim>{}) % DstScalarPerVector == 0,
                       "wrong! cannot evenly divide");
     }
 
@@ -101,38 +115,32 @@ struct ThreadwiseTensorSliceTransfer_v7
         });
     }
 
+    template <typename DataTypes, index_t ScalarPerVector>
+    __device__ static auto generate_vectors()
+    {
+        auto data_types = DataTypes{};
+
+        constexpr index_t num = data_types.Size();
+
+        return generate_tuple(
+            [&](auto i) {
+                using DataType = remove_cvref_t<decltype(data_types[i])>;
+
+                return vector_type_maker_t<DataType, ScalarPerVector>{};
+            },
+            Number<num>{});
+    }
+
+#if 1
     // SrcDescs: Tuple<const SrcDesc0&, const SrcDesc1&, ...>
     // SrcBuffers: Tuple<const SrcBuffer0&, const SrcBuffer1&, ...>
-    // DstDescs: Tuple<const DstDesc0&, const DstDesc1&, ...>
-    // DstBuffers: Tuple<const DstBuffer0&, const DstBuffer1&, ...>
     template <typename SrcBuffers,
-              typename DstBuffers,
-              enable_if_t<SrcDescs::Size() == SrcBuffers::Size() &&
-                              DstDescs::Size() == DstBuffers::Size(),
-                          bool> = false>
-    __device__ void Run(const SrcDescs& src_descs,
-                        const SrcBuffers& src_bufs,
-                        const DstDescs& dst_descs,
-                        DstBuffers dst_bufs)
+              enable_if_t<SrcDescs::Size() == SrcBuffers::Size(), bool> = false>
+    __device__ void RunRead(const SrcDescs& src_descs, const SrcBuffers& src_bufs)
     {
-        auto generate_vectors = [&](auto data_types) {
-            constexpr index_t num = data_types.Size();
-
-            return generate_tuple(
-                [&](auto i) {
-                    using DataType = remove_cvref_t<decltype(data_types[i])>;
-
-                    return vector_type_maker_t<DataType, ScalarPerVector>{};
-                },
-                Number<num>{});
-        };
-
-        constexpr auto num_access = SpaceFillingCurve::GetNumOfAccess();
-
         // loop over space-filling curve
         static_for<0, num_access, 1>{}([&](auto iAccess) {
-            auto src_vectors = generate_vectors(SrcDatas{});
-            auto dst_vectors = generate_vectors(DstDatas{});
+            auto src_vectors = generate_vectors<SrcDatas, SrcScalarPerVector>();
 
             // copy data from src_bufs into src_vectors
             static_for<0, nSrc, 1>{}([&](auto i) {
@@ -142,13 +150,51 @@ struct ThreadwiseTensorSliceTransfer_v7
                     coordinate_has_valid_offset_assuming_visible_index_is_valid(src_descs[i],
                                                                                 src_coords_[i]);
 
-                src_vectors(i).template AsType<src_vector_t>()(I0) =
+                src_vectors_tuple_(iAccess)(i).template AsType<src_vector_t>()(I0) =
                     src_bufs[i].template Get<src_vector_t>(src_coords_[i].GetOffset(),
                                                            is_src_valid);
             });
 
+            // move coordinate
+            if constexpr(iAccess.value != num_access - 1)
+            {
+                constexpr auto forward_step = SrcSpaceFillingCurve::GetForwardStep(iAccess);
+
+                static_for<0, nSrc, 1>{}([&](auto i) {
+                    move_tensor_coordinate(src_descs[i],
+                                           src_coords_(i),
+                                           make_tensor_coordinate_step(src_descs[i], forward_step));
+                });
+            }
+        });
+
+        // move coordinate back to slice origin (or not)
+        static_for<0, nSrc, 1>{}([&](auto i) {
+            if constexpr(SrcResetCoordinateAfterRunFlags::At(i))
+            {
+                const auto src_reset_step =
+                    make_tensor_coordinate_step(src_descs[i], GetSrcCoordinateResetStep());
+
+                move_tensor_coordinate(src_descs[i], src_coords_(i), src_reset_step);
+            }
+        });
+    }
+#endif
+
+#if 1
+    // DstDescs: Tuple<const DstDesc0&, const DstDesc1&, ...>
+    // DstBuffers: Tuple<const DstBuffer0&, const DstBuffer1&, ...>
+    template <typename DstBuffers,
+              enable_if_t<DstDescs::Size() == DstBuffers::Size(), bool> = false>
+    __device__ void RunWrite(const DstDescs& dst_descs, DstBuffers dst_bufs)
+    {
+        // loop over space-filling curve
+        static_for<0, num_access, 1>{}([&](auto iAccess) {
+            auto src_vectors = src_vectors_tuple_[iAccess];
+            auto dst_vectors = generate_vectors<DstDatas, DstScalarPerVector>();
+
             // apply pointwise function
-            static_for<0, ScalarPerVector, 1>{}([&](auto i) {
+            static_for<0, SrcScalarPerVector, 1>{}([&](auto i) {
                 // get reference to src data
                 const auto src_data_refs = generate_tie(
                     // return type should be lvalue
@@ -200,13 +246,7 @@ struct ThreadwiseTensorSliceTransfer_v7
             // move coordinate
             if constexpr(iAccess.value != num_access - 1)
             {
-                constexpr auto forward_step = SpaceFillingCurve::GetForwardStep(iAccess);
-
-                static_for<0, nSrc, 1>{}([&](auto i) {
-                    move_tensor_coordinate(src_descs[i],
-                                           src_coords_(i),
-                                           make_tensor_coordinate_step(src_descs[i], forward_step));
-                });
+                constexpr auto forward_step = DstSpaceFillingCurve::GetForwardStep(iAccess);
 
                 static_for<0, nDst, 1>{}([&](auto i) {
                     move_tensor_coordinate(dst_descs[i],
@@ -216,42 +256,57 @@ struct ThreadwiseTensorSliceTransfer_v7
             }
         });
 
-        // move coordinate back to slice origin (or not)
-        static_for<0, nSrc, 1>{}([&](auto i) {
-            if constexpr(SrcResetCoordinateAfterRunFlags::At(i))
-            {
-                const auto src_reset_step =
-                    make_tensor_coordinate_step(src_descs[i], GetCoordinateResetStep());
-
-                move_tensor_coordinate(src_descs[i], src_coords_(i), src_reset_step);
-            }
-        });
-
         static_for<0, nDst, 1>{}([&](auto i) {
             if constexpr(DstResetCoordinateAfterRunFlags::At(i))
             {
                 const auto dst_reset_step =
-                    make_tensor_coordinate_step(dst_descs[i], GetCoordinateResetStep());
+                    make_tensor_coordinate_step(dst_descs[i], GetDstCoordinateResetStep());
 
                 move_tensor_coordinate(dst_descs[i], dst_coords_(i), dst_reset_step);
             }
         });
     }
+#endif
 
-    __device__ static constexpr auto GetCoordinateResetStep()
+    // SrcDescs: Tuple<const SrcDesc0&, const SrcDesc1&, ...>
+    // SrcBuffers: Tuple<const SrcBuffer0&, const SrcBuffer1&, ...>
+    // DstDescs: Tuple<const DstDesc0&, const DstDesc1&, ...>
+    // DstBuffers: Tuple<const DstBuffer0&, const DstBuffer1&, ...>
+    template <typename SrcBuffers,
+              typename DstBuffers,
+              enable_if_t<SrcDescs::Size() == SrcBuffers::Size() &&
+                              DstDescs::Size() == DstBuffers::Size(),
+                          bool> = false>
+    __device__ void Run(const SrcDescs& src_descs,
+                        const SrcBuffers& src_bufs,
+                        const DstDescs& dst_descs,
+                        DstBuffers dst_bufs)
     {
-        constexpr auto num_access = SpaceFillingCurve::GetNumOfAccess();
+        RunRead(src_descs, src_bufs);
+        RunWrite(dst_descs, dst_bufs);
+    }
 
+    __device__ static constexpr auto GetSrcCoordinateResetStep()
+    {
         if constexpr(num_access == 0)
         {
-            return typename SpaceFillingCurve::Index{};
+            return typename SrcSpaceFillingCurve::Index{};
         }
         else
         {
-            constexpr auto reset_step =
-                SpaceFillingCurve::GetStepBetween(Number<num_access - 1>{}, Number<0>{});
+            return SrcSpaceFillingCurve::GetStepBetween(Number<num_access - 1>{}, Number<0>{});
+        }
+    }
 
-            return reset_step;
+    __device__ static constexpr auto GetDstCoordinateResetStep()
+    {
+        if constexpr(num_access == 0)
+        {
+            return typename DstSpaceFillingCurve::Index{};
+        }
+        else
+        {
+            return DstSpaceFillingCurve::GetStepBetween(Number<num_access - 1>{}, Number<0>{});
         }
     }
 
@@ -262,9 +317,10 @@ struct ThreadwiseTensorSliceTransfer_v7
                                        const Index& src_slice_origin_step_idx)
     {
         // if src coord was not reset by RunRead(), then need to adjust the step here
-        const auto adjusted_step_idx = SrcResetCoordinateAfterRunFlags::At(iSrc)
-                                           ? src_slice_origin_step_idx
-                                           : src_slice_origin_step_idx + GetCoordinateResetStep();
+        const auto adjusted_step_idx =
+            SrcResetCoordinateAfterRunFlags::At(iSrc)
+                ? src_slice_origin_step_idx
+                : src_slice_origin_step_idx + GetSrcCoordinateResetStep();
 
         // is it OK to construct a new step every time?
         const auto adjusted_step = make_tensor_coordinate_step(src_descs[iSrc], adjusted_step_idx);
@@ -279,9 +335,10 @@ struct ThreadwiseTensorSliceTransfer_v7
                                        const Index& dst_slice_origin_step_idx)
     {
         // if dst coord was not reset by Run(), then need to adjust the step here
-        const auto adjusted_step_idx = DstResetCoordinateAfterRunFlags::At(iDst)
-                                           ? dst_slice_origin_step_idx
-                                           : dst_slice_origin_step_idx + GetCoordinateResetStep();
+        const auto adjusted_step_idx =
+            DstResetCoordinateAfterRunFlags::At(iDst)
+                ? dst_slice_origin_step_idx
+                : dst_slice_origin_step_idx + GetDstCoordinateResetStep();
 
         // is it OK to construct a new step every time?
         const auto adjusted_step = make_tensor_coordinate_step(dst_descs[iDst], adjusted_step_idx);
@@ -290,6 +347,13 @@ struct ThreadwiseTensorSliceTransfer_v7
     }
 
     private:
+    using SrcVectorsType = decltype(generate_vectors<SrcDatas, SrcScalarPerVector>());
+    using DstVectorsType = decltype(generate_vectors<DstDatas, DstScalarPerVector>());
+
+    static constexpr auto num_access = SrcSpaceFillingCurve::GetNumOfAccess();
+
+    StaticallyIndexedArray<SrcVectorsType, num_access> src_vectors_tuple_;
+
     SrcCoords src_coords_;
     DstCoords dst_coords_;
     const ElementwiseOperation element_op_;
