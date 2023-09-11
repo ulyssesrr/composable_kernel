@@ -37,8 +37,8 @@ __global__ void
 #if CK_USE_LAUNCH_BOUNDS
     __launch_bounds__(CK_MAX_THREAD_PER_BLOCK, CK_MIN_BLOCK_PER_CU)
 #endif
-        kernel_gemm_multiple_d_xdl_cshuffle(const ADataType* __restrict__ p_a_grid,
-                                            const BDataType* __restrict__ p_b_grid,
+        kernel_gemm_multiple_d_xdl_cshuffle(const ADataType* p_a_grid,
+                                            const BDataType* p_b_grid,
                                             DsPointer p_ds_grid,
                                             EDataType* __restrict__ p_e_grid,
                                             const AElementwiseOperation a_element_op,
@@ -56,16 +56,22 @@ __global__ void
     defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__))
     __shared__ char p_shared[GridwiseGemm::GetSharedMemoryNumberOfByte()];
 
-    GridwiseGemm::template Run<HasMainKBlockLoop>(p_a_grid,
-                                                  p_b_grid,
+    typename GridwiseGemm::AsGridPointer p_as_grid_;
+    p_as_grid_(Number<0>{}) = p_a_grid;
+
+    typename GridwiseGemm::BsGridPointer p_bs_grid_;
+    p_bs_grid_(Number<0>{}) = p_b_grid;
+
+    GridwiseGemm::template Run<HasMainKBlockLoop>(p_as_grid_,
+                                                  p_bs_grid_,
                                                   p_ds_grid,
                                                   p_e_grid,
                                                   p_shared,
                                                   a_element_op,
                                                   b_element_op,
                                                   cde_element_op,
-                                                  a_grid_desc_ak0_m_ak1,
-                                                  b_grid_desc_bk0_n_bk1,
+                                                  tie(a_grid_desc_ak0_m_ak1),
+                                                  tie(b_grid_desc_bk0_n_bk1),
                                                   ds_grid_desc_mblock_mperblock_nblock_nperblock,
                                                   e_grid_desc_mblock_mperblock_nblock_nperblock,
                                                   block_2_etile_map);
@@ -247,8 +253,8 @@ struct DeviceGemmMultipleD_Xdl_CShuffle : public DeviceGemmMultipleD<ALayout,
 
     // GridwiseGemm
     using GridwiseGemm = GridwiseGemmMultipleD_xdl_cshuffle<
-        ADataType, // TODO: distinguish A/B datatype
-        BDataType,
+        Tuple<ADataType>,
+        Tuple<BDataType>,
         ComputeDataType,
         AccDataType,
         CShuffleDataType,
@@ -363,8 +369,8 @@ struct DeviceGemmMultipleD_Xdl_CShuffle : public DeviceGemmMultipleD<ALayout,
             });
 
             // populate desc for Ds/E
-            if(GridwiseGemm::CheckValidity(a_grid_desc_m_k_,
-                                           b_grid_desc_n_k_,
+            if(GridwiseGemm::CheckValidity(tie(a_grid_desc_m_k_),
+                                           tie(b_grid_desc_n_k_),
                                            ds_grid_desc_m_n_,
                                            e_grid_desc_m_n_,
                                            block_2_etile_map_))
@@ -429,8 +435,8 @@ struct DeviceGemmMultipleD_Xdl_CShuffle : public DeviceGemmMultipleD<ALayout,
 
         float Run(const Argument& arg, const StreamConfig& stream_config = StreamConfig{})
         {
-            if(!GridwiseGemm::CheckValidity(arg.a_grid_desc_m_k_,
-                                            arg.b_grid_desc_n_k_,
+            if(!GridwiseGemm::CheckValidity(tie(arg.a_grid_desc_m_k_),
+                                            tie(arg.b_grid_desc_n_k_),
                                             arg.ds_grid_desc_m_n_,
                                             arg.e_grid_desc_m_n_,
                                             arg.block_2_etile_map_))
@@ -446,8 +452,8 @@ struct DeviceGemmMultipleD_Xdl_CShuffle : public DeviceGemmMultipleD<ALayout,
 
                 const auto kernel = kernel_gemm_multiple_d_xdl_cshuffle<
                     GridwiseGemm,
-                    ADataType, // TODO: distiguish A/B datatype
-                    BDataType, // TODO: distiguish A/B datatype
+                    ADataType,
+                    BDataType,
                     typename GridwiseGemm::DsGridPointer,
                     EDataType,
                     AElementwiseOperation,
@@ -586,8 +592,8 @@ struct DeviceGemmMultipleD_Xdl_CShuffle : public DeviceGemmMultipleD<ALayout,
             }
         }
 
-        return GridwiseGemm::CheckValidity(arg.a_grid_desc_m_k_,
-                                           arg.b_grid_desc_n_k_,
+        return GridwiseGemm::CheckValidity(tie(arg.a_grid_desc_m_k_),
+                                           tie(arg.b_grid_desc_n_k_),
                                            arg.ds_grid_desc_m_n_,
                                            arg.e_grid_desc_m_n_,
                                            arg.block_2_etile_map_);

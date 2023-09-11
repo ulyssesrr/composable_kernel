@@ -142,12 +142,8 @@ struct ThreadGroupTensorSliceTransfer_v7
                         const DstDescs& dst_descs,
                         DstBuffers dst_bufs)
     {
-        if(ThreadGroup::GetNumOfThread() == thread_cluster_desc_.GetElementSize() or
-           ThreadGroup::GetThreadId() < thread_cluster_desc_.GetElementSize())
-        {
-            RunRead(src_descs, src_bufs);
-            RunWrite(dst_descs, dst_bufs);
-        }
+        RunRead(src_descs, src_bufs);
+        RunWrite(dst_descs, dst_bufs);
     }
 
     template <index_t ISrc>
@@ -161,6 +157,11 @@ struct ThreadGroupTensorSliceTransfer_v7
         }
     }
 
+    __device__ void MoveSrcSliceWindow(const SrcDescs& src_descs, const Index& step)
+    {
+        MoveSrcSliceWindow(src_descs, Number<0>{}, step);
+    }
+
     template <index_t IDst>
     __device__ void
     MoveDstSliceWindow(const DstDescs& dst_descs, Number<IDst> iDst, const Index& step)
@@ -170,6 +171,11 @@ struct ThreadGroupTensorSliceTransfer_v7
         {
             threadwise_transfer_.MoveDstSliceWindow(dst_descs, iDst, step);
         }
+    }
+
+    __device__ void MoveDstSliceWindow(const DstDescs& dst_descs, const Index& step)
+    {
+        MoveDstSliceWindow(dst_descs, Number<0>{}, step);
     }
 
     private:
