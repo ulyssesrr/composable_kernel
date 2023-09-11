@@ -1027,7 +1027,7 @@ struct DeviceGroupedConvBwdWeightGnwcGkxcGnwk_Dl
     static bool IsSupportedArgument(const Argument& arg)
     {
         // check device
-        if(!(ck::get_device_name() == "gfx906" || ck::get_device_name() == "gfx1010") || ck::get_device_name() == "gfx1030"))
+        if(!(ck::get_device_name() == "gfx906" || ck::get_device_name() == "gfx1010" || ck::get_device_name() == "gfx1030"))
         {
             return false;
         }
