@@ -40,6 +40,7 @@ inline std::string get_device_name()
         {"gfx804", "gfx803"},
         {"Vega10", "gfx900"},
         {"gfx901", "gfx900"},
+        {"Navi10", "gfx1010"},
         {"10.3.0 Sienna_Cichlid 18", "gfx1030"},
     };
 

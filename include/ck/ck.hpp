@@ -33,7 +33,7 @@
 #elif defined(__gfx803__) || defined(__gfx900__) || defined(__gfx906__) || defined(__gfx908__) || \
     defined(__gfx90a__) // for GPU code
 #define CK_BUFFER_RESOURCE_3RD_DWORD 0x00020000
-#elif defined(__gfx1030__) // for GPU code
+#elif defined(__gfx1010__) || defined(__gfx1030__) // for GPU code
 #define CK_BUFFER_RESOURCE_3RD_DWORD 0x31014000
 #elif defined(__gfx1100__) || defined(__gfx1101__) || defined(__gfx1102__) // for GPU code
 #define CK_BUFFER_RESOURCE_3RD_DWORD 0x10020000
@@ -41,7 +41,7 @@
 
 // FMA instruction
 #ifndef __HIP_DEVICE_COMPILE__                   // for host code, define nothing
-#elif defined(__gfx803__) || defined(__gfx900__) // for GPU code
+#elif defined(__gfx803__) || defined(__gfx900__) || defined(__gfx1010__) // for GPU code
 #define CK_USE_AMD_V_MAC_F32
 #elif defined(__gfx906__) || defined(__gfx908__) || defined(__gfx90a__) || \
     defined(__gfx1030__) // for GPU code
