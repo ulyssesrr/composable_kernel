@@ -41,8 +41,10 @@
 
 // FMA instruction
 #ifndef __HIP_DEVICE_COMPILE__                   // for host code, define nothing
-#elif defined(__gfx803__) || defined(__gfx900__) || defined(__gfx1010__) // for GPU code
+#elif defined(__gfx803__) || defined(__gfx900__) // for GPU code
 #define CK_USE_AMD_V_MAC_F32
+#elif defined(__gfx1010__)
+#define CK_USE_AMD_V_FMAC_F32
 #elif defined(__gfx906__) || defined(__gfx908__) || defined(__gfx90a__) || \
     defined(__gfx1030__) // for GPU code
 #define CK_USE_AMD_V_FMAC_F32
